@@ -139,7 +139,10 @@ public class CommonUtils {
      * If absent, an exception is thrown in debug mode, otherwise null is returned.
      */
     @Nullable
-    public static AbstractPlayerDamageModel getDamageModel(Player player) {
+    public static AbstractPlayerDamageModel getDamageModel(@Nullable Player player) {
+        if (player == null) {
+            return null;
+        }
         if (!(player instanceof FirstAidDamageModelHolder holder)) {
             if (FirstAidConfig.GENERAL.debug.get()) {
                 IllegalArgumentException e = new IllegalArgumentException("Player " + player.getName().getContents() + " is missing a damage model!");
@@ -153,12 +156,12 @@ public class CommonUtils {
     }
 
     @Nonnull
-    public static Optional<AbstractPlayerDamageModel> getOptionalDamageModel(Player player) {
+    public static Optional<AbstractPlayerDamageModel> getOptionalDamageModel(@Nullable Player player) {
         return Optional.ofNullable(getExistingDamageModel(player));
     }
 
     @Nullable
-    public static AbstractPlayerDamageModel getExistingDamageModel(Player player) {
+    public static AbstractPlayerDamageModel getExistingDamageModel(@Nullable Player player) {
         if (!(player instanceof FirstAidDamageModelHolder holder)) {
             return null;
         }

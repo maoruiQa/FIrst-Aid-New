@@ -143,7 +143,10 @@ public class CommonUtils {
      * If absent, an exception is thrown in debug mode, otherwise null is returned.
      */
     @Nullable
-    public static AbstractPlayerDamageModel getDamageModel(Player player) {
+    public static AbstractPlayerDamageModel getDamageModel(@Nullable Player player) {
+        if (player == null) {
+            return null;
+        }
         LazyOptional<AbstractPlayerDamageModel> optionalDamageModel = getOptionalDamageModel(player);
         try {
             return optionalDamageModel.orElseThrow(() -> new IllegalArgumentException("Player " + player.getName().getContents() + " is missing a damage model!"));
@@ -161,12 +164,18 @@ public class CommonUtils {
     }
 
     @Nonnull
-    public static LazyOptional<AbstractPlayerDamageModel> getOptionalDamageModel(Player player) {
+    public static LazyOptional<AbstractPlayerDamageModel> getOptionalDamageModel(@Nullable Player player) {
+        if (player == null) {
+            return LazyOptional.empty();
+        }
         return LazyOptional.of(() -> player.getData(FirstAidDataAttachments.DAMAGE_MODEL.get()));
     }
 
     @Nullable
-    public static AbstractPlayerDamageModel getExistingDamageModel(Player player) {
+    public static AbstractPlayerDamageModel getExistingDamageModel(@Nullable Player player) {
+        if (player == null) {
+            return null;
+        }
         return player.getExistingDataOrNull(FirstAidDataAttachments.DAMAGE_MODEL.get());
     }
 
