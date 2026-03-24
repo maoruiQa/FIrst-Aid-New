@@ -73,7 +73,9 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private static final int PAINKILLER_ACTIVATION_DELAY_TICKS = 20 * 30;
     private static final int MORPHINE_ACTIVATION_DELAY_TICKS = 20 * 10;
     private static final int CRITICAL_UNCONSCIOUS_TICKS = 20 * 150;
-    private static final int RESCUE_WAKE_UP_DELAY = 20 * 5;
+    private static final int RESCUE_WAKE_UP_DELAY = Math.max(1, Math.round(20 * 5 * 0.3F));
+    private static final int RESCUE_DURATION_TICKS = 20 * 8;
+    private static final double RESCUE_RANGE = 3.0D;
     private static final int COLLAPSE_ANIMATION_TICKS = 12;
     private static final int COLLAPSE_SEARCH_RADIUS = 2;
     private static final double COLLAPSE_SUPPORT_PROBE_DEPTH = 0.125D;
@@ -400,6 +402,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return Math.max(1, (int) Math.ceil(unconsciousTicks / 20.0D));
     }
 
+    public static int getRescueDurationTicks() {
+        return RESCUE_DURATION_TICKS;
+    }
+
+    public static double getRescueRange() {
+        return RESCUE_RANGE;
+    }
+
     public float getPainVisualStrength() {
         if (painLevel <= 0) {
             return 0.0F;
@@ -475,24 +485,30 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public boolean rescueFromCriticalState(Player player, @Nullable AbstractPartHealer healer) {
+        return rescueFromCriticalState(player, healer, FirstAid.rescueWakeUpEnabled);
+    }
+
+    public boolean rescueFromCriticalState(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay) {
         if (!canBeRescued()) {
             return false;
         }
-        AbstractDamageablePart rescueTarget = null;
-        for (AbstractDamageablePart part : this) {
-            if (part.canCauseDeath && part.currentHealth <= 0.0F) {
-                part.currentHealth = 1.0F;
-                if (rescueTarget == null) {
-                    rescueTarget = part;
-                }
-            }
-        }
-        if (healer != null && rescueTarget != null && rescueTarget.activeHealer == null) {
-            rescueTarget.activeHealer = healer;
+        rescueCriticalParts(keepWakeUpDelay ? 1.0F : 2.0F);
+        if (!keepWakeUpDelay) {
+            rescueNonCriticalZeroParts(1.0F);
         }
         criticalConditionActive = false;
-        setUnconsciousState(Math.max(unconsciousTicks, RESCUE_WAKE_UP_DELAY), false, false, UNCONSCIOUS_REASON_RECOVERING);
         painLevel = Math.max(2, painLevel);
+        if (keepWakeUpDelay) {
+            AbstractDamageablePart rescueTarget = getFirstCriticalRescueTarget();
+            if (healer != null && rescueTarget != null && rescueTarget.activeHealer == null) {
+                rescueTarget.activeHealer = healer;
+            }
+            setUnconsciousState(Math.max(unconsciousTicks, RESCUE_WAKE_UP_DELAY), false, false, UNCONSCIOUS_REASON_RECOVERING);
+        } else {
+            clearUnconsciousState();
+            clearUnconsciousPenalties(player);
+            player.setHealth(Math.max(player.getHealth(), 1.0F));
+        }
         scheduleResync();
         if (player instanceof ServerPlayer serverPlayer) {
             serverPlayer.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
@@ -991,6 +1007,32 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private void clearUnconsciousPenalties(Player player) {
         updateUnconsciousAttributes(player, false);
         player.setForcedPose(null);
+    }
+
+    @Nullable
+    private AbstractDamageablePart getFirstCriticalRescueTarget() {
+        for (AbstractDamageablePart part : this) {
+            if (part.canCauseDeath && part.currentHealth > 0.0F) {
+                return part;
+            }
+        }
+        return null;
+    }
+
+    private void rescueCriticalParts(float restoredHealth) {
+        for (AbstractDamageablePart part : this) {
+            if (part.canCauseDeath && part.currentHealth <= 0.0F) {
+                part.currentHealth = Math.min(part.getMaxHealth(), restoredHealth);
+            }
+        }
+    }
+
+    private void rescueNonCriticalZeroParts(float restoredHealth) {
+        for (AbstractDamageablePart part : this) {
+            if (!part.canCauseDeath && part.currentHealth <= 0.0F) {
+                part.currentHealth = Math.min(part.getMaxHealth(), restoredHealth);
+            }
+        }
     }
 
     private boolean hasCriticalPartCollapsed() {

@@ -40,7 +40,7 @@ public final class FirstAidDataAttachments {
 
         @Override
         public boolean sendToPlayer(net.neoforged.neoforge.attachment.IAttachmentHolder holder, ServerPlayer to) {
-            return holder == to;
+            return holder instanceof net.minecraft.world.entity.player.Player;
         }
 
         @Override

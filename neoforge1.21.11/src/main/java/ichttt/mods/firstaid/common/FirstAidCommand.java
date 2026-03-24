@@ -52,6 +52,11 @@ public final class FirstAidCommand {
                                 .executes(context -> setLowSuppression(context.getSource(), false)))
                         .then(Commands.literal("mild")
                                 .executes(context -> setLowSuppression(context.getSource(), true))))
+                .then(Commands.literal("revivewakeup")
+                        .then(Commands.literal("on")
+                                .executes(context -> setRescueWakeUp(context.getSource(), true)))
+                        .then(Commands.literal("off")
+                                .executes(context -> setRescueWakeUp(context.getSource(), false))))
                 .then(Commands.literal("medicineeffect")
                         .then(Commands.literal("realistic")
                                 .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.REALISTIC)))
@@ -98,6 +103,15 @@ public final class FirstAidCommand {
         source.sendSuccess(() -> Component.translatable(enabled
                 ? "firstaid.command.suppression.mild"
                 : "firstaid.command.suppression.dynamic"), true);
+        FirstAidConfig.persistCommandSettings();
+        return 1;
+    }
+
+    private static int setRescueWakeUp(CommandSourceStack source, boolean enabled) {
+        FirstAid.rescueWakeUpEnabled = enabled;
+        source.sendSuccess(() -> Component.translatable(enabled
+                ? "firstaid.command.revivewakeup.on"
+                : "firstaid.command.revivewakeup.off"), true);
         FirstAidConfig.persistCommandSettings();
         return 1;
     }

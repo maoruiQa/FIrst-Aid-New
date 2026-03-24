@@ -21,10 +21,8 @@ package ichttt.mods.firstaid.common;
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
-import ichttt.mods.firstaid.api.damagesystem.AbstractPartHealer;
 import ichttt.mods.firstaid.api.distribution.IDamageDistributionAlgorithm;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
-import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.distribution.DamageDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
@@ -41,6 +39,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
@@ -100,6 +99,7 @@ import net.minecraft.util.Mth;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
+import java.util.UUID;
 
 public class EventHandler {
     public static final Random RAND = new Random();
@@ -110,8 +110,10 @@ public class EventHandler {
             recipeKey("morphine"),
             recipeKey("painkillers")
     );
+    private static final int RESCUE_DURATION_TICKS = PlayerDamageModel.getRescueDurationTicks();
 
     public static final Map<Player, Pair<Entity, HitResult>> hitList = new WeakHashMap<>();
+    private static final Map<UUID, RescueProgress> rescueProgress = new HashMap<>();
 
     private static ResourceKey<Recipe<?>> recipeKey(String path) {
         return ResourceKey.create(Registries.RECIPE, Identifier.fromNamespaceAndPath(FirstAid.MODID, path));
@@ -218,6 +220,9 @@ public class EventHandler {
                 }
             }
             damageModel.tick(player.level(), player);
+            if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+                tickRescueProgress(serverPlayer);
+            }
             hitList.remove(player);
         }
     }
@@ -329,6 +334,7 @@ public class EventHandler {
     @SubscribeEvent(priority =  EventPriority.LOW)
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         hitList.remove(event.getEntity());
+        rescueProgress.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
@@ -351,36 +357,13 @@ public class EventHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
-        if (event.getLevel().isClientSide() || !(event.getTarget() instanceof Player targetPlayer)) {
+        if (event.getLevel().isClientSide()) {
             return;
         }
         Player rescuer = event.getEntity();
         if (isUnconscious(rescuer)) {
             event.setCanceled(true);
             return;
-        }
-        if (rescuer == targetPlayer) {
-            return;
-        }
-        AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(targetPlayer);
-        if (!(damageModel instanceof PlayerDamageModel playerDamageModel) || !playerDamageModel.canBeRescued()) {
-            return;
-        }
-
-        ItemStack stack = rescuer.getItemInHand(event.getHand());
-        if (!(stack.getItem() instanceof ItemHealing itemHealing)) {
-            return;
-        }
-        AbstractPartHealer healer = itemHealing.createNewHealer(stack);
-        if (healer == null) {
-            return;
-        }
-        stack.shrink(1);
-        if (playerDamageModel.rescueFromCriticalState(targetPlayer, healer)) {
-            rescuer.displayClientMessage(Component.translatable("firstaid.gui.rescue_other", targetPlayer.getDisplayName()).withStyle(net.minecraft.ChatFormatting.GREEN), true);
-            targetPlayer.displayClientMessage(Component.translatable("firstaid.gui.rescue_received", rescuer.getDisplayName()).withStyle(net.minecraft.ChatFormatting.GREEN), true);
-            event.setCancellationResult(InteractionResult.SUCCESS);
-            event.setCanceled(true);
         }
     }
 
@@ -447,11 +430,13 @@ public class EventHandler {
         FirstAid.LOGGER.debug("Cleaning up");
         FirstAid.dynamicPainEnabled = true;
         FirstAid.lowSuppressionEnabled = false;
+        FirstAid.rescueWakeUpEnabled = false;
         FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
         FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
         FirstAid.injuryDebuffOverrides.clear();
         CapProvider.tutorialDone.clear();
         EventHandler.hitList.clear();
+        rescueProgress.clear();
         FirstAidRegistryLookups.reset();
     }
 
@@ -578,19 +563,132 @@ public class EventHandler {
         }
     }
 
+    private static void tickRescueProgress(ServerPlayer rescuer) {
+        RescueTarget rescueTarget = findRescueTarget(rescuer, true);
+        if (rescueTarget == null) {
+            rescueProgress.remove(rescuer.getUUID());
+            return;
+        }
+
+        RescueProgress progress = rescueProgress.get(rescuer.getUUID());
+        if (progress == null || !progress.matches(rescueTarget)) {
+            progress = new RescueProgress(rescueTarget.target().getUUID(), rescueTarget.hand(), 0);
+        }
+
+        int nextTicks = Math.min(RESCUE_DURATION_TICKS, progress.ticks() + 1);
+        if (nextTicks < RESCUE_DURATION_TICKS) {
+            rescueProgress.put(rescuer.getUUID(), progress.withTicks(nextTicks));
+            return;
+        }
+
+        completeRescue(rescuer, rescueTarget);
+    }
+
+    public static void attemptImmediateRescue(ServerPlayer rescuer) {
+        RescueTarget rescueTarget = findRescueTarget(rescuer, true);
+        if (rescueTarget == null) {
+            rescueProgress.remove(rescuer.getUUID());
+            return;
+        }
+        completeRescue(rescuer, rescueTarget);
+    }
+
+    private static void completeRescue(ServerPlayer rescuer, RescueTarget rescueTarget) {
+        ItemStack stack = rescuer.getItemInHand(rescueTarget.hand());
+        if (!isRescueItem(stack)) {
+            rescueProgress.remove(rescuer.getUUID());
+            return;
+        }
+
+        AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(rescueTarget.target());
+        if (!(damageModel instanceof PlayerDamageModel playerDamageModel) || !playerDamageModel.canBeRescued()) {
+            rescueProgress.remove(rescuer.getUUID());
+            return;
+        }
+
+        stack.shrink(1);
+        if (playerDamageModel.rescueFromCriticalState(rescueTarget.target(), null, FirstAid.rescueWakeUpEnabled)) {
+            rescuer.displayClientMessage(Component.translatable("firstaid.gui.rescue_other", rescueTarget.target().getDisplayName()).withStyle(ChatFormatting.GREEN), true);
+            rescueTarget.target().displayClientMessage(Component.translatable("firstaid.gui.rescue_received", rescuer.getDisplayName()).withStyle(ChatFormatting.GREEN), true);
+        }
+        rescueProgress.remove(rescuer.getUUID());
+    }
+
+    private static RescueTarget findRescueTarget(Player rescuer, boolean requireSneaking) {
+        if (rescuer == null || rescuer.level().isClientSide() || isUnconscious(rescuer)) {
+            return null;
+        }
+        if (requireSneaking && !rescuer.isCrouching()) {
+            return null;
+        }
+
+        InteractionHand hand = getRescueHand(rescuer);
+        if (hand == null) {
+            return null;
+        }
+
+        double maxDistanceSqr = PlayerDamageModel.getRescueRange() * PlayerDamageModel.getRescueRange();
+        Player closestTarget = null;
+        double closestDistanceSqr = maxDistanceSqr;
+        for (Player candidate : rescuer.level().players()) {
+            if (candidate == rescuer || !candidate.isAlive()) {
+                continue;
+            }
+            AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(candidate);
+            if (!(damageModel instanceof PlayerDamageModel playerDamageModel) || !playerDamageModel.canBeRescued()) {
+                continue;
+            }
+            double distanceSqr = rescuer.distanceToSqr(candidate);
+            if (distanceSqr > closestDistanceSqr) {
+                continue;
+            }
+            closestDistanceSqr = distanceSqr;
+            closestTarget = candidate;
+        }
+        return closestTarget == null ? null : new RescueTarget(closestTarget, hand);
+    }
+
+    private static InteractionHand getRescueHand(Player player) {
+        if (isRescueItem(player.getMainHandItem())) {
+            return InteractionHand.MAIN_HAND;
+        }
+        if (isRescueItem(player.getOffhandItem())) {
+            return InteractionHand.OFF_HAND;
+        }
+        return null;
+    }
+
+    private static boolean isRescueItem(ItemStack stack) {
+        return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get());
+    }
+
     private static void sendOpCommandTip(ServerPlayer player) {
         if (!player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
             return;
         }
-        Component message = Component.literal("[FirstAid] ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
-                .append(Component.literal("OP Commands: ").withStyle(ChatFormatting.YELLOW))
-                .append(Component.literal("/firstaid ").withStyle(ChatFormatting.AQUA))
-                .append(Component.literal("| ").withStyle(ChatFormatting.DARK_GRAY))
-                .append(Component.literal("/damagePart").withStyle(ChatFormatting.AQUA));
-        player.displayClientMessage(message, false);
+        player.displayClientMessage(Component.translatable("firstaid.tip.commands.header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
+        player.displayClientMessage(Component.translatable("firstaid.tip.commands.pain").withStyle(ChatFormatting.YELLOW), false);
+        player.displayClientMessage(Component.translatable("firstaid.tip.commands.suppression").withStyle(ChatFormatting.YELLOW), false);
+        player.displayClientMessage(Component.translatable("firstaid.tip.commands.medicineeffect").withStyle(ChatFormatting.YELLOW), false);
+        player.displayClientMessage(Component.translatable("firstaid.tip.commands.injurydebuff").withStyle(ChatFormatting.YELLOW), false);
+        player.displayClientMessage(Component.translatable("firstaid.tip.commands.revivewakeup").withStyle(ChatFormatting.YELLOW), false);
+        player.displayClientMessage(Component.translatable("firstaid.tip.commands.damagepart").withStyle(ChatFormatting.YELLOW), false);
     }
 
     private record ClosestPointResult(Vec3 point, double progress) {
+    }
+
+    private record RescueTarget(Player target, InteractionHand hand) {
+    }
+
+    private record RescueProgress(UUID targetId, InteractionHand hand, int ticks) {
+        private boolean matches(RescueTarget rescueTarget) {
+            return targetId.equals(rescueTarget.target().getUUID()) && hand == rescueTarget.hand();
+        }
+
+        private RescueProgress withTicks(int updatedTicks) {
+            return new RescueProgress(targetId, hand, updatedTicks);
+        }
     }
 }
 

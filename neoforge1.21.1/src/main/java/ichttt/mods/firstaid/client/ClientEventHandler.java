@@ -39,12 +39,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringUtil;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.CalculatePlayerTurnEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
@@ -54,12 +57,19 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 public class ClientEventHandler {
     private static final ResourceLocation PLAYER_HEALTH_LAYER = VanillaGuiLayers.PLAYER_HEALTH;
     private static final int GIVE_UP_HOLD_TICKS = 20 * 3;
+    private static final int RESCUE_HOLD_TICKS = PlayerDamageModel.getRescueDurationTicks();
     private static final SuppressionFeedbackController SUPPRESSION_FEEDBACK_CONTROLLER = new SuppressionFeedbackController();
     private static final ProjectileNearMissDetector PROJECTILE_NEAR_MISS_DETECTOR = new ProjectileNearMissDetector(SUPPRESSION_FEEDBACK_CONTROLLER);
+    private static boolean loggedRenderGuiWithoutPlayer;
+    private static boolean loggedRenderGuiWithPlayer;
+    private static boolean loggedPlayerHealthLayerIntercept;
     private static int id;
     private static boolean showedCriticalPrompt;
     private static int giveUpHoldTicks;
     private static boolean giveUpTriggered;
+    private static int rescueHoldTicks;
+    private static boolean rescueTriggered;
+    private static RescuePrompt rescuePrompt;
 
     @SubscribeEvent
     public static void clientTick(ClientTickEvent.Pre event) {
@@ -91,6 +101,7 @@ public class ClientEventHandler {
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
         if (damageModel instanceof PlayerDamageModel playerDamageModel) {
             updateGiveUpHoldState(mc, playerDamageModel);
+            updateRescuePromptState(mc);
             boolean shouldShowCriticalPrompt = playerDamageModel.canGiveUp();
             if (shouldShowCriticalPrompt && !showedCriticalPrompt) {
                 mc.player.displayClientMessage(Component.translatable("firstaid.gui.waiting_for_rescue").withStyle(ChatFormatting.RED), true);
@@ -100,6 +111,7 @@ public class ClientEventHandler {
         } else {
             showedCriticalPrompt = false;
             resetGiveUpHoldState();
+            resetRescuePromptState();
         }
         if (damageModel != null && damageModel.getUnconsciousTicks() > 0 && mc.screen instanceof GuiHealthScreen) {
             mc.setScreen(null);
@@ -161,12 +173,40 @@ public class ClientEventHandler {
     }
 
     @SubscribeEvent
+    public static void onRenderGui(RenderGuiEvent.Post event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            if (!loggedRenderGuiWithoutPlayer) {
+                FirstAid.LOGGER.info("ClientEventHandler.onRenderGui reached before player was initialized");
+                loggedRenderGuiWithoutPlayer = true;
+            }
+        } else if (!loggedRenderGuiWithPlayer) {
+            FirstAid.LOGGER.info(
+                    "ClientEventHandler.onRenderGui reached for player={}, hideGui={}, overlayMode={}, vanillaHealthbarMode={}",
+                    mc.player.getName().getString(),
+                    mc.options.hideGui,
+                    FirstAidConfig.CLIENT.overlayMode.get(),
+                    FirstAidConfig.CLIENT.vanillaHealthBarMode.get()
+            );
+            loggedRenderGuiWithPlayer = true;
+        }
+        StatusEffectLayer.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+        HUDHandler.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+    }
+
+    @SubscribeEvent
     public static void preRender(RenderGuiLayerEvent.Pre event) {
         if (!PLAYER_HEALTH_LAYER.equals(event.getName())) {
             return;
         }
 
-        HUDHandler.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+        if (!loggedPlayerHealthLayerIntercept) {
+            FirstAid.LOGGER.info(
+                    "ClientEventHandler.preRender intercepted PLAYER_HEALTH, vanillaHealthbarMode={}",
+                    FirstAidConfig.CLIENT.vanillaHealthBarMode.get()
+            );
+            loggedPlayerHealthLayerIntercept = true;
+        }
 
         FirstAidConfig.Client.VanillaHealthbarMode vanillaHealthBarMode = FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
         if (vanillaHealthBarMode == FirstAidConfig.Client.VanillaHealthbarMode.NORMAL) {
@@ -222,20 +262,26 @@ public class ClientEventHandler {
         HUDHandler.INSTANCE.ticker = -1;
         showedCriticalPrompt = false;
         resetGiveUpHoldState();
+        resetRescuePromptState();
         HealingSoundController.clear();
         SUPPRESSION_FEEDBACK_CONTROLLER.clear();
         PROJECTILE_NEAR_MISS_DETECTOR.clear();
+        loggedRenderGuiWithoutPlayer = false;
+        loggedRenderGuiWithPlayer = false;
+        loggedPlayerHealthLayerIntercept = false;
+        StatusEffectLayer.INSTANCE.resetDebugState();
     }
 
     @SubscribeEvent
     public static void onLogin(ClientPlayerNetworkEvent.LoggingIn event) {
         resetGiveUpHoldState();
+        resetRescuePromptState();
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
             return;
         }
         MutableComponent message = Component.empty()
-                .append(Component.literal("鉁?").withStyle(ChatFormatting.RED, ChatFormatting.BOLD))
+                .append(Component.literal("✚ ").withStyle(ChatFormatting.RED, ChatFormatting.BOLD))
                 .append(Component.literal("[First Aid] ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
                 .append(Component.literal("Press ").withStyle(ChatFormatting.YELLOW))
                 .append(Component.literal(ClientHooks.SHOW_WOUNDS.getTranslatedKeyMessage().getString()).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD, ChatFormatting.UNDERLINE))
@@ -261,6 +307,38 @@ public class ClientEventHandler {
 
     public static float getGiveUpHoldDurationSeconds() {
         return GIVE_UP_HOLD_TICKS / 20.0F;
+    }
+
+    public static boolean hasRescuePrompt() {
+        return rescuePrompt != null;
+    }
+
+    public static Component getRescuePromptTitle() {
+        return rescuePrompt == null
+                ? Component.empty()
+                : Component.translatable("firstaid.gui.rescue_prompt_title", rescuePrompt.targetName());
+    }
+
+    public static Component getRescuePromptDetail() {
+        if (rescuePrompt == null) {
+            return Component.empty();
+        }
+        if (!rescuePrompt.hasValidItem()) {
+            return Component.translatable("firstaid.gui.rescue_prompt_item");
+        }
+        return Component.translatable("firstaid.gui.rescue_prompt_crouch", formatSingleDecimal(getRescueHoldDurationSeconds()));
+    }
+
+    public static float getRescueHoldProgress(float partialTick) {
+        return Math.min(1.0F, getDisplayedRescueHoldTicks(partialTick) / RESCUE_HOLD_TICKS);
+    }
+
+    public static float getRescueHoldSeconds(float partialTick) {
+        return getDisplayedRescueHoldTicks(partialTick) / 20.0F;
+    }
+
+    public static float getRescueHoldDurationSeconds() {
+        return RESCUE_HOLD_TICKS / 20.0F;
     }
 
     public static SuppressionFeedbackController getSuppressionFeedbackController() {
@@ -294,6 +372,89 @@ public class ClientEventHandler {
         }
     }
 
+    private static void updateRescuePromptState(Minecraft mc) {
+        RescuePrompt nextPrompt = findRescuePrompt(mc);
+        if (rescuePrompt == null || nextPrompt == null || rescuePrompt.targetId() != nextPrompt.targetId()) {
+            rescueHoldTicks = 0;
+            rescueTriggered = false;
+        }
+        rescuePrompt = nextPrompt;
+        if (rescuePrompt == null || mc.screen != null || !rescuePrompt.hasValidItem() || !rescuePrompt.isSneaking()) {
+            rescueHoldTicks = 0;
+            rescueTriggered = false;
+            return;
+        }
+        rescueHoldTicks = Math.min(RESCUE_HOLD_TICKS, rescueHoldTicks + 1);
+        if (rescueHoldTicks >= RESCUE_HOLD_TICKS && !rescueTriggered) {
+            rescueTriggered = true;
+            FirstAid.NETWORKING.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.ATTEMPT_RESCUE));
+        }
+    }
+
+    private static RescuePrompt findRescuePrompt(Minecraft mc) {
+        if (mc.player == null || mc.level == null || !mc.player.isAlive() || isUnconscious(mc.player)) {
+            return null;
+        }
+
+        double maxDistanceSqr = PlayerDamageModel.getRescueRange() * PlayerDamageModel.getRescueRange();
+        Player closestTarget = null;
+        double closestDistanceSqr = maxDistanceSqr;
+        for (Player candidate : mc.level.players()) {
+            if (candidate == mc.player || !candidate.isAlive()) {
+                continue;
+            }
+            AbstractPlayerDamageModel damageModel = CommonUtils.getExistingDamageModel(candidate);
+            if (!(damageModel instanceof PlayerDamageModel playerDamageModel) || !playerDamageModel.canBeRescued()) {
+                continue;
+            }
+            double distanceSqr = mc.player.distanceToSqr(candidate);
+            if (distanceSqr > closestDistanceSqr) {
+                continue;
+            }
+            closestDistanceSqr = distanceSqr;
+            closestTarget = candidate;
+        }
+
+        if (closestTarget == null) {
+            return null;
+        }
+
+        return new RescuePrompt(
+                closestTarget.getId(),
+                closestTarget.getDisplayName().copy(),
+                getRescueHand(mc.player) != null,
+                mc.player.isCrouching()
+        );
+    }
+
+    private static InteractionHand getRescueHand(Player player) {
+        if (isRescueItem(player.getMainHandItem())) {
+            return InteractionHand.MAIN_HAND;
+        }
+        if (isRescueItem(player.getOffhandItem())) {
+            return InteractionHand.OFF_HAND;
+        }
+        return null;
+    }
+
+    private static boolean isRescueItem(ItemStack stack) {
+        return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get());
+    }
+
+    private static float getDisplayedRescueHoldTicks(float partialTick) {
+        if (rescueHoldTicks <= 0) {
+            return 0.0F;
+        }
+        float extraTicks = rescuePrompt != null && rescuePrompt.hasValidItem() && rescuePrompt.isSneaking() && Minecraft.getInstance().screen == null
+                ? Math.max(0.0F, partialTick)
+                : 0.0F;
+        return Math.min(RESCUE_HOLD_TICKS, rescueHoldTicks + extraTicks);
+    }
+
+    private static String formatSingleDecimal(float value) {
+        return String.format(java.util.Locale.ROOT, "%.1f", value);
+    }
+
     private static boolean isGiveUpKeyHeld() {
         Minecraft mc = Minecraft.getInstance();
         return mc.screen == null && ClientHooks.GIVE_UP.isDown();
@@ -303,6 +464,14 @@ public class ClientEventHandler {
         giveUpHoldTicks = 0;
         giveUpTriggered = false;
     }
-}
 
+    private static void resetRescuePromptState() {
+        rescueHoldTicks = 0;
+        rescueTriggered = false;
+        rescuePrompt = null;
+    }
+
+    private record RescuePrompt(int targetId, Component targetName, boolean hasValidItem, boolean isSneaking) {
+    }
+}
 

@@ -28,6 +28,7 @@ import ichttt.mods.firstaid.common.util.CommonUtils;
 import ichttt.mods.firstaid.common.util.LoggingMarkers;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.player.Player;
 
 public final class MessageSyncDamageModelHandler {
     private MessageSyncDamageModelHandler() {
@@ -36,27 +37,36 @@ public final class MessageSyncDamageModelHandler {
     public static void handle(MessageSyncDamageModel message, ClientPlayNetworking.Context context) {
         context.client().execute(() -> {
             Minecraft mc = context.client();
-            if (mc.player == null) {
+            if (mc.level == null || mc.player == null) {
                 FirstAid.isSynced = false;
                 FirstAid.LOGGER.debug(LoggingMarkers.NETWORK, "Ignoring damage model sync because the local player is not ready yet");
                 return;
             }
-            AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
+            Player targetPlayer = (Player) mc.level.getEntity(message.entityId());
+            if (targetPlayer == null) {
+                FirstAid.LOGGER.debug(LoggingMarkers.NETWORK, "Ignoring damage model sync because entity {} is not loaded yet", message.entityId());
+                return;
+            }
+            AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(targetPlayer);
             if (damageModel == null) {
-                FirstAid.isSynced = false;
-                FirstAid.LOGGER.debug(LoggingMarkers.NETWORK, "Damage model missing during sync, requesting refresh");
-                FirstAidClientNetworking.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
+                if (targetPlayer == mc.player) {
+                    FirstAid.isSynced = false;
+                    FirstAid.LOGGER.debug(LoggingMarkers.NETWORK, "Damage model missing during sync, requesting refresh");
+                    FirstAidClientNetworking.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
+                }
                 return;
             }
             if (message.shouldScaleMaxHealth()) {
-                damageModel.runScaleLogic(mc.player);
+                damageModel.runScaleLogic(targetPlayer);
             }
             damageModel.deserializeNBT(message.playerDamageModel());
-            if (damageModel.hasTutorial) {
+            if (targetPlayer == mc.player && damageModel.hasTutorial) {
                 CapProvider.tutorialDone.add(mc.player.getName().getString());
             }
-            HUDHandler.INSTANCE.ticker = 200;
-            FirstAid.isSynced = true;
+            if (targetPlayer == mc.player) {
+                HUDHandler.INSTANCE.ticker = 200;
+                FirstAid.isSynced = true;
+            }
             FirstAid.LOGGER.debug(LoggingMarkers.NETWORK, "Sync complete");
         });
     }

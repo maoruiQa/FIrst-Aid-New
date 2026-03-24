@@ -41,6 +41,7 @@ public final class FirstAid {
     public static boolean isSynced = false;
     public static boolean dynamicPainEnabled = true;
     public static boolean lowSuppressionEnabled = false;
+    public static boolean rescueWakeUpEnabled = false;
     public static MedicineEffectMode medicineEffectMode = MedicineEffectMode.REALISTIC;
     public static InjuryDebuffMode injuryDebuffMode = InjuryDebuffMode.NORMAL;
     public static final Map<ResourceLocation, InjuryDebuffMode> injuryDebuffOverrides = new ConcurrentHashMap<>();

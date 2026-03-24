@@ -3,6 +3,7 @@ package ichttt.mods.firstaid.common.network;
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.resources.ResourceLocation;
@@ -36,7 +37,13 @@ public final class FirstAidNetworking {
     }
 
     public static void sendDamageModelSync(ServerPlayer player, AbstractPlayerDamageModel model, boolean scaleMaxHealth) {
-        ServerPlayNetworking.send(player, new MessageSyncDamageModel(model, scaleMaxHealth));
+        MessageSyncDamageModel payload = new MessageSyncDamageModel(player.getId(), model, scaleMaxHealth);
+        ServerPlayNetworking.send(player, payload);
+        for (ServerPlayer trackingPlayer : PlayerLookup.tracking(player)) {
+            if (trackingPlayer != player) {
+                ServerPlayNetworking.send(trackingPlayer, payload);
+            }
+        }
     }
 
     public static void sendServerConfig(ServerPlayer player) {

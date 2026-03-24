@@ -38,6 +38,8 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
 
     private static final int GIVE_UP_BAR_WIDTH = 144;
     private static final int GIVE_UP_BAR_HEIGHT = 8;
+    private static final int RESCUE_BAR_WIDTH = 144;
+    private static final int RESCUE_BAR_HEIGHT = 8;
     private static final float PAIN_GAIN = 0.045F;
     private static final float PAIN_DECAY = 0.015F;
     private static final float PAIN_INTENSITY_MULTIPLIER = 2.0F;
@@ -52,16 +54,41 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
     private float lastPainStrength;
     private float suppressionStrength;
     private float lastSuppressionStrength;
+    private boolean loggedRenderEntry;
+    private boolean loggedMissingDamageModel;
+    private boolean loggedDamageModelAvailable;
 
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || !minecraft.player.isAlive() || minecraft.options.hideGui) {
+        if (minecraft.player == null || minecraft.options.hideGui) {
             return;
         }
 
+        if (!loggedRenderEntry) {
+            FirstAid.LOGGER.info("StatusEffectLayer.render entered for player={}", minecraft.player.getName().getString());
+            loggedRenderEntry = true;
+        }
+
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(minecraft.player);
-        if (damageModel == null || !FirstAid.isSynced) {
+        if (damageModel == null) {
+            if (!loggedMissingDamageModel) {
+                FirstAid.LOGGER.warn("StatusEffectLayer.render could not obtain a damage model. isSynced={}", FirstAid.isSynced);
+                loggedMissingDamageModel = true;
+            }
+            return;
+        }
+
+        if (!loggedDamageModelAvailable) {
+            FirstAid.LOGGER.info(
+                    "StatusEffectLayer.render received damage model={}, unconsciousTicks={}, adrenalineTicks={}",
+                    damageModel.getClass().getSimpleName(),
+                    damageModel.getUnconsciousTicks(),
+                    damageModel.getAdrenalineTicks()
+            );
+            loggedDamageModelAvailable = true;
+        }
+        if (!minecraft.player.isAlive() && damageModel.getUnconsciousTicks() <= 0) {
             return;
         }
         PlayerDamageModel playerDamageModel = damageModel instanceof PlayerDamageModel model ? model : null;
@@ -126,14 +153,16 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
                             StringUtil.formatTickDuration(damageModel.getUnconsciousTicks(), 20F));
             int centerX = width / 2;
             int centerY = height / 2;
-            guiGraphics.drawCenteredString(minecraft.font, title, centerX, centerY - 26, 0xFFF1F1);
-            guiGraphics.drawCenteredString(minecraft.font, timer, centerX, centerY - 10, 0xCFCFCF);
+            guiGraphics.drawCenteredString(minecraft.font, title, centerX, centerY - 26, opaque(0xFFF1F1));
+            guiGraphics.drawCenteredString(minecraft.font, timer, centerX, centerY - 10, opaque(0xCFCFCF));
             if (playerDamageModel != null && playerDamageModel.canGiveUp()) {
-                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.waiting_for_rescue"), centerX, centerY + 2, 0xE8D9D9);
-                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.rescue_help"), centerX, centerY + 14, 0xD8CACA);
-                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()), centerX, centerY + 28, 0xFFB3B3);
+                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.waiting_for_rescue"), centerX, centerY + 2, opaque(0xE8D9D9));
+                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.rescue_help"), centerX, centerY + 14, opaque(0xD8CACA));
+                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()), centerX, centerY + 28, opaque(0xFFB3B3));
                 renderGiveUpProgress(guiGraphics, minecraft, centerX, centerY + 44, partialTick);
             }
+        } else if (ClientEventHandler.hasRescuePrompt()) {
+            renderRescuePrompt(guiGraphics, minecraft, width / 2, height / 2 + 24, deltaTracker.getGameTimeDeltaTicks());
         }
     }
 
@@ -205,7 +234,37 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
                 ),
                 centerX,
                 top + 12,
-                0xFFB3B3
+                opaque(0xFFB3B3)
+        );
+    }
+
+    private static void renderRescuePrompt(GuiGraphics guiGraphics, Minecraft minecraft, int centerX, int centerY, float partialTick) {
+        guiGraphics.drawCenteredString(minecraft.font, ClientEventHandler.getRescuePromptTitle(), centerX, centerY - 26, opaque(0xE9F7E2));
+        guiGraphics.drawCenteredString(minecraft.font, ClientEventHandler.getRescuePromptDetail(), centerX, centerY - 12, opaque(0xCFE4C5));
+
+        int left = centerX - RESCUE_BAR_WIDTH / 2;
+        int right = left + RESCUE_BAR_WIDTH;
+        int top = centerY + 2;
+        int bottom = top + RESCUE_BAR_HEIGHT;
+        float progress = ClientEventHandler.getRescueHoldProgress(partialTick);
+        int fillWidth = Math.round((RESCUE_BAR_WIDTH - 2) * progress);
+
+        guiGraphics.fill(left, top, right, bottom, color(180, 10, 38, 14));
+        guiGraphics.fill(left + 1, top + 1, right - 1, bottom - 1, color(180, 24, 74, 28));
+        if (fillWidth > 0) {
+            guiGraphics.fill(left + 1, top + 1, left + 1 + fillWidth, bottom - 1, color(220, 126, 214, 110));
+        }
+
+        guiGraphics.drawCenteredString(
+                minecraft.font,
+                Component.translatable(
+                        "firstaid.gui.rescue_progress",
+                        formatSingleDecimal(ClientEventHandler.getRescueHoldSeconds(partialTick)),
+                        formatSingleDecimal(ClientEventHandler.getRescueHoldDurationSeconds())
+                ),
+                centerX,
+                top + 12,
+                opaque(0xD8F0D0)
         );
     }
 
@@ -220,5 +279,15 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
 
     private static int color(int alpha, int red, int green, int blue) {
         return (alpha & 255) << 24 | (red & 255) << 16 | (green & 255) << 8 | blue & 255;
+    }
+
+    private static int opaque(int rgb) {
+        return 0xFF000000 | rgb;
+    }
+
+    public void resetDebugState() {
+        loggedRenderEntry = false;
+        loggedMissingDamageModel = false;
+        loggedDamageModelAvailable = false;
     }
 }

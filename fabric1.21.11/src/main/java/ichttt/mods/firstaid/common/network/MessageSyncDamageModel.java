@@ -30,22 +30,30 @@ import net.minecraft.resources.Identifier;
 public class MessageSyncDamageModel implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<MessageSyncDamageModel> TYPE = new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(FirstAid.MODID, "sync_damage_model"));
     public static final StreamCodec<RegistryFriendlyByteBuf, MessageSyncDamageModel> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT,
+            message -> message.entityId,
             ByteBufCodecs.COMPOUND_TAG,
             message -> message.playerDamageModel,
             ByteBufCodecs.BOOL,
             message -> message.scaleMaxHealth,
             MessageSyncDamageModel::new);
 
+    private final int entityId;
     private final CompoundTag playerDamageModel;
     private final boolean scaleMaxHealth;
 
-    private MessageSyncDamageModel(CompoundTag playerDamageModel, boolean scaleMaxHealth) {
+    private MessageSyncDamageModel(int entityId, CompoundTag playerDamageModel, boolean scaleMaxHealth) {
+        this.entityId = entityId;
         this.playerDamageModel = playerDamageModel;
         this.scaleMaxHealth = scaleMaxHealth;
     }
 
-    public MessageSyncDamageModel(AbstractPlayerDamageModel damageModel, boolean scaleMaxHealth) {
-        this(damageModel.serializeNBT(), scaleMaxHealth);
+    public MessageSyncDamageModel(int entityId, AbstractPlayerDamageModel damageModel, boolean scaleMaxHealth) {
+        this(entityId, damageModel.serializeNBT(), scaleMaxHealth);
+    }
+
+    public int entityId() {
+        return entityId;
     }
 
     public CompoundTag playerDamageModel() {

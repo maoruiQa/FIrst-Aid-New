@@ -21,6 +21,7 @@ package ichttt.mods.firstaid.common.network;
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.common.CapProvider;
+import ichttt.mods.firstaid.common.EventHandler;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import ichttt.mods.firstaid.common.init.FirstAidDataAttachments;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -50,7 +51,7 @@ public class MessageClientRequest implements CustomPacketPayload {
     }
 
     public enum RequestType {
-        TUTORIAL_COMPLETE, REQUEST_REFRESH, GIVE_UP;
+        TUTORIAL_COMPLETE, REQUEST_REFRESH, GIVE_UP, ATTEMPT_RESCUE;
 
         private static final RequestType[] TYPES = values();
     }
@@ -76,6 +77,8 @@ public class MessageClientRequest implements CustomPacketPayload {
                 if (damageModel instanceof ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel playerDamageModel) {
                     playerDamageModel.giveUp(player);
                 }
+            } else if (message.type == RequestType.ATTEMPT_RESCUE) {
+                EventHandler.attemptImmediateRescue(player);
             }
         }
     }
