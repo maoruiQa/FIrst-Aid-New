@@ -42,6 +42,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -87,6 +88,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.level.SleepFinishedTimeEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.bus.api.EventPriority;
@@ -100,7 +102,7 @@ import java.util.*;
 
 public class EventHandler {
     public static final Random RAND = new Random();
-    private static final EntityDimensions PLAYER_UNCONSCIOUS_DIMENSIONS = EntityDimensions.scalable(1.4F, 0.4F);
+    private static final EntityDimensions PLAYER_UNCONSCIOUS_DIMENSIONS = EntityDimensions.scalable(1.4F, 1.0F);
     private static final List<ResourceKey<Recipe<?>>> STARTER_RECIPES = List.of(
             recipeKey("bandage"),
             recipeKey("plaster"),
@@ -135,6 +137,11 @@ public class EventHandler {
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
         if (damageModel == null) return;
         DamageSource source = event.getSource();
+        if (isProtectedUnconsciousSuffocation(damageModel, source)) {
+            event.setCanceled(true);
+            hitList.remove(player);
+            return;
+        }
 
         if (amountToDamage == Float.MAX_VALUE || Float.isNaN(amountToDamage) || amountToDamage == Float.POSITIVE_INFINITY) {
             damageModel.forEach(damageablePart -> damageablePart.currentHealth = 0F);
@@ -409,8 +416,11 @@ public class EventHandler {
     @SubscribeEvent
     public static void adjustHitboxSize(EntityEvent.Size event) {
         Entity entity = event.getEntity();
-        if (entity instanceof Player player && !entity.isPassenger() && isUnconscious(player, false)) {
-            event.setNewSize(PLAYER_UNCONSCIOUS_DIMENSIONS);
+        if (entity instanceof Player player && !entity.isPassenger()) {
+            AbstractPlayerDamageModel damageModel = CommonUtils.getExistingDamageModel(player);
+            if (damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious()) {
+                event.setNewSize(PlayerDamageModel.getUnconsciousDimensions(playerDamageModel.shouldUseCrampedUnconsciousDimensions(player)));
+            }
         }
     }
 
@@ -430,9 +440,18 @@ public class EventHandler {
     }
 
     @SubscribeEvent
+    public static void onServerStarted(ServerStartedEvent event) {
+        FirstAidConfig.applyCommandSettings();
+    }
+
+    @SubscribeEvent
     public static void onServerStop(ServerStoppedEvent event) {
         FirstAid.LOGGER.debug("Cleaning up");
         FirstAid.dynamicPainEnabled = true;
+        FirstAid.lowSuppressionEnabled = false;
+        FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
+        FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
+        FirstAid.injuryDebuffOverrides.clear();
         CapProvider.tutorialDone.clear();
         EventHandler.hitList.clear();
         FirstAidRegistryLookups.reset();
@@ -531,6 +550,12 @@ public class EventHandler {
                 ? CommonUtils.getDamageModel(player)
                 : CommonUtils.getExistingDamageModel(player);
         return damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious();
+    }
+
+    private static boolean isProtectedUnconsciousSuffocation(AbstractPlayerDamageModel damageModel, DamageSource source) {
+        return damageModel instanceof PlayerDamageModel playerDamageModel
+                && playerDamageModel.isUnconscious()
+                && source.is(DamageTypes.IN_WALL);
     }
 
     private static void clearAttackTargetsAround(LivingEntity victim, double range) {

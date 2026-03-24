@@ -14,8 +14,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LivingEntity.class)
 public abstract class PlayerDimensionsMixin {
-    private static final EntityDimensions UNCONSCIOUS_DIMENSIONS = EntityDimensions.scalable(1.4F, 0.4F);
-
     @Inject(method = "getDimensions", at = @At("HEAD"), cancellable = true)
     private void firstaid$getDimensions(Pose pose, CallbackInfoReturnable<EntityDimensions> cir) {
         if (!((Object) this instanceof Player player)) {
@@ -26,7 +24,7 @@ public abstract class PlayerDimensionsMixin {
         }
         AbstractPlayerDamageModel damageModel = CommonUtils.getExistingDamageModel(player);
         if (damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious()) {
-            cir.setReturnValue(UNCONSCIOUS_DIMENSIONS);
+            cir.setReturnValue(PlayerDamageModel.getUnconsciousDimensions(playerDamageModel.shouldUseCrampedUnconsciousDimensions(player)));
         }
     }
 }

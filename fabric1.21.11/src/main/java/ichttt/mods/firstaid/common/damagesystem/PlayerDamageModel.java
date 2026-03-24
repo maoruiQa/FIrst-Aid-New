@@ -43,6 +43,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -51,6 +52,8 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -67,14 +70,24 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private static final int SUPPRESSION_HOLD_TICKS = 20 * 4;
     private static final float SUPPRESSION_DECAY_STEP = 0.03F;
     private static final int SUPPRESSION_DECAY_INTERVAL = 4;
+    private static final int PAINKILLER_ACTIVATION_DELAY_TICKS = 20 * 30;
+    private static final int MORPHINE_ACTIVATION_DELAY_TICKS = 20 * 10;
     private static final int CRITICAL_UNCONSCIOUS_TICKS = 20 * 150;
     private static final int RESCUE_WAKE_UP_DELAY = 20 * 5;
+    private static final int COLLAPSE_ANIMATION_TICKS = 12;
+    private static final int COLLAPSE_SEARCH_RADIUS = 2;
+    private static final double COLLAPSE_SUPPORT_PROBE_DEPTH = 0.125D;
+    private static final EntityDimensions UNCONSCIOUS_DIMENSIONS = EntityDimensions.scalable(1.4F, 1.0F);
+    private static final EntityDimensions CRAMPED_UNCONSCIOUS_DIMENSIONS = EntityDimensions.scalable(0.6F, 1.0F);
     private static final Identifier ATTR_UNCONSCIOUS = Identifier.fromNamespaceAndPath(FirstAid.MODID, "unconscious");
     private static final String UNCONSCIOUS_REASON_NONE = "";
     private static final String UNCONSCIOUS_REASON_CRITICAL = "firstaid.gui.critical_condition";
     private static final String UNCONSCIOUS_REASON_RECOVERING = "firstaid.gui.stabilizing";
     private final Set<SharedDebuff> sharedDebuffs = new HashSet<>();
     private int morphineTicksLeft = 0;
+    private int pendingPainkillerTicks = 0;
+    private int pendingMorphineDelayTicks = 0;
+    private int pendingMorphineEffectTicks = 0;
     private int sleepBlockTicks = 0;
     private float prevHealthCurrent = -1F;
     private float prevScaleFactor;
@@ -92,6 +105,8 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private boolean unconsciousAllowsGiveUp = false;
     private boolean unconsciousCausesDeath = false;
     private String unconsciousReasonKey = UNCONSCIOUS_REASON_NONE;
+    private int collapseAnimationTicks = 0;
+    private boolean collapsePlacementPending = false;
 
     public PlayerDamageModel() {
         super(new DamageablePart(FirstAidConfig.SERVER.maxHealthHead.get(),      FirstAidConfig.SERVER.causeDeathHead.get(),  EnumPlayerPart.HEAD),
@@ -118,6 +133,9 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         tagCompound.put("rightLeg", RIGHT_LEG.serializeNBT());
         tagCompound.put("rightFoot", RIGHT_FOOT.serializeNBT());
         tagCompound.putBoolean("hasTutorial", hasTutorial);
+        tagCompound.putInt("pendingPainkillerTicks", pendingPainkillerTicks);
+        tagCompound.putInt("pendingMorphineDelayTicks", pendingMorphineDelayTicks);
+        tagCompound.putInt("pendingMorphineEffectTicks", pendingMorphineEffectTicks);
         tagCompound.putInt("painLevel", painLevel);
         tagCompound.putInt("adrenalineLevel", adrenalineLevel);
         tagCompound.putInt("adrenalineTicks", adrenalineTicks);
@@ -128,6 +146,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         tagCompound.putBoolean("criticalConditionActive", criticalConditionActive);
         tagCompound.putBoolean("unconsciousAllowsGiveUp", unconsciousAllowsGiveUp);
         tagCompound.putBoolean("unconsciousCausesDeath", unconsciousCausesDeath);
+        tagCompound.putInt("collapseAnimationTicks", collapseAnimationTicks);
         if (!unconsciousReasonKey.isEmpty()) {
             tagCompound.putString("unconsciousReasonKey", unconsciousReasonKey);
         }
@@ -148,6 +167,9 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             morphineTicksLeft = nbt.getIntOr("morphineTicks", 0);
             needsMorphineUpdate = true;
         }
+        pendingPainkillerTicks = nbt.getIntOr("pendingPainkillerTicks", 0);
+        pendingMorphineDelayTicks = nbt.getIntOr("pendingMorphineDelayTicks", 0);
+        pendingMorphineEffectTicks = nbt.getIntOr("pendingMorphineEffectTicks", 0);
         if (nbt.contains("hasTutorial")) {
             hasTutorial = nbt.getBooleanOr("hasTutorial", false);
         }
@@ -164,6 +186,8 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         unconsciousAllowsGiveUp = nbt.getBooleanOr("unconsciousAllowsGiveUp", criticalConditionActive);
         unconsciousCausesDeath = nbt.getBooleanOr("unconsciousCausesDeath", criticalConditionActive);
         unconsciousReasonKey = nbt.getStringOr("unconsciousReasonKey", criticalConditionActive ? UNCONSCIOUS_REASON_CRITICAL : UNCONSCIOUS_REASON_NONE);
+        collapseAnimationTicks = nbt.getIntOr("collapseAnimationTicks", 0);
+        collapsePlacementPending = false;
         refreshSuppressionSnapshot();
     }
 
@@ -241,6 +265,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         this.needsMorphineUpdate = false;
 
         if (!world.isClientSide()) {
+            tickPendingMedicineActivations(player);
             updateMedicalState(player);
             if (unconsciousTicks > 0) {
                 applyUnconsciousPenalties(player);
@@ -250,18 +275,47 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         }
 
         boolean painSuppressed = morphine != null || painkiller != null;
-        //Debuff and part ticking
-        forEach(part -> part.tick(world, player, !painSuppressed));
+        boolean healingStateChanged = false;
+        for (AbstractDamageablePart part : this) {
+            float previousHealth = part.currentHealth;
+            boolean hadHealer = part.activeHealer != null;
+            part.tick(world, player, !painSuppressed);
+            if (!world.isClientSide() && (Float.compare(previousHealth, part.currentHealth) != 0 || hadHealer != (part.activeHealer != null))) {
+                healingStateChanged = true;
+            }
+        }
         if (!painSuppressed && !world.isClientSide())
             sharedDebuffs.forEach(sharedDebuff -> sharedDebuff.tick(player));
+        if (healingStateChanged && player instanceof ServerPlayer serverPlayer) {
+            FirstAidNetworking.sendDamageModelSync(serverPlayer, this, FirstAidConfig.SERVER.scaleMaxHealth.get());
+        }
     }
 
     public static int getRandMorphineDuration() { //Tweak tooltip event when changing as well
         return ((EventHandler.RAND.nextInt(5) * 20 * 15) + 20 * 210);
     }
 
+    public static int getMorphineActivationDelay() {
+        return FirstAid.scaleMedicalTimingTicks(MORPHINE_ACTIVATION_DELAY_TICKS);
+    }
+
     public static int getPainkillerDuration() {
         return 20 * 120;
+    }
+
+    public static int getPainkillerActivationDelay() {
+        return FirstAid.scaleMedicalTimingTicks(PAINKILLER_ACTIVATION_DELAY_TICKS);
+    }
+
+    public void queuePainkillerActivation() {
+        pendingPainkillerTicks = Math.max(pendingPainkillerTicks, getPainkillerActivationDelay());
+        scheduleResync();
+    }
+
+    public void queueMorphineActivation() {
+        pendingMorphineDelayTicks = Math.max(pendingMorphineDelayTicks, getMorphineActivationDelay());
+        pendingMorphineEffectTicks = Math.max(pendingMorphineEffectTicks, getRandMorphineDuration());
+        scheduleResync();
     }
 
     @Deprecated
@@ -329,6 +383,17 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return isUnconscious() && unconsciousAllowsGiveUp;
     }
 
+    public float getCollapseAnimationProgress(float partialTick) {
+        if (!isUnconscious()) {
+            return 1.0F;
+        }
+        return Mth.clamp(1.0F - ((Math.max(0.0F, collapseAnimationTicks) - Math.max(0.0F, partialTick)) / COLLAPSE_ANIMATION_TICKS), 0.0F, 1.0F);
+    }
+
+    public float getCollapseAnimationProgress() {
+        return getCollapseAnimationProgress(0.0F);
+    }
+
     public String getUnconsciousReasonKey() {
         return unconsciousReasonKey.isEmpty() ? "firstaid.gui.unconscious" : unconsciousReasonKey;
     }
@@ -372,6 +437,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public void clearStatusEffects() {
+        morphineTicksLeft = 0;
+        pendingPainkillerTicks = 0;
+        pendingMorphineDelayTicks = 0;
+        pendingMorphineEffectTicks = 0;
         painLevel = 0;
         adrenalineLevel = 0;
         adrenalineTicks = 0;
@@ -733,6 +802,30 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                 || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
     }
 
+    private void tickPendingMedicineActivations(Player player) {
+        boolean changed = false;
+        if (pendingPainkillerTicks > 0) {
+            pendingPainkillerTicks--;
+            if (pendingPainkillerTicks == 0) {
+                player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, getPainkillerDuration(), 0, false, false));
+                changed = true;
+            }
+        }
+        if (pendingMorphineDelayTicks > 0) {
+            pendingMorphineDelayTicks--;
+            if (pendingMorphineDelayTicks == 0 && pendingMorphineEffectTicks > 0) {
+                int duration = pendingMorphineEffectTicks;
+                pendingMorphineEffectTicks = 0;
+                player.addEffect(new MobEffectInstance(RegistryObjects.MORPHINE_EFFECT, duration, 0, false, false));
+                player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, duration, 0, false, false));
+                changed = true;
+            }
+        }
+        if (changed) {
+            scheduleResync();
+        }
+    }
+
     private void updateMedicalState(Player player) {
         boolean previousUnconsciousState = isUnconscious();
         int previousPainLevel = painLevel;
@@ -794,7 +887,18 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             unconsciousReasonKey = UNCONSCIOUS_REASON_NONE;
         }
 
+        if (collapseAnimationTicks > 0) {
+            collapseAnimationTicks--;
+        }
+
         if (previousUnconsciousState != isUnconscious()) {
+            if (isUnconscious()) {
+                collapseAnimationTicks = COLLAPSE_ANIMATION_TICKS;
+                collapsePlacementPending = true;
+            } else {
+                collapseAnimationTicks = 0;
+                collapsePlacementPending = false;
+            }
             player.refreshDimensions();
         }
     }
@@ -879,7 +983,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         player.stopUsingItem();
         player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 5, 0, false, false));
         updateUnconsciousAttributes(player, true);
-        player.setPose(Pose.SWIMMING);
+        player.setPose(getUnconsciousPose(player));
+        if (collapsePlacementPending) {
+            collapsePlacementPending = false;
+            placePlayerForCollapse(player);
+        }
     }
 
     private void clearUnconsciousPenalties(Player player) {
@@ -917,6 +1025,98 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         unconsciousAllowsGiveUp = false;
         unconsciousCausesDeath = false;
         unconsciousReasonKey = UNCONSCIOUS_REASON_NONE;
+        collapseAnimationTicks = 0;
+        collapsePlacementPending = false;
+    }
+
+    private void placePlayerForCollapse(Player player) {
+        Vec3 origin = player.position();
+        Vec3 adjustedOrigin = getRaisedCollapseOrigin(player, origin);
+        Vec3 target = findCollapsePlacement(player, adjustedOrigin);
+        if (target == null && !adjustedOrigin.equals(origin)) {
+            target = findCollapsePlacement(player, origin);
+        }
+        if (target == null) {
+            return;
+        }
+
+        player.setPos(target.x, target.y, target.z);
+    }
+
+    public static EntityDimensions getUnconsciousDimensions(boolean cramped) {
+        return cramped ? CRAMPED_UNCONSCIOUS_DIMENSIONS : UNCONSCIOUS_DIMENSIONS;
+    }
+
+    public boolean shouldUseCrampedUnconsciousDimensions(Player player) {
+        return isUnconscious() && !canOccupySpace(player, player.position(), UNCONSCIOUS_DIMENSIONS, false);
+    }
+
+    private Vec3 getRaisedCollapseOrigin(Player player, Vec3 origin) {
+        if (canOccupyCollapseSpace(player, origin, false)) {
+            return origin;
+        }
+
+        Vec3 raisedOrigin = origin.add(0.0D, 1.0D, 0.0D);
+        return canOccupyCollapseSpace(player, raisedOrigin, true) ? raisedOrigin : origin;
+    }
+
+    private Vec3 findCollapsePlacement(Player player, Vec3 origin) {
+        Vec3 bestTarget = null;
+        double bestDistance = Double.MAX_VALUE;
+        int bestManhattan = Integer.MAX_VALUE;
+
+        for (int dz = -COLLAPSE_SEARCH_RADIUS; dz <= COLLAPSE_SEARCH_RADIUS; dz++) {
+            for (int dx = -COLLAPSE_SEARCH_RADIUS; dx <= COLLAPSE_SEARCH_RADIUS; dx++) {
+                Vec3 candidate = origin.add(dx, 0.0D, dz);
+                if (!canOccupyCollapseSpace(player, candidate, true)) {
+                    continue;
+                }
+
+                double distance = dx * dx + dz * dz;
+                int manhattan = Math.abs(dx) + Math.abs(dz);
+                if (distance < bestDistance
+                        || (distance == bestDistance && manhattan < bestManhattan)
+                        || (distance == bestDistance && manhattan == bestManhattan && isDeterministicallyEarlier(candidate, bestTarget))) {
+                    bestTarget = candidate;
+                    bestDistance = distance;
+                    bestManhattan = manhattan;
+                }
+            }
+        }
+
+        return bestTarget;
+    }
+
+    private boolean canOccupyCollapseSpace(Player player, Vec3 position, boolean requireSupport) {
+        return canOccupySpace(player, position, UNCONSCIOUS_DIMENSIONS, requireSupport);
+    }
+
+    private boolean canOccupySpace(Player player, Vec3 position, EntityDimensions dimensions, boolean requireSupport) {
+        AABB boundingBox = dimensions.makeBoundingBox(position.x, position.y, position.z);
+        if (!player.level().noCollision(player, boundingBox)) {
+            return false;
+        }
+
+        return !requireSupport || hasCollapseSupport(player, boundingBox);
+    }
+
+    private boolean hasCollapseSupport(Player player, AABB boundingBox) {
+        return !player.level().noCollision(player, boundingBox.move(0.0D, -COLLAPSE_SUPPORT_PROBE_DEPTH, 0.0D));
+    }
+
+    private boolean isDeterministicallyEarlier(Vec3 candidate, Vec3 currentBest) {
+        if (currentBest == null) {
+            return true;
+        }
+
+        if (candidate.z != currentBest.z) {
+            return candidate.z < currentBest.z;
+        }
+        return candidate.x < currentBest.x;
+    }
+
+    private Pose getUnconsciousPose(Player player) {
+        return shouldUseCrampedUnconsciousDimensions(player) ? Pose.CROUCHING : Pose.SWIMMING;
     }
 
     private void updateUnconsciousAttributes(Player player, boolean unconscious) {

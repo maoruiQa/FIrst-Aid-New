@@ -63,6 +63,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -135,7 +136,10 @@ public final class EventHandler {
         ServerPlayerEvents.AFTER_RESPAWN.register(EventHandler::onAfterRespawn);
         ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> onDimensionChange(player));
         ServerWorldEvents.LOAD.register((server, world) -> onWorldLoad(world));
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> FirstAidRegistryLookups.init(server.registryAccess(), false));
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            FirstAidConfig.applyCommandSettings();
+            FirstAidRegistryLookups.init(server.registryAccess(), false);
+        });
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
             if (success) {
                 FirstAidRegistryLookups.init(server.registryAccess(), false);
@@ -176,6 +180,10 @@ public final class EventHandler {
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
         if (damageModel == null) {
             return true;
+        }
+        if (isProtectedUnconsciousSuffocation(damageModel, source)) {
+            hitList.remove(player);
+            return false;
         }
 
         if (amount == Float.MAX_VALUE || Float.isNaN(amount) || amount == Float.POSITIVE_INFINITY) {
@@ -438,6 +446,10 @@ public final class EventHandler {
     private static void onServerStop() {
         FirstAid.LOGGER.debug("Cleaning up");
         FirstAid.dynamicPainEnabled = true;
+        FirstAid.lowSuppressionEnabled = false;
+        FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
+        FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
+        FirstAid.injuryDebuffOverrides.clear();
         CapProvider.tutorialDone.clear();
         hitList.clear();
         FirstAidRegistryLookups.reset();
@@ -513,6 +525,12 @@ public final class EventHandler {
                 ? CommonUtils.getDamageModel(player)
                 : CommonUtils.getExistingDamageModel(player);
         return damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious();
+    }
+
+    private static boolean isProtectedUnconsciousSuffocation(AbstractPlayerDamageModel damageModel, DamageSource source) {
+        return damageModel instanceof PlayerDamageModel playerDamageModel
+                && playerDamageModel.isUnconscious()
+                && source.is(DamageTypes.IN_WALL);
     }
 
     private static void clearAttackTargetsAround(LivingEntity victim, double range) {
