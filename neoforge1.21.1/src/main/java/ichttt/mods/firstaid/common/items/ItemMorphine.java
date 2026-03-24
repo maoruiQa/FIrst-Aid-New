@@ -19,6 +19,7 @@
 package ichttt.mods.firstaid.common.items;
 
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -44,7 +45,11 @@ public class ItemMorphine extends Item {
         if (CommonUtils.hasDamageModel(entityLiving)) {
             AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel((Player) entityLiving);
             if (damageModel == null) return stack;
-            damageModel.applyMorphine((Player) entityLiving);
+            if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+                playerDamageModel.queueMorphineActivation();
+            } else {
+                damageModel.applyMorphine((Player) entityLiving);
+            }
         }
         stack.shrink(1);
         return stack;

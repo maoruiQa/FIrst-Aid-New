@@ -25,6 +25,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.resources.Identifier;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -84,6 +85,25 @@ public final class FirstAidConfig {
                 : new JsonObject();
         SERVER.read(server);
         GENERAL.read(general);
+        applyCommandSettings();
+    }
+
+    public static void applyCommandSettings() {
+        FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
+        FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
+        FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
+        FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+        FirstAid.injuryDebuffOverrides.clear();
+        FirstAid.injuryDebuffOverrides.putAll(SERVER.injuryDebuffOverrides.get());
+    }
+
+    public static void persistCommandSettings() {
+        SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
+        SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
+        SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
+        SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+        SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
+        saveServer();
     }
 
     private static void loadSection(ConfigSection section, String fileName) {
@@ -118,6 +138,10 @@ public final class FirstAidConfig {
         } catch (IOException e) {
             FirstAid.LOGGER.warn("Failed writing config {}: {}", file, e.getMessage());
         }
+    }
+
+    private static void saveServer() {
+        writeJson(CONFIG_DIR.resolve("firstaid-server.json"), SERVER.write());
     }
 
     public static final class Server extends ConfigSection {
@@ -180,6 +204,11 @@ public final class FirstAidConfig {
         public final ConfigValue<Integer> enchantmentMultiplier;
         public final ConfigValue<List<String>> enchMulOverrideIdentifiers;
         public final ConfigValue<List<Integer>> enchMulOverrideMultiplier;
+        public final ConfigValue<Boolean> dynamicPainEnabled;
+        public final ConfigValue<Boolean> lowSuppressionEnabled;
+        public final ConfigValue<FirstAid.MedicineEffectMode> medicineEffectMode;
+        public final ConfigValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
+        public final ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
 
         public Server() {
             maxHealthHead = define(intValue("maxHealthHead", 7, 2, 12));
@@ -232,6 +261,12 @@ public final class FirstAidConfig {
             enchantmentMultiplier = define(intValue("enchantmentMultiplier", 4, 1, 4));
             enchMulOverrideIdentifiers = define(stringList("enchantmentOverrideIdentifiers", Collections.singletonList("minecraft:feather_falling"), value -> !value.isBlank()));
             enchMulOverrideMultiplier = define(intList("enchantmentOverrideMultiplier", Collections.singletonList(2), value -> value >= 1 && value <= 4));
+
+            dynamicPainEnabled = define(boolValue("dynamicPainEnabled", true));
+            lowSuppressionEnabled = define(boolValue("lowSuppressionEnabled", false));
+            medicineEffectMode = define(enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class));
+            injuryDebuffMode = define(enumValue("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL, FirstAid.InjuryDebuffMode.class));
+            injuryDebuffOverrides = define(injuryDebuffOverridesValue("injuryDebuffOverrides"));
         }
 
         public static final class IEEntry {
@@ -350,6 +385,10 @@ public final class FirstAidConfig {
             return value;
         }
 
+        public void set(T value) {
+            this.value = Objects.requireNonNull(value);
+        }
+
         private void load(JsonObject data) {
             if (data == null || !data.has(key)) {
                 value = defaultValue;
@@ -453,5 +492,41 @@ public final class FirstAidConfig {
             }
             return array;
         }, null);
+    }
+
+    private static ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverridesValue(String key) {
+        return new ConfigValue<>(key, new LinkedHashMap<>(), element -> {
+            if (element == null || !element.isJsonObject()) {
+                return new LinkedHashMap<>();
+            }
+            JsonObject object = element.getAsJsonObject();
+            Map<Identifier, FirstAid.InjuryDebuffMode> values = new LinkedHashMap<>();
+            for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+                Identifier id = Identifier.tryParse(entry.getKey());
+                if (id == null || !entry.getValue().isJsonPrimitive()) {
+                    continue;
+                }
+                values.put(id, parseInjuryDebuffMode(entry.getValue().getAsString()));
+            }
+            return values;
+        }, value -> {
+            JsonObject object = new JsonObject();
+            for (Map.Entry<Identifier, FirstAid.InjuryDebuffMode> entry : value.entrySet()) {
+                object.addProperty(entry.getKey().toString(), entry.getValue().name().toLowerCase(Locale.ROOT));
+            }
+            return object;
+        }, null);
+    }
+
+    private static FirstAid.InjuryDebuffMode parseInjuryDebuffMode(String raw) {
+        if (raw == null) {
+            return FirstAid.InjuryDebuffMode.NORMAL;
+        }
+        for (FirstAid.InjuryDebuffMode mode : FirstAid.InjuryDebuffMode.values()) {
+            if (mode.name().equalsIgnoreCase(raw)) {
+                return mode;
+            }
+        }
+        return FirstAid.InjuryDebuffMode.NORMAL;
     }
 }

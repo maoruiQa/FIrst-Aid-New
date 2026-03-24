@@ -22,7 +22,9 @@ import com.mojang.blaze3d.platform.InputConstants;
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
+import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
 import ichttt.mods.firstaid.client.util.EventCalendar;
+import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -46,8 +48,8 @@ public final class ClientHooks {
         FirstAid.LOGGER.debug("Loading ClientHooks");
         KeyBindingHelper.registerKeyBinding(SHOW_WOUNDS);
         KeyBindingHelper.registerKeyBinding(GIVE_UP);
-        HudRenderCallback.EVENT.register(HUDHandler.INSTANCE);
         HudRenderCallback.EVENT.register(StatusEffectLayer.INSTANCE);
+        HudRenderCallback.EVENT.register(HUDHandler.INSTANCE);
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(HUDHandler.INSTANCE);
         ClientEventHandler.register();
         EventCalendar.checkDate();
@@ -59,6 +61,7 @@ public final class ClientHooks {
         if (damageModel == null) {
             return;
         }
+        FirstAidClientNetworking.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
         GuiHealthScreen.INSTANCE = new GuiHealthScreen(damageModel, activeHand);
         mc.setScreen(GuiHealthScreen.INSTANCE);
     }

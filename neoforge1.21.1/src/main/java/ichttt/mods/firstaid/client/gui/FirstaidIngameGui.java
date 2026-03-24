@@ -57,10 +57,12 @@ public final class FirstaidIngameGui {
 
     public static void renderHealth(Gui gui, int width, int height, GuiGraphics guiGraphics) {
         Minecraft minecraft = Minecraft.getInstance();
-        Player player = (Player) minecraft.getCameraEntity();
+        Player player = minecraft.player;
         if (player == null) {
             return;
         }
+
+        reserveHealthBarSpace(gui, player);
 
         AbstractPlayerDamageModel damageModel = CommonUtils.getOptionalDamageModel(minecraft.player).orElse(null);
         int criticalHalfHearts = 0;
@@ -80,14 +82,9 @@ public final class FirstaidIngameGui {
         float healthMax = Math.max((float) attrMaxHealth.getValue(), health);
         int absorption = Mth.ceil(player.getAbsorptionAmount());
 
-        int healthRows = Mth.ceil((healthMax + absorption) / 2.0F / 10.0F);
-        int rowHeight = Math.max(10 - (healthRows - 2), 3);
         int left = width / 2 - 91;
-        int top = height - gui.leftHeight;
-        gui.leftHeight += healthRows * rowHeight;
-        if (rowHeight != 10) {
-            gui.leftHeight += 10 - rowHeight;
-        }
+        int rowHeight = getRowHeight(player);
+        int top = height - gui.leftHeight + getReservedOffset(player);
 
         boolean poisoned = player.hasEffect(MobEffects.POISON);
         boolean withered = !poisoned && player.hasEffect(MobEffects.WITHER);
@@ -122,6 +119,31 @@ public final class FirstaidIngameGui {
                 guiGraphics.blitSprite(getHeartSprite(poisoned, withered, true, criticalBlink), x, y, 9, 9);
             }
         }
+    }
+
+    public static void reserveHealthBarSpace(Gui gui, Player player) {
+        int healthRows = getHealthRows(player);
+        int rowHeight = getRowHeight(player);
+        gui.leftHeight += healthRows * rowHeight;
+        if (rowHeight != 10) {
+            gui.leftHeight += 10 - rowHeight;
+        }
+    }
+
+    private static int getReservedOffset(Player player) {
+        return getHealthRows(player) * getRowHeight(player) + Math.max(0, 10 - getRowHeight(player));
+    }
+
+    private static int getHealthRows(Player player) {
+        int health = Mth.ceil(player.getHealth());
+        AttributeInstance attrMaxHealth = player.getAttribute(Attributes.MAX_HEALTH);
+        float healthMax = Math.max((float) attrMaxHealth.getValue(), health);
+        int absorption = Mth.ceil(player.getAbsorptionAmount());
+        return Mth.ceil((healthMax + absorption) / 2.0F / 10.0F);
+    }
+
+    private static int getRowHeight(Player player) {
+        return Math.max(10 - (getHealthRows(player) - 2), 3);
     }
 
     private static ResourceLocation getHeartSprite(boolean poisoned, boolean withered, boolean halfHeart, boolean blinking) {

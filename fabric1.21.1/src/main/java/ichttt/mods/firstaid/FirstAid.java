@@ -41,8 +41,25 @@ public final class FirstAid {
     public static boolean isSynced = false;
     public static boolean dynamicPainEnabled = true;
     public static boolean lowSuppressionEnabled = false;
+    public static MedicineEffectMode medicineEffectMode = MedicineEffectMode.REALISTIC;
     public static InjuryDebuffMode injuryDebuffMode = InjuryDebuffMode.NORMAL;
     public static final Map<ResourceLocation, InjuryDebuffMode> injuryDebuffOverrides = new ConcurrentHashMap<>();
+
+    public enum MedicineEffectMode {
+        REALISTIC(1.0F),
+        ASSISTED(0.5F),
+        CASUAL(0.25F);
+
+        private final float timingMultiplier;
+
+        MedicineEffectMode(float timingMultiplier) {
+            this.timingMultiplier = timingMultiplier;
+        }
+
+        public float getTimingMultiplier() {
+            return timingMultiplier;
+        }
+    }
 
     public enum InjuryDebuffMode {
         NORMAL,
@@ -59,6 +76,10 @@ public final class FirstAid {
         injuryDebuffOverrides.put(effectId, mode);
     }
 
+    public static int scaleMedicalTimingTicks(int baseTicks) {
+        return Math.max(1, Math.round(baseTicks * medicineEffectMode.getTimingMultiplier()));
+    }
+
     private FirstAid() {
     }
 
@@ -72,6 +93,7 @@ public final class FirstAid {
 
         FirstAidConfig.loadServer();
         FirstAidConfig.loadGeneral();
+        FirstAidConfig.applyCommandSettings();
         RegistryObjects.register();
         FirstAidRegistries.bootstrap();
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new FirstAidDataReloadListener());

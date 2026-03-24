@@ -23,10 +23,15 @@ public abstract class LivingEntityRendererStateMixin<T extends LivingEntity, S e
         }
         fabricState.setData(RenderStateExtensions.PASSENGER, entity.isPassenger());
         boolean unconscious = false;
+        float collapseProgress = 1.0F;
         if (entity instanceof Player player) {
             var damageModel = CommonUtils.getExistingDamageModel(player);
-            unconscious = damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious();
+            if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+                unconscious = playerDamageModel.isUnconscious();
+                collapseProgress = playerDamageModel.getCollapseAnimationProgress(partialTick);
+            }
         }
         fabricState.setData(RenderStateExtensions.UNCONSCIOUS, unconscious);
+        fabricState.setData(RenderStateExtensions.COLLAPSE_PROGRESS, collapseProgress);
     }
 }

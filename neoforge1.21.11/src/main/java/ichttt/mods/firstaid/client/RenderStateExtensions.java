@@ -8,6 +8,7 @@ public final class RenderStateExtensions {
 
     public static final ContextKey<Boolean> PASSENGER = create("passenger");
     public static final ContextKey<Boolean> UNCONSCIOUS = create("unconscious");
+    public static final ContextKey<Float> COLLAPSE_PROGRESS = create("collapse_progress");
 
     private RenderStateExtensions() {
     }
@@ -20,5 +21,9 @@ public final class RenderStateExtensions {
         boolean unconscious = renderState.getRenderDataOrDefault(UNCONSCIOUS, false);
         boolean passenger = renderState.getRenderDataOrDefault(PASSENGER, false);
         return unconscious && !passenger;
+    }
+
+    public static float getCollapseProgress(BaseRenderState renderState) {
+        return renderState.getRenderDataOrDefault(COLLAPSE_PROGRESS, 1.0F);
     }
 }

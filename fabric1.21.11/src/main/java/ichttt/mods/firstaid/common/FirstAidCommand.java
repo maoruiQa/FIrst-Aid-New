@@ -52,6 +52,13 @@ public final class FirstAidCommand {
                                 .executes(context -> setLowSuppression(context.getSource(), false)))
                         .then(Commands.literal("mild")
                                 .executes(context -> setLowSuppression(context.getSource(), true))))
+                .then(Commands.literal("medicineeffect")
+                        .then(Commands.literal("realistic")
+                                .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.REALISTIC)))
+                        .then(Commands.literal("assisted")
+                                .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.ASSISTED)))
+                        .then(Commands.literal("casual")
+                                .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.CASUAL))))
                 .then(Commands.literal("injurydebuff")
                         .then(Commands.literal("normal")
                                 .executes(context -> setInjuryDebuffMode(context.getSource(), FirstAid.InjuryDebuffMode.NORMAL)))
@@ -82,6 +89,7 @@ public final class FirstAidCommand {
         source.sendSuccess(() -> Component.translatable(enabled
                 ? "firstaid.command.pain.dynamic"
                 : "firstaid.command.pain.mild"), true);
+        FirstAidConfig.persistCommandSettings();
         return 1;
     }
 
@@ -90,6 +98,19 @@ public final class FirstAidCommand {
         source.sendSuccess(() -> Component.translatable(enabled
                 ? "firstaid.command.suppression.mild"
                 : "firstaid.command.suppression.dynamic"), true);
+        FirstAidConfig.persistCommandSettings();
+        return 1;
+    }
+
+    private static int setMedicineEffectMode(CommandSourceStack source, FirstAid.MedicineEffectMode mode) {
+        FirstAid.medicineEffectMode = mode;
+        String key = switch (mode) {
+            case ASSISTED -> "firstaid.command.medicineeffect.assisted";
+            case CASUAL -> "firstaid.command.medicineeffect.casual";
+            default -> "firstaid.command.medicineeffect.realistic";
+        };
+        source.sendSuccess(() -> Component.translatable(key), true);
+        FirstAidConfig.persistCommandSettings();
         return 1;
     }
 
@@ -101,6 +122,7 @@ public final class FirstAidCommand {
             default -> "firstaid.command.injurydebuff.normal";
         };
         source.sendSuccess(() -> Component.translatable(key), true);
+        FirstAidConfig.persistCommandSettings();
         return 1;
     }
 
@@ -120,6 +142,7 @@ public final class FirstAidCommand {
             default -> "firstaid.command.injurydebuff.effect.normal";
         };
         source.sendSuccess(() -> Component.translatable(key, effectId.toString()), true);
+        FirstAidConfig.persistCommandSettings();
         return 1;
     }
 

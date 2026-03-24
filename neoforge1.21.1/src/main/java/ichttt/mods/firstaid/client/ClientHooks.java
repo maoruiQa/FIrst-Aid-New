@@ -66,7 +66,6 @@ public class ClientHooks {
     }
 
     public static void registerOverlayEvent(RegisterGuiLayersEvent event) {
-        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "hud"), HUDHandler.INSTANCE);
         event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "status_overlay"), StatusEffectLayer.INSTANCE);
     }
 

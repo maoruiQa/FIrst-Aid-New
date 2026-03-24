@@ -18,12 +18,16 @@
 
 package ichttt.mods.firstaid;
 
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class FirstAidConfig {
 
@@ -50,6 +54,74 @@ public class FirstAidConfig {
         final Pair<FirstAidConfig.Client, ModConfigSpec> specPair = new ModConfigSpec.Builder().configure(FirstAidConfig.Client::new);
         clientSpec = specPair.getRight();
         CLIENT = specPair.getLeft();
+    }
+
+    public static void applyCommandSettings() {
+        FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
+        FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
+        FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
+        FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+        FirstAid.injuryDebuffOverrides.clear();
+        FirstAid.injuryDebuffOverrides.putAll(parseInjuryDebuffOverrides(SERVER.injuryDebuffOverrides.get()));
+    }
+
+    public static void persistCommandSettings() {
+        SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
+        SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
+        SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
+        SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+        SERVER.injuryDebuffOverrides.set(serializeInjuryDebuffOverrides(FirstAid.injuryDebuffOverrides));
+        serverSpec.save();
+    }
+
+    private static Map<Identifier, FirstAid.InjuryDebuffMode> parseInjuryDebuffOverrides(List<? extends String> entries) {
+        Map<Identifier, FirstAid.InjuryDebuffMode> values = new LinkedHashMap<>();
+        if (entries == null) {
+            return values;
+        }
+        for (String entry : entries) {
+            if (entry == null) {
+                continue;
+            }
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            String[] parts = trimmed.split("=", 2);
+            Identifier id = Identifier.tryParse(parts[0].trim());
+            if (id == null) {
+                FirstAid.LOGGER.warn("Invalid injury debuff override entry {}", trimmed);
+                continue;
+            }
+            FirstAid.InjuryDebuffMode mode = parts.length > 1
+                    ? parseInjuryDebuffMode(parts[1].trim())
+                    : FirstAid.InjuryDebuffMode.NORMAL;
+            values.put(id, mode);
+        }
+        return values;
+    }
+
+    private static List<String> serializeInjuryDebuffOverrides(Map<Identifier, FirstAid.InjuryDebuffMode> overrides) {
+        List<String> values = new ArrayList<>();
+        if (overrides == null || overrides.isEmpty()) {
+            return values;
+        }
+        for (Map.Entry<Identifier, FirstAid.InjuryDebuffMode> entry : overrides.entrySet()) {
+            values.add(entry.getKey() + "=" + entry.getValue().name().toLowerCase(Locale.ROOT));
+        }
+        return values;
+    }
+
+    private static FirstAid.InjuryDebuffMode parseInjuryDebuffMode(String raw) {
+        if (raw == null) {
+            return FirstAid.InjuryDebuffMode.NORMAL;
+        }
+        for (FirstAid.InjuryDebuffMode mode : FirstAid.InjuryDebuffMode.values()) {
+            if (mode.name().equalsIgnoreCase(raw)) {
+                return mode;
+            }
+        }
+        return FirstAid.InjuryDebuffMode.NORMAL;
     }
 
     public static class Server {
@@ -174,6 +246,24 @@ public class FirstAidConfig {
 
             builder.pop();
 
+            builder.push("Command Settings");
+            dynamicPainEnabled = builder
+                    .comment("Persistent toggle for /firstaid pain (dynamic vs mild)")
+                    .define("dynamicPainEnabled", true);
+            lowSuppressionEnabled = builder
+                    .comment("Persistent toggle for /firstaid suppression (dynamic vs mild)")
+                    .define("lowSuppressionEnabled", false);
+            medicineEffectMode = builder
+                    .comment("Persistent toggle for /firstaid medicineeffect (realistic/assisted/casual)")
+                    .defineEnum("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC);
+            injuryDebuffMode = builder
+                    .comment("Persistent toggle for /firstaid injurydebuff (normal/low/off)")
+                    .defineEnum("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL);
+            injuryDebuffOverrides = builder
+                    .comment("Per-effect overrides for /firstaid injurydebuff. Format: modid:effect=normal|low|off")
+                    .defineList("injuryDebuffOverrides", Collections.emptyList(), o -> o != null && !o.toString().isBlank());
+            builder.pop();
+
             builder.push("Enchantment Handling");
 
             enchantmentMultiplier = builder
@@ -256,6 +346,11 @@ public class FirstAidConfig {
         public final ModConfigSpec.IntValue enchantmentMultiplier;
         public final ModConfigSpec.ConfigValue<List<? extends String>> enchMulOverrideResourceLocations;
         public final ModConfigSpec.ConfigValue<List<? extends Integer>> enchMulOverrideMultiplier;
+        public final ModConfigSpec.BooleanValue dynamicPainEnabled;
+        public final ModConfigSpec.BooleanValue lowSuppressionEnabled;
+        public final ModConfigSpec.EnumValue<FirstAid.MedicineEffectMode> medicineEffectMode;
+        public final ModConfigSpec.EnumValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
+        public final ModConfigSpec.ConfigValue<List<? extends String>> injuryDebuffOverrides;
 
 
         private static ModConfigSpec.IntValue healthEntry(ModConfigSpec.Builder builder, String name, int defaultVal) {

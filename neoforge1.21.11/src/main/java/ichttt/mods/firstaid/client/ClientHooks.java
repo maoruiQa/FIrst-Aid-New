@@ -31,9 +31,8 @@ import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
-import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
-import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.IEventBus;
@@ -41,6 +40,7 @@ import org.lwjgl.glfw.GLFW;
 
 
 public class ClientHooks {
+    private static final Identifier HUD_RELOAD_LISTENER = Identifier.fromNamespaceAndPath(FirstAid.MODID, "hud");
     private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(FirstAid.MODID, "firstaid"));
     public static final KeyMapping SHOW_WOUNDS = new KeyMapping("keybinds.show_wounds", KeyConflictContext.UNIVERSAL, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY);
     public static final KeyMapping GIVE_UP = new KeyMapping("keybinds.give_up", KeyConflictContext.UNIVERSAL, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY);
@@ -49,7 +49,6 @@ public class ClientHooks {
         FirstAid.LOGGER.debug("Loading ClientHooks");
         NeoForge.EVENT_BUS.register(ClientEventHandler.class);
         modEventBus.addListener(ClientHooks::registerKeybindEvent);
-        modEventBus.addListener(ClientHooks::registerOverlayEvent);
         modEventBus.addListener(ClientHooks::registerReloadListenerEvent);
         modEventBus.addListener(ClientHooks::registerRenderStateExtensions);
         EventCalendar.checkDate();
@@ -69,13 +68,8 @@ public class ClientHooks {
         event.register(ClientHooks.GIVE_UP);
     }
 
-    public static void registerOverlayEvent(RegisterGuiLayersEvent event) {
-        event.registerAboveAll(Identifier.fromNamespaceAndPath(FirstAid.MODID, "hud"), HUDHandler.INSTANCE);
-        event.registerAboveAll(Identifier.fromNamespaceAndPath(FirstAid.MODID, "status_overlay"), StatusEffectLayer.INSTANCE);
-    }
-
     public static void registerReloadListenerEvent(AddClientReloadListenersEvent event) {
-        event.addListener(Identifier.fromNamespaceAndPath(FirstAid.MODID, "hud"), HUDHandler.INSTANCE);
+        event.addListener(HUD_RELOAD_LISTENER, HUDHandler.INSTANCE);
     }
 
     @SuppressWarnings({"unchecked", "RedundantCast"})
@@ -85,9 +79,14 @@ public class ClientHooks {
                 (entity, state) -> {
                     state.setRenderData(RenderStateExtensions.PASSENGER, entity.isPassenger());
                     var damageModel = CommonUtils.getExistingDamageModel(entity);
+                    float collapseProgress = 1.0F;
+                    if (damageModel instanceof ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel playerDamageModel) {
+                        collapseProgress = playerDamageModel.getCollapseAnimationProgress(Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));
+                    }
                     state.setRenderData(RenderStateExtensions.UNCONSCIOUS,
                             damageModel instanceof ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel playerDamageModel
                                     && playerDamageModel.isUnconscious());
+                    state.setRenderData(RenderStateExtensions.COLLAPSE_PROGRESS, collapseProgress);
                 }
         );
     }

@@ -24,6 +24,7 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.client.ClientHooks;
+import ichttt.mods.firstaid.client.HealingSoundController;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
@@ -148,6 +149,7 @@ public class GuiHealthScreen extends Screen {
         if (itemInHand.getItem() instanceof ItemHealing itemHealing) {
             damageablePart.activeHealer = itemHealing.createNewHealer(itemInHand.copyWithCount(1));
         }
+        HealingSoundController.playHealingApplySound();
         onClose();
     }
 

@@ -46,6 +46,8 @@ public final class RegistryObjects {
     public static final RegistryEntry<ItemPainkillers> PAINKILLERS;
 
     public static final Holder<SoundEvent> HEARTBEAT;
+    public static final Holder<SoundEvent> BANDAGE_USE;
+    public static final Holder<SoundEvent> PILLS_USE;
 
     public static final Holder<MobEffect> MORPHINE_EFFECT;
     public static final Holder<MobEffect> PAINKILLER_EFFECT;
@@ -58,12 +60,12 @@ public final class RegistryObjects {
 
         BANDAGE = registerItem("bandage", ItemHealing.create(
                 itemProperties("bandage").stacksTo(16),
-                stack -> new PartHealer(() -> server.bandage.secondsPerHeal.get() * 20, server.bandage.totalHeals::get, stack),
+                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack),
                 stack -> server.bandage.applyTime.get()
         ));
         PLASTER = registerItem("plaster", ItemHealing.create(
                 itemProperties("plaster").stacksTo(16),
-                stack -> new PartHealer(() -> server.plaster.secondsPerHeal.get() * 20, server.plaster.totalHeals::get, stack),
+                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack),
                 stack -> server.plaster.applyTime.get()
         ));
         MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
@@ -71,6 +73,10 @@ public final class RegistryObjects {
 
         ResourceLocation soundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.heartbeat");
         HEARTBEAT = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, soundLocation, SoundEvent.createVariableRangeEvent(soundLocation));
+        ResourceLocation bandageSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.use_bandage");
+        BANDAGE_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, bandageSoundLocation, SoundEvent.createVariableRangeEvent(bandageSoundLocation));
+        ResourceLocation pillsSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.take_pills");
+        PILLS_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, pillsSoundLocation, SoundEvent.createVariableRangeEvent(pillsSoundLocation));
 
         MORPHINE_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("morphine"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0xDDD));
         PAINKILLER_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("painkiller"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0x6EC5FF));

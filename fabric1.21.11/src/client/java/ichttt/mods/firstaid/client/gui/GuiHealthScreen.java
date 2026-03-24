@@ -23,12 +23,14 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.client.ClientHooks;
+import ichttt.mods.firstaid.client.HealingSoundController;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.MessageApplyHealingItem;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
+import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -137,16 +139,34 @@ public class GuiHealthScreen extends Screen {
         }
         FirstAidClientNetworking.sendToServer(new MessageApplyHealingItem(part, activeHand));
 
-        AbstractDamageablePart damageablePart = damageModel.getFromEnum(part);
+        AbstractPlayerDamageModel localModel = damageModel;
+        AbstractPlayerDamageModel liveModel = CommonUtils.getDamageModel(minecraft.player);
+        if (liveModel != null) {
+            localModel = liveModel;
+        }
+        AbstractDamageablePart damageablePart = localModel.getFromEnum(part);
         ItemStack itemInHand = minecraft.player.getItemInHand(activeHand);
         if (itemInHand.getItem() instanceof ItemHealing itemHealing) {
-            damageablePart.activeHealer = itemHealing.createNewHealer(itemInHand);
+            damageablePart.activeHealer = itemHealing.createNewHealer(itemInHand.copyWithCount(1));
         }
+        HealingSoundController.playHealingApplySound();
         onClose();
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        AbstractPlayerDamageModel renderModel = damageModel;
+        if (minecraft != null && minecraft.player != null) {
+            AbstractPlayerDamageModel liveModel = CommonUtils.getDamageModel(minecraft.player);
+            if (liveModel != null) {
+                renderModel = liveModel;
+            }
+        }
+
+        for (Map.Entry<EnumPlayerPart, Button> entry : partButtons.entrySet()) {
+            entry.getValue().active = canTreat(renderModel.getFromEnum(entry.getKey()));
+        }
+
         guiGraphics.fill(0, 0, width, height, 0x88000000);
         guiGraphics.fill(guiLeft, guiTop, guiLeft + xSize, guiTop + ySize, 0xCC000000);
         HealthRenderUtils.blit(guiGraphics, HealthRenderUtils.SHOW_WOUNDS_LOCATION, 256, 256, guiLeft, guiTop, 0, 0, xSize, ySize);
@@ -158,23 +178,23 @@ public class GuiHealthScreen extends Screen {
         }
 
         guiGraphics.drawCenteredString(font, title, width / 2, guiTop + 6, 0xFFFFFF);
-        drawHealth(guiGraphics, damageModel.getFromEnum(EnumPlayerPart.HEAD), false, 14);
-        drawHealth(guiGraphics, damageModel.getFromEnum(EnumPlayerPart.LEFT_ARM), false, 39);
-        drawHealth(guiGraphics, damageModel.getFromEnum(EnumPlayerPart.LEFT_LEG), false, 64);
-        drawHealth(guiGraphics, damageModel.getFromEnum(EnumPlayerPart.LEFT_FOOT), false, 89);
-        drawHealth(guiGraphics, damageModel.getFromEnum(EnumPlayerPart.BODY), true, 14);
-        drawHealth(guiGraphics, damageModel.getFromEnum(EnumPlayerPart.RIGHT_ARM), true, 39);
-        drawHealth(guiGraphics, damageModel.getFromEnum(EnumPlayerPart.RIGHT_LEG), true, 64);
-        drawHealth(guiGraphics, damageModel.getFromEnum(EnumPlayerPart.RIGHT_FOOT), true, 89);
+        drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.HEAD), false, 14);
+        drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.LEFT_ARM), false, 39);
+        drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.LEFT_LEG), false, 64);
+        drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.LEFT_FOOT), false, 89);
+        drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.BODY), true, 14);
+        drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.RIGHT_ARM), true, 39);
+        drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.RIGHT_LEG), true, 64);
+        drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.RIGHT_FOOT), true, 89);
 
-        int morphineTicks = damageModel.getMorphineTicks();
+        int morphineTicks = renderModel.getMorphineTicks();
         if (morphineTicks > 0) {
             guiGraphics.drawCenteredString(font, I18n.get("firstaid.gui.morphine_left", StringUtil.formatTickDuration(morphineTicks, 20F)), width / 2, guiTop + ySize - 22, 0xFFFFFF);
         } else if (activeHand != null) {
             guiGraphics.drawCenteredString(font, I18n.get("firstaid.gui.apply_hint"), width / 2, guiTop + ySize - 22, 0xFFFFFF);
         }
 
-        renderStatusSummary(guiGraphics);
+        renderStatusSummary(guiGraphics, renderModel);
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
@@ -197,20 +217,20 @@ public class GuiHealthScreen extends Screen {
                 + HealthRenderUtils.getMaxHearts(damageablePart.getAbsorption()) * 9 + 2);
     }
 
-    private void renderStatusSummary(GuiGraphics guiGraphics) {
+    private void renderStatusSummary(GuiGraphics guiGraphics, AbstractPlayerDamageModel renderModel) {
         if (minecraft == null || minecraft.player == null) {
             return;
         }
 
         Player player = minecraft.player;
-        PlayerDamageModel playerDamageModel = damageModel instanceof PlayerDamageModel model ? model : null;
+        PlayerDamageModel playerDamageModel = renderModel instanceof PlayerDamageModel model ? model : null;
         int lineY = guiTop + ySize - 54;
 
-        if (damageModel.getPainLevel() > 0) {
+        if (renderModel.getPainLevel() > 0) {
             boolean painSuppressed = player.hasEffect(RegistryObjects.MORPHINE_EFFECT) || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
             Component painText = painSuppressed
                     ? Component.translatable("firstaid.gui.status.pain_suppressed")
-                    : Component.translatable("firstaid.gui.status.pain", Component.translatable(getPainSeverityKey(damageModel.getPainLevel())));
+                    : Component.translatable("firstaid.gui.status.pain", Component.translatable(getPainSeverityKey(renderModel.getPainLevel())));
             guiGraphics.drawString(font, painText, guiLeft + 8, lineY, painSuppressed ? 0x8FD3FF : 0xFF8A8A);
             lineY += 10;
         }
@@ -220,8 +240,8 @@ public class GuiHealthScreen extends Screen {
             lineY += 10;
         }
 
-        if (damageModel.getAdrenalineLevel() > 0) {
-            int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : damageModel.getAdrenalineLevel();
+        if (renderModel.getAdrenalineLevel() > 0) {
+            int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : renderModel.getAdrenalineLevel();
             guiGraphics.drawString(font,
                     Component.translatable("firstaid.gui.status.suppression", Component.translatable(getSuppressionSeverityKey(suppressionLevel))),
                     guiLeft + 8,
@@ -230,11 +250,11 @@ public class GuiHealthScreen extends Screen {
             lineY += 10;
         }
 
-        if (damageModel.getUnconsciousTicks() > 0) {
+        if (renderModel.getUnconsciousTicks() > 0) {
             guiGraphics.drawString(font,
                     Component.translatable(playerDamageModel != null
                             ? playerDamageModel.getUnconsciousReasonKey()
-                            : damageModel.isCriticalConditionActive() ? "firstaid.gui.critical_condition" : "firstaid.gui.unconscious"),
+                            : renderModel.isCriticalConditionActive() ? "firstaid.gui.critical_condition" : "firstaid.gui.unconscious"),
                     guiLeft + 8,
                     lineY,
                     0xFFD5D5);
@@ -242,7 +262,7 @@ public class GuiHealthScreen extends Screen {
             guiGraphics.drawString(font,
                     playerDamageModel != null && playerDamageModel.canGiveUp()
                             ? Component.translatable("firstaid.gui.death_countdown_seconds", playerDamageModel.getUnconsciousSecondsLeft())
-                            : Component.translatable("firstaid.gui.unconscious_left", StringUtil.formatTickDuration(damageModel.getUnconsciousTicks(), 20F)),
+                            : Component.translatable("firstaid.gui.unconscious_left", StringUtil.formatTickDuration(renderModel.getUnconsciousTicks(), 20F)),
                     guiLeft + 8,
                     lineY,
                     0xFFD5D5);

@@ -46,6 +46,7 @@ import net.neoforged.neoforge.client.event.CalculatePlayerTurnEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
@@ -57,6 +58,9 @@ public class ClientEventHandler {
     private static final int GIVE_UP_HOLD_TICKS = 20 * 3;
     private static final SuppressionFeedbackController SUPPRESSION_FEEDBACK_CONTROLLER = new SuppressionFeedbackController();
     private static final ProjectileNearMissDetector PROJECTILE_NEAR_MISS_DETECTOR = new ProjectileNearMissDetector(SUPPRESSION_FEEDBACK_CONTROLLER);
+    private static boolean loggedRenderGuiWithoutPlayer;
+    private static boolean loggedRenderGuiWithPlayer;
+    private static boolean loggedPlayerHealthLayerIntercept;
     private static int id;
     private static boolean showedCriticalPrompt;
     private static int giveUpHoldTicks;
@@ -73,6 +77,7 @@ public class ClientEventHandler {
             return;
         }
         SUPPRESSION_FEEDBACK_CONTROLLER.tick(mc);
+        HealingSoundController.tick(mc);
         PROJECTILE_NEAR_MISS_DETECTOR.tick(mc);
         if (EventCalendar.isGuiFun()) {
             GuiHealthScreen.BED_ITEMSTACK.setDamageValue(id);
@@ -125,6 +130,7 @@ public class ClientEventHandler {
             mc.player.displayClientMessage(Component.translatable("firstaid.gui.unconscious_hint").withStyle(ChatFormatting.RED), true);
             return;
         }
+        FirstAid.NETWORKING.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
         mc.setScreen(new GuiHealthScreen(damageModel));
     }
 
@@ -161,9 +167,39 @@ public class ClientEventHandler {
     }
 
     @SubscribeEvent
+    public static void onRenderGui(RenderGuiEvent.Post event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            if (!loggedRenderGuiWithoutPlayer) {
+                FirstAid.LOGGER.info("ClientEventHandler.onRenderGui reached before player was initialized");
+                loggedRenderGuiWithoutPlayer = true;
+            }
+        } else if (!loggedRenderGuiWithPlayer) {
+            FirstAid.LOGGER.info(
+                    "ClientEventHandler.onRenderGui reached for player={}, hideGui={}, overlayMode={}, vanillaHealthbarMode={}",
+                    mc.player.getName().getString(),
+                    mc.options.hideGui,
+                    FirstAidConfig.CLIENT.overlayMode.get(),
+                    FirstAidConfig.CLIENT.vanillaHealthBarMode.get()
+            );
+            loggedRenderGuiWithPlayer = true;
+        }
+        StatusEffectLayer.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+        HUDHandler.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+    }
+
+    @SubscribeEvent
     public static void preRender(RenderGuiLayerEvent.Pre event) {
         if (!PLAYER_HEALTH_LAYER.equals(event.getName())) {
             return;
+        }
+
+        if (!loggedPlayerHealthLayerIntercept) {
+            FirstAid.LOGGER.info(
+                    "ClientEventHandler.preRender intercepted PLAYER_HEALTH, vanillaHealthbarMode={}",
+                    FirstAidConfig.CLIENT.vanillaHealthBarMode.get()
+            );
+            loggedPlayerHealthLayerIntercept = true;
         }
 
         FirstAidConfig.Client.VanillaHealthbarMode vanillaHealthBarMode = FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
@@ -171,15 +207,19 @@ public class ClientEventHandler {
             return;
         }
 
-        event.setCanceled(true);
-        if (vanillaHealthBarMode != FirstAidConfig.Client.VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
-                || FirstAidConfig.SERVER.vanillaHealthCalculation.get() != FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL) {
+        Minecraft mc = Minecraft.getInstance();
+        Gui gui = mc.gui;
+        if (mc.gameMode == null || !mc.gameMode.canHurtPlayer() || mc.options.hideGui || mc.player == null) {
             return;
         }
 
-        Minecraft mc = Minecraft.getInstance();
-        Gui gui = mc.gui;
-        if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.options.hideGui) {
+        event.setCanceled(true);
+        if (vanillaHealthBarMode == FirstAidConfig.Client.VanillaHealthbarMode.HIDE) {
+            FirstaidIngameGui.reserveHealthBarSpace(gui, mc.player);
+            return;
+        }
+
+        if (FirstAidConfig.SERVER.vanillaHealthCalculation.get() == FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL) {
             FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), event.getGuiGraphics());
         }
     }
@@ -188,11 +228,15 @@ public class ClientEventHandler {
     public static void tooltipItems(ItemTooltipEvent event) {
         ItemStack stack = event.getItemStack();
         if (stack.is(RegistryObjects.MORPHINE.get())) {
-            event.getToolTip().add(Component.translatable("firstaid.tooltip.morphine", "3:30-4:30").withStyle(ChatFormatting.GRAY));
+            event.getToolTip().add(Component.translatable("firstaid.tooltip.morphine",
+                    StringUtil.formatTickDuration(PlayerDamageModel.getMorphineActivationDelay(), 20F),
+                    "3:30-4:30").withStyle(ChatFormatting.GRAY));
             return;
         }
         if (stack.is(RegistryObjects.PAINKILLERS.get())) {
-            event.getToolTip().add(Component.translatable("firstaid.tooltip.painkillers", "2:00").withStyle(ChatFormatting.GRAY));
+            event.getToolTip().add(Component.translatable("firstaid.tooltip.painkillers",
+                    StringUtil.formatTickDuration(PlayerDamageModel.getPainkillerActivationDelay(), 20F),
+                    "2:00").withStyle(ChatFormatting.GRAY));
             return;
         }
 
@@ -212,8 +256,14 @@ public class ClientEventHandler {
         HUDHandler.INSTANCE.ticker = -1;
         showedCriticalPrompt = false;
         resetGiveUpHoldState();
+        HealingSoundController.clear();
         SUPPRESSION_FEEDBACK_CONTROLLER.clear();
         PROJECTILE_NEAR_MISS_DETECTOR.clear();
+        loggedRenderGuiWithoutPlayer = false;
+        loggedRenderGuiWithPlayer = false;
+        loggedPlayerHealthLayerIntercept = false;
+        HUDHandler.INSTANCE.resetDebugState();
+        StatusEffectLayer.INSTANCE.resetDebugState();
     }
 
     @SubscribeEvent
@@ -223,7 +273,6 @@ public class ClientEventHandler {
         if (mc.player == null) {
             return;
         }
-
         MutableComponent message = Component.empty()
                 .append(Component.literal("✚ ").withStyle(ChatFormatting.RED, ChatFormatting.BOLD))
                 .append(Component.literal("[First Aid] ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))

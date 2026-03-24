@@ -72,6 +72,7 @@ public final class ClientEventHandler {
             return;
         }
         SUPPRESSION_FEEDBACK_CONTROLLER.tick(mc);
+        HealingSoundController.tick(mc);
         PROJECTILE_NEAR_MISS_DETECTOR.tick(mc);
         if (EventCalendar.isGuiFun()) {
             GuiHealthScreen.BED_ITEMSTACK.setDamageValue(id);
@@ -118,20 +119,25 @@ public final class ClientEventHandler {
             mc.player.displayClientMessage(Component.translatable("firstaid.gui.unconscious_hint").withStyle(ChatFormatting.RED), true);
             return;
         }
+        FirstAidClientNetworking.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
         mc.setScreen(new GuiHealthScreen(damageModel));
     }
 
     private static boolean onPreAttack(Minecraft minecraft, net.minecraft.client.player.LocalPlayer player, int clickCount) {
-        return !isUnconscious(player);
+        return isUnconscious(player);
     }
 
     private static void tooltipItems(ItemStack stack, net.minecraft.world.item.Item.TooltipContext context, net.minecraft.world.item.TooltipFlag flag, List<Component> lines) {
         if (stack.is(RegistryObjects.MORPHINE.get())) {
-            lines.add(Component.translatable("firstaid.tooltip.morphine", "3:30-4:30").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatable("firstaid.tooltip.morphine",
+                    StringUtil.formatTickDuration(PlayerDamageModel.getMorphineActivationDelay(), 20F),
+                    "3:30-4:30").withStyle(ChatFormatting.GRAY));
             return;
         }
         if (stack.is(RegistryObjects.PAINKILLERS.get())) {
-            lines.add(Component.translatable("firstaid.tooltip.painkillers", "2:00").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatable("firstaid.tooltip.painkillers",
+                    StringUtil.formatTickDuration(PlayerDamageModel.getPainkillerActivationDelay(), 20F),
+                    "2:00").withStyle(ChatFormatting.GRAY));
             return;
         }
 
@@ -150,6 +156,7 @@ public final class ClientEventHandler {
         HUDHandler.INSTANCE.ticker = -1;
         showedCriticalPrompt = false;
         resetGiveUpHoldState();
+        HealingSoundController.clear();
         SUPPRESSION_FEEDBACK_CONTROLLER.clear();
         PROJECTILE_NEAR_MISS_DETECTOR.clear();
     }

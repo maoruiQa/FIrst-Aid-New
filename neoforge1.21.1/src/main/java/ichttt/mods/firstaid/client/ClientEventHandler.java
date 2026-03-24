@@ -72,6 +72,7 @@ public class ClientEventHandler {
             return;
         }
         SUPPRESSION_FEEDBACK_CONTROLLER.tick(mc);
+        HealingSoundController.tick(mc);
         PROJECTILE_NEAR_MISS_DETECTOR.tick(mc);
         if (EventCalendar.isGuiFun()) {
             GuiHealthScreen.BED_ITEMSTACK.setDamageValue(id);
@@ -165,20 +166,26 @@ public class ClientEventHandler {
             return;
         }
 
+        HUDHandler.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
+
         FirstAidConfig.Client.VanillaHealthbarMode vanillaHealthBarMode = FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
         if (vanillaHealthBarMode == FirstAidConfig.Client.VanillaHealthbarMode.NORMAL) {
             return;
         }
 
-        event.setCanceled(true);
-        if (vanillaHealthBarMode != FirstAidConfig.Client.VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
-                || FirstAidConfig.SERVER.vanillaHealthCalculation.get() != FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL) {
+        Minecraft mc = Minecraft.getInstance();
+        Gui gui = mc.gui;
+        if (mc.gameMode == null || !mc.gameMode.canHurtPlayer() || mc.options.hideGui || mc.player == null) {
             return;
         }
 
-        Minecraft mc = Minecraft.getInstance();
-        Gui gui = mc.gui;
-        if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.options.hideGui) {
+        event.setCanceled(true);
+        if (vanillaHealthBarMode == FirstAidConfig.Client.VanillaHealthbarMode.HIDE) {
+            FirstaidIngameGui.reserveHealthBarSpace(gui, mc.player);
+            return;
+        }
+
+        if (FirstAidConfig.SERVER.vanillaHealthCalculation.get() == FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL) {
             FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), event.getGuiGraphics());
         }
     }
@@ -187,11 +194,15 @@ public class ClientEventHandler {
     public static void tooltipItems(ItemTooltipEvent event) {
         ItemStack stack = event.getItemStack();
         if (stack.is(RegistryObjects.MORPHINE.get())) {
-            event.getToolTip().add(Component.translatable("firstaid.tooltip.morphine", "3:30-4:30").withStyle(ChatFormatting.GRAY));
+            event.getToolTip().add(Component.translatable("firstaid.tooltip.morphine",
+                    StringUtil.formatTickDuration(PlayerDamageModel.getMorphineActivationDelay(), 20F),
+                    "3:30-4:30").withStyle(ChatFormatting.GRAY));
             return;
         }
         if (stack.is(RegistryObjects.PAINKILLERS.get())) {
-            event.getToolTip().add(Component.translatable("firstaid.tooltip.painkillers", "2:00").withStyle(ChatFormatting.GRAY));
+            event.getToolTip().add(Component.translatable("firstaid.tooltip.painkillers",
+                    StringUtil.formatTickDuration(PlayerDamageModel.getPainkillerActivationDelay(), 20F),
+                    "2:00").withStyle(ChatFormatting.GRAY));
             return;
         }
 
@@ -211,6 +222,7 @@ public class ClientEventHandler {
         HUDHandler.INSTANCE.ticker = -1;
         showedCriticalPrompt = false;
         resetGiveUpHoldState();
+        HealingSoundController.clear();
         SUPPRESSION_FEEDBACK_CONTROLLER.clear();
         PROJECTILE_NEAR_MISS_DETECTOR.clear();
     }
@@ -222,7 +234,6 @@ public class ClientEventHandler {
         if (mc.player == null) {
             return;
         }
-
         MutableComponent message = Component.empty()
                 .append(Component.literal("鉁?").withStyle(ChatFormatting.RED, ChatFormatting.BOLD))
                 .append(Component.literal("[First Aid] ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))

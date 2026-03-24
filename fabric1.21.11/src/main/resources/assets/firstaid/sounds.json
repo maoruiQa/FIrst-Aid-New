@@ -2,10 +2,24 @@
   "debuff.heartbeat": {
     "sounds": [
       {
-        "name": "firstaid:heartbeat",
+        "name": "firstaid:tinnitus",
         "preload": "true"
       }
     ],
     "subtitle": "subtitles.debuff.heartbeat"
+  },
+  "item.use_bandage": {
+    "sounds": [
+      {
+        "name": "firstaid:use_bandage"
+      }
+    ]
+  },
+  "item.take_pills": {
+    "sounds": [
+      {
+        "name": "firstaid:take_pills"
+      }
+    ]
   }
 }

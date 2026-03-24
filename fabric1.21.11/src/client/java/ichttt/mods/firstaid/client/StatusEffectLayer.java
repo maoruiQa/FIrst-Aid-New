@@ -56,12 +56,15 @@ public class StatusEffectLayer implements HudRenderCallback {
     @Override
     public void onHudRender(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || !minecraft.player.isAlive() || minecraft.options.hideGui) {
+        if (minecraft.player == null || minecraft.options.hideGui) {
             return;
         }
 
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(minecraft.player);
         if (damageModel == null || !FirstAid.isSynced) {
+            return;
+        }
+        if (!minecraft.player.isAlive() && damageModel.getUnconsciousTicks() <= 0) {
             return;
         }
         PlayerDamageModel playerDamageModel = damageModel instanceof PlayerDamageModel model ? model : null;
@@ -126,12 +129,12 @@ public class StatusEffectLayer implements HudRenderCallback {
                             StringUtil.formatTickDuration(damageModel.getUnconsciousTicks(), 20F));
             int centerX = width / 2;
             int centerY = height / 2;
-            guiGraphics.drawCenteredString(minecraft.font, title, centerX, centerY - 26, 0xFFF1F1);
-            guiGraphics.drawCenteredString(minecraft.font, timer, centerX, centerY - 10, 0xCFCFCF);
+            guiGraphics.drawCenteredString(minecraft.font, title, centerX, centerY - 26, opaque(0xFFF1F1));
+            guiGraphics.drawCenteredString(minecraft.font, timer, centerX, centerY - 10, opaque(0xCFCFCF));
             if (playerDamageModel != null && playerDamageModel.canGiveUp()) {
-                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.waiting_for_rescue"), centerX, centerY + 2, 0xE8D9D9);
-                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.rescue_help"), centerX, centerY + 14, 0xD8CACA);
-                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()), centerX, centerY + 28, 0xFFB3B3);
+                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.waiting_for_rescue"), centerX, centerY + 2, opaque(0xE8D9D9));
+                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.rescue_help"), centerX, centerY + 14, opaque(0xD8CACA));
+                guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()), centerX, centerY + 28, opaque(0xFFB3B3));
                 renderGiveUpProgress(guiGraphics, minecraft, centerX, centerY + 44, partialTick);
             }
         }
@@ -205,7 +208,7 @@ public class StatusEffectLayer implements HudRenderCallback {
                 ),
                 centerX,
                 top + 12,
-                0xFFB3B3
+                opaque(0xFFB3B3)
         );
     }
 
@@ -220,5 +223,9 @@ public class StatusEffectLayer implements HudRenderCallback {
 
     private static int color(int alpha, int red, int green, int blue) {
         return (alpha & 255) << 24 | (red & 255) << 16 | (green & 255) << 8 | blue & 255;
+    }
+
+    private static int opaque(int rgb) {
+        return 0xFF000000 | rgb;
     }
 }

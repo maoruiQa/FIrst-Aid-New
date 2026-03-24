@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.function.Supplier;
 
 public final class FirstAidDataAttachments {
+    private static boolean loggedClientDamageModelSync;
 
     public static final DeferredRegister<AttachmentType<?>> REGISTRY = DeferredRegister.create(NeoForgeRegistries.Keys.ATTACHMENT_TYPES, FirstAid.MODID);
 
@@ -55,6 +56,15 @@ public final class FirstAidDataAttachments {
                 model.deserializeNBT(tag);
             }
             FirstAid.isSynced = true;
+            if (!loggedClientDamageModelSync) {
+                FirstAid.LOGGER.info(
+                        "Received client damage model attachment sync, holderType={}, reusedModel={}, hasTag={}",
+                        holder.getClass().getName(),
+                        previousValue != null,
+                        tag != null
+                );
+                loggedClientDamageModelSync = true;
+            }
             return model;
         }
     }

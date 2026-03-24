@@ -52,6 +52,8 @@ public class RegistryObjects {
     public static final DeferredItem<ItemPainkillers> PAINKILLERS;
 
     public static final Holder<SoundEvent> HEARTBEAT;
+    public static final Holder<SoundEvent> BANDAGE_USE;
+    public static final Holder<SoundEvent> PILLS_USE;
 
     public static final Holder<MobEffect> MORPHINE_EFFECT;
     public static final Holder<MobEffect> PAINKILLER_EFFECT;
@@ -63,14 +65,18 @@ public class RegistryObjects {
         FirstAidConfig.Server server = FirstAidConfig.SERVER;
 
         // ITEMS
-        BANDAGE = ITEM_REGISTER.registerItem("bandage", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> server.bandage.secondsPerHeal.get() * 20, server.bandage.totalHeals::get, stack), stack -> server.bandage.applyTime.get()));
-        PLASTER = ITEM_REGISTER.registerItem("plaster", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> server.plaster.secondsPerHeal.get() * 20, server.plaster.totalHeals::get, stack), stack -> server.plaster.applyTime.get()));
+        BANDAGE = ITEM_REGISTER.registerItem("bandage", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack), stack -> server.bandage.applyTime.get()));
+        PLASTER = ITEM_REGISTER.registerItem("plaster", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack), stack -> server.plaster.applyTime.get()));
         MORPHINE = ITEM_REGISTER.registerItem("morphine", ItemMorphine::new);
         PAINKILLERS = ITEM_REGISTER.registerItem("painkillers", ItemPainkillers::new);
 
         // SOUNDS
         Identifier soundLocation = Identifier.fromNamespaceAndPath(FirstAid.MODID, "debuff.heartbeat");
         HEARTBEAT = SOUND_EVENT_REGISTER.register(soundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(soundLocation));
+        Identifier bandageSoundLocation = Identifier.fromNamespaceAndPath(FirstAid.MODID, "item.use_bandage");
+        BANDAGE_USE = SOUND_EVENT_REGISTER.register(bandageSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(bandageSoundLocation));
+        Identifier pillsSoundLocation = Identifier.fromNamespaceAndPath(FirstAid.MODID, "item.take_pills");
+        PILLS_USE = SOUND_EVENT_REGISTER.register(pillsSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(pillsSoundLocation));
 
         // MOB EFFECTS
         MORPHINE_EFFECT = MOB_EFFECT_REGISTER.register("morphine", () -> new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0xDDD));

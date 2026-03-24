@@ -20,4 +20,12 @@ public final class RenderStateExtensions {
         var damageModel = CommonUtils.getExistingDamageModel(player);
         return damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious();
     }
+
+    public static float getCollapseProgress(LivingEntity entity) {
+        if (!(entity instanceof Player player)) {
+            return 1.0F;
+        }
+        var damageModel = CommonUtils.getExistingDamageModel(player);
+        return damageModel instanceof PlayerDamageModel playerDamageModel ? playerDamageModel.getCollapseAnimationProgress() : 1.0F;
+    }
 }

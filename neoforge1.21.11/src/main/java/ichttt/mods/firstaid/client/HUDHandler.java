@@ -50,6 +50,13 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
 
     private final Map<EnumPlayerPart, String> translationMap = new EnumMap<>(EnumPlayerPart.class);
     private final FlashStateManager flashStateManager = new FlashStateManager();
+    private boolean loggedRenderEntry;
+    private boolean loggedMissingDamageModel;
+    private boolean loggedDamageModelAvailable;
+    private boolean loggedRenderPlacement;
+    private boolean loggedSkippedByTicker;
+    private boolean loggedSkippedByChat;
+    private boolean loggedSkippedByDebugOverlay;
     private int maxLength;
     public int ticker = -1;
 
@@ -69,9 +76,37 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
             return;
         }
 
+        if (!loggedRenderEntry) {
+            FirstAid.LOGGER.info(
+                    "HUDHandler.render entered, overlayMode={}, overlayPosition={}, visibleDurationTicks={}, alpha={}",
+                    FirstAidConfig.CLIENT.overlayMode.get(),
+                    FirstAidConfig.CLIENT.pos.get(),
+                    FirstAidConfig.CLIENT.visibleDurationTicks.get(),
+                    FirstAidConfig.CLIENT.alpha.get()
+            );
+            loggedRenderEntry = true;
+        }
+
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(minecraft.player);
-        if (damageModel == null || !FirstAid.isSynced) {
+        if (damageModel == null) {
+            if (!loggedMissingDamageModel) {
+                FirstAid.LOGGER.warn("HUDHandler.render could not obtain a damage model. isSynced={}", FirstAid.isSynced);
+                loggedMissingDamageModel = true;
+            }
             return;
+        }
+
+        if (!loggedDamageModelAvailable) {
+            FirstAid.LOGGER.info(
+                    "HUDHandler.render received damage model={}, head={}/{}, body={}/{}, unconsciousTicks={}",
+                    damageModel.getClass().getSimpleName(),
+                    damageModel.HEAD.currentHealth,
+                    damageModel.HEAD.getMaxHealth(),
+                    damageModel.BODY.currentHealth,
+                    damageModel.BODY.getMaxHealth(),
+                    damageModel.getUnconsciousTicks()
+            );
+            loggedDamageModelAvailable = true;
         }
 
         if (translationMap.isEmpty()) {
@@ -95,15 +130,19 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
         }
 
         if (visibleTicks != -1 && ticker < 0) {
+            if (!loggedSkippedByTicker) {
+                FirstAid.LOGGER.info("HUDHandler.render skipped because ticker < 0 while visibleDurationTicks={}", visibleTicks - FADE_TIME);
+                loggedSkippedByTicker = true;
+            }
             return;
         }
         if (minecraft.screen instanceof ChatScreen && FirstAidConfig.CLIENT.pos.get() == FirstAidConfig.Client.Position.BOTTOM_LEFT) {
+            if (!loggedSkippedByChat) {
+                FirstAid.LOGGER.info("HUDHandler.render skipped because chat screen overlaps the bottom-left overlay");
+                loggedSkippedByChat = true;
+            }
             return;
         }
-        if (minecraft.getDebugOverlay().showDebugScreen() && FirstAidConfig.CLIENT.pos.get() == FirstAidConfig.Client.Position.TOP_LEFT) {
-            return;
-        }
-
         int xOffset = FirstAidConfig.CLIENT.xOffset.get();
         int yOffset = FirstAidConfig.CLIENT.yOffset.get();
         FirstAidConfig.Client.OverlayMode overlayMode = FirstAidConfig.CLIENT.overlayMode.get();
@@ -140,6 +179,18 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
             }
         }
 
+        if (!loggedRenderPlacement) {
+            FirstAid.LOGGER.info(
+                    "HUDHandler.render resolved placement x={}, y={}, playerModel={}, gui={}x{}",
+                    xOffset,
+                    yOffset,
+                    playerModel,
+                    minecraft.getWindow().getGuiScaledWidth(),
+                    minecraft.getWindow().getGuiScaledHeight()
+            );
+            loggedRenderPlacement = true;
+        }
+
         if (playerModel) {
             PlayerModelRenderer.renderPlayerHealth(xOffset, yOffset, damageModel, overlayMode == FirstAidConfig.Client.OverlayMode.PLAYER_MODEL_4_COLORS, guiGraphics, flashStateManager.update(Util.getMillis()), FirstAidConfig.CLIENT.alpha.get(), deltaTracker.getGameTimeDeltaPartialTick(false));
         } else {
@@ -166,5 +217,15 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
             maxLength = Math.max(maxLength, minecraft.font.width(translated));
             translationMap.put(part, translated);
         }
+    }
+
+    public void resetDebugState() {
+        loggedRenderEntry = false;
+        loggedMissingDamageModel = false;
+        loggedDamageModelAvailable = false;
+        loggedRenderPlacement = false;
+        loggedSkippedByTicker = false;
+        loggedSkippedByChat = false;
+        loggedSkippedByDebugOverlay = false;
     }
 }

@@ -20,6 +20,7 @@ package ichttt.mods.firstaid.common.items;
 
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
+import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -42,7 +43,11 @@ public class ItemPainkillers extends Item {
     @Nonnull
     public ItemStack finishUsingItem(@Nonnull ItemStack stack, @Nonnull Level world, @Nonnull LivingEntity entityLiving) {
         if (entityLiving instanceof Player player) {
-            player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, PlayerDamageModel.getPainkillerDuration(), 0, false, false));
+            if (CommonUtils.getDamageModel(player) instanceof PlayerDamageModel playerDamageModel) {
+                playerDamageModel.queuePainkillerActivation();
+            } else {
+                player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, PlayerDamageModel.getPainkillerDuration(), 0, false, false));
+            }
         }
         stack.shrink(1);
         return stack;

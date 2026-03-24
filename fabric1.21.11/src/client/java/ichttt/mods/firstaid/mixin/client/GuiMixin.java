@@ -5,6 +5,7 @@ import ichttt.mods.firstaid.client.gui.FirstaidIngameGui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -12,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
 public abstract class GuiMixin {
-    @Inject(method = "renderPlayerHealth", at = @At("HEAD"), cancellable = true)
-    private void firstaid$renderPlayerHealth(GuiGraphics guiGraphics, CallbackInfo ci) {
+    @Inject(method = "renderHearts", at = @At("HEAD"), cancellable = true)
+    private void firstaid$renderHearts(GuiGraphics guiGraphics, Player player, int x, int y, int lineHeight, int regen, float maxHealth, int currentHealth, int displayHealth, int absorption, boolean blinking, CallbackInfo ci) {
         FirstAidConfig.Client.VanillaHealthbarMode mode = FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
         if (mode == FirstAidConfig.Client.VanillaHealthbarMode.NORMAL) {
             return;

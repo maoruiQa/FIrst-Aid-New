@@ -19,6 +19,7 @@
 package ichttt.mods.firstaid.common.network;
 
 import ichttt.mods.firstaid.FirstAid;
+import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPartHealer;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
@@ -75,10 +76,14 @@ public class MessageApplyHealingItem implements CustomPacketPayload {
                     player.sendSystemMessage(Component.literal("Unable to apply healing item!"));
                     return;
                 }
-                stack.shrink(1);
                 AbstractDamageablePart damageablePart = damageModel.getFromEnum(message.part);
+                if (damageablePart.activeHealer != null || damageablePart.currentHealth >= damageablePart.getMaxHealth()) {
+                    return;
+                }
+                stack.shrink(1);
                 damageablePart.activeHealer = healer;
                 damageModel.scheduleResync();
+                FirstAidNetworking.sendDamageModelSync(player, damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get());
             });
     }
 }

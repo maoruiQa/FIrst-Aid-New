@@ -22,6 +22,7 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.HUDHandler;
 import ichttt.mods.firstaid.common.CapProvider;
+import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.network.MessageSyncDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import ichttt.mods.firstaid.common.util.LoggingMarkers;
@@ -35,8 +36,16 @@ public final class MessageSyncDamageModelHandler {
     public static void handle(MessageSyncDamageModel message, ClientPlayNetworking.Context context) {
         context.client().execute(() -> {
             Minecraft mc = context.client();
+            if (mc.player == null) {
+                FirstAid.isSynced = false;
+                FirstAid.LOGGER.debug(LoggingMarkers.NETWORK, "Ignoring damage model sync because the local player is not ready yet");
+                return;
+            }
             AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
             if (damageModel == null) {
+                FirstAid.isSynced = false;
+                FirstAid.LOGGER.debug(LoggingMarkers.NETWORK, "Damage model missing during sync, requesting refresh");
+                FirstAidClientNetworking.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
                 return;
             }
             if (message.shouldScaleMaxHealth()) {

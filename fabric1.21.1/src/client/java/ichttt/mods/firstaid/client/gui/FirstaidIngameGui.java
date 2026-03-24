@@ -57,7 +57,7 @@ public final class FirstaidIngameGui {
 
     public static void renderHealth(Gui gui, int width, int height, GuiGraphics guiGraphics) {
         Minecraft minecraft = Minecraft.getInstance();
-        Player player = (Player) minecraft.getCameraEntity();
+        Player player = minecraft.player;
         if (player == null) {
             return;
         }

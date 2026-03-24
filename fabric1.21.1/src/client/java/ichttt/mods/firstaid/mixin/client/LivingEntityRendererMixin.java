@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import ichttt.mods.firstaid.client.RenderStateExtensions;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,10 +20,11 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extend
             return;
         }
 
-        poseStack.mulPose(Axis.YP.rotationDegrees(90.0F - bodyRot));
-        poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F));
-        poseStack.mulPose(Axis.YP.rotationDegrees(270.0F));
-        poseStack.translate(0.0D, -0.9D, -0.1D);
+        float collapseProgress = RenderStateExtensions.getCollapseProgress(entity);
+        poseStack.mulPose(Axis.YP.rotationDegrees(Mth.lerp(collapseProgress, 180.0F - bodyRot, 90.0F - bodyRot)));
+        poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F * collapseProgress));
+        poseStack.mulPose(Axis.YP.rotationDegrees(270.0F * collapseProgress));
+        poseStack.translate(0.0D, -0.9D * collapseProgress, -0.1D * collapseProgress);
         ci.cancel();
     }
 }

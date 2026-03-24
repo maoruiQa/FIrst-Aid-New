@@ -44,15 +44,15 @@ import javax.annotation.Nullable;
 import java.util.Set;
 
 public final class SuppressionFeedbackController {
-    private static final ResourceLocation TINNITUS_RING_SOUND = ResourceLocation.withDefaultNamespace("block.bell.use");
-    private static final ResourceLocation TINNITUS_LAYER_SOUND = ResourceLocation.withDefaultNamespace("block.conduit.ambient.short");
-    private static final ResourceLocation MUFFLE_PUNCH_SOUND = ResourceLocation.withDefaultNamespace("entity.warden.heartbeat");
-    private static final Set<ResourceLocation> INTERNAL_SOUNDS = Set.of(TINNITUS_RING_SOUND, TINNITUS_LAYER_SOUND, MUFFLE_PUNCH_SOUND);
+    private static final ResourceLocation TINNITUS_SOUND = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.heartbeat");
+    private static final Set<ResourceLocation> INTERNAL_SOUNDS = Set.of(TINNITUS_SOUND);
     private static final float PAIN_FOV_MAX_REDUCTION = 12.0F;
     private static final float PAIN_FOV_GAIN = 0.18F;
     private static final float PAIN_FOV_DECAY = 0.04F;
     private static final float SUPPRESSION_FOV_MIN = 30.0F;
     private static final float LOW_SUPPRESSION_MULTIPLIER = 0.4F;
+    private static final int SEVERE_PAIN_LEVEL = 4;
+    private static final int SEVERE_PAIN_SOUND_COOLDOWN_TICKS = 60;
 
     private float suppressionIntensity;
     private int holdTicks;
@@ -66,6 +66,7 @@ public final class SuppressionFeedbackController {
     private float pitchImpulse;
     private float fovImpulse;
     private long soundCooldownUntilGameTime;
+    private int lastPainLevel;
     private @Nullable Level trackedLevel;
 
     public void tick(Minecraft client) {
@@ -82,6 +83,7 @@ public final class SuppressionFeedbackController {
 
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
         PlayerDamageModel playerDamageModel = damageModel instanceof PlayerDamageModel model ? model : null;
+        int painLevel = playerDamageModel == null ? 0 : playerDamageModel.getPainLevel();
         float suppressionScale = FirstAid.lowSuppressionEnabled ? LOW_SUPPRESSION_MULTIPLIER : 1.0F;
         suppressionIntensity = (playerDamageModel == null ? 0.0F : playerDamageModel.getSuppressionIntensity()) * suppressionScale;
         holdTicks = playerDamageModel == null ? 0 : playerDamageModel.getSuppressionHoldTicks();
@@ -115,6 +117,14 @@ public final class SuppressionFeedbackController {
         yawImpulse *= 0.85F;
         pitchImpulse *= 0.85F;
         fovImpulse *= holding ? 0.93F : 0.83F;
+
+        if (FirstAidConfig.CLIENT.enableSounds.get() && painLevel >= SEVERE_PAIN_LEVEL && lastPainLevel < SEVERE_PAIN_LEVEL
+                && level.getGameTime() >= soundCooldownUntilGameTime) {
+            soundCooldownUntilGameTime = level.getGameTime() + SEVERE_PAIN_SOUND_COOLDOWN_TICKS;
+            playTinnitusSound(0.52F + 0.12F * Math.min(2, painLevel - SEVERE_PAIN_LEVEL));
+        }
+
+        lastPainLevel = painLevel;
     }
 
     public void clear() {
@@ -166,7 +176,7 @@ public final class SuppressionFeedbackController {
         Level level = player.level();
         if (level.getGameTime() >= soundCooldownUntilGameTime) {
             soundCooldownUntilGameTime = level.getGameTime() + Mth.ceil(8 + (1.0F - severity) * 12.0F);
-            playSuppressionSounds(severity);
+            playTinnitusSound(severity);
         }
     }
 
@@ -208,20 +218,12 @@ public final class SuppressionFeedbackController {
         event.setSound(new MuffledSoundInstance(original, volumeScale, pitchScale));
     }
 
-    private void playSuppressionSounds(float severity) {
+    private void playTinnitusSound(float severity) {
         Minecraft client = Minecraft.getInstance();
         SoundManager soundManager = client.getSoundManager();
-        SoundEvent ring = BuiltInRegistries.SOUND_EVENT.get(TINNITUS_RING_SOUND);
-        if (ring != null) {
-            soundManager.play(SimpleSoundInstance.forUI(ring, 0.16F + severity * 0.24F, 1.60F + severity * 0.26F));
-        }
-        SoundEvent layer = BuiltInRegistries.SOUND_EVENT.get(TINNITUS_LAYER_SOUND);
-        if (layer != null) {
-            soundManager.play(SimpleSoundInstance.forUI(layer, 0.12F + severity * 0.18F, 1.22F + severity * 0.18F));
-        }
-        SoundEvent punch = BuiltInRegistries.SOUND_EVENT.get(MUFFLE_PUNCH_SOUND);
-        if (punch != null) {
-            soundManager.play(SimpleSoundInstance.forUI(punch, 0.18F + severity * 0.18F, 0.65F + severity * 0.14F));
+        SoundEvent tinnitus = BuiltInRegistries.SOUND_EVENT.get(TINNITUS_SOUND);
+        if (tinnitus != null) {
+            soundManager.play(SimpleSoundInstance.forUI(tinnitus, 0.18F + severity * 0.28F, 0.96F + severity * 0.08F));
         }
     }
 
@@ -239,6 +241,7 @@ public final class SuppressionFeedbackController {
         pitchImpulse = 0.0F;
         fovImpulse = 0.0F;
         soundCooldownUntilGameTime = 0L;
+        lastPainLevel = 0;
     }
 
     private static float approach(float current, float target, float delta) {

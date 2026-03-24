@@ -163,6 +163,8 @@ public class DamageablePart extends AbstractDamageablePart {
     public void deserializeNBT(@Nullable CompoundTag nbt) {
         if (nbt == null)
             return;
+        activeHealer = null;
+        absorption = 0F;
         if (nbt.contains("maxHealth", Tag.TAG_INT) && FirstAidConfig.SERVER.scaleMaxHealth.get()) {
             maxHealth = nbt.getInt("maxHealth");
         }
