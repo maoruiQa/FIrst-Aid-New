@@ -22,7 +22,6 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.distribution.IDamageDistributionAlgorithm;
-import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.distribution.DamageDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
@@ -70,7 +69,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ThrownPotion;
 import net.minecraft.world.food.FoodData;
@@ -92,7 +90,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -116,7 +113,7 @@ public final class EventHandler {
     );
     private static final int RESCUE_DURATION_TICKS = PlayerDamageModel.getRescueDurationTicks();
 
-    public static final Map<Player, Pair<Entity, HitResult>> hitList = new WeakHashMap<>();
+    public static final Map<Player, ProjectileHitContext> hitList = new WeakHashMap<>();
     private static final Map<UUID, RescueProgress> rescueProgress = new HashMap<>();
 
     private EventHandler() {
@@ -160,8 +157,8 @@ public final class EventHandler {
         AttackBlockCallback.EVENT.register(EventHandler::onBlockAttack);
     }
 
-    public static void recordProjectileHit(Player player, Entity projectile, HitResult hitResult) {
-        hitList.put(player, Pair.of(projectile, hitResult));
+    public static void recordProjectileHit(Player player, Entity projectile, Vec3 hitPosition) {
+        hitList.put(player, new ProjectileHitContext(projectile, hitPosition));
     }
 
     private static ResourceKey<Recipe<?>> recipeKey(String path) {
@@ -206,16 +203,18 @@ public final class EventHandler {
 
         if (source.is(DamageTypeTags.IS_PROJECTILE)) {
             Entity directEntity = source.getDirectEntity();
-            if (directEntity instanceof AbstractArrow arrow && arrow.getPierceLevel() == 0) {
-                arrow.discard();
+            ProjectileHitContext projectileHitContext = hitList.remove(player);
+            if (projectileHitContext != null && projectileHitContext.projectile() == directEntity) {
+                IDamageDistributionAlgorithm projectileDistribution = PlayerSizeHelper.getProjectileDistribution(player, projectileHitContext.hitPosition());
+                if (projectileDistribution != null) {
+                    damageDistribution = projectileDistribution;
+                }
             }
-            Pair<Entity, HitResult> rayTraceResult = hitList.remove(player);
-            if (rayTraceResult != null) {
-                Entity entityProjectile = rayTraceResult.getLeft();
-                EquipmentSlot slot = PlayerSizeHelper.getSlotTypeForProjectileHit(entityProjectile, player);
+
+            if (damageDistribution == null && directEntity != null) {
+                EquipmentSlot slot = PlayerSizeHelper.getSlotTypeForProjectileHit(directEntity, player);
                 if (slot != null) {
-                    List<EnumPlayerPart> possibleParts = CommonUtils.getPartListForSlot(slot);
-                    damageDistribution = new StandardDamageDistributionAlgorithm(Collections.singletonMap(slot, possibleParts), false, true);
+                    damageDistribution = new StandardDamageDistributionAlgorithm(Collections.singletonMap(slot, CommonUtils.getPartListForSlot(slot)), false, true);
                 }
             }
         }
@@ -234,6 +233,9 @@ public final class EventHandler {
 
         hitList.remove(player);
         return false;
+    }
+
+    private record ProjectileHitContext(Entity projectile, Vec3 hitPosition) {
     }
 
     private static void tickPlayers(ServerLevel world) {

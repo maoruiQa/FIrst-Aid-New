@@ -1,16 +1,20 @@
 package ichttt.mods.firstaid.mixin.client;
 
 import ichttt.mods.firstaid.client.RenderStateExtensions;
+import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(PlayerModel.class)
 public abstract class PlayerModelMixin {
+    @Shadow
+    public float swimAmount;
 
     @Inject(
             method = "setupAnim(Lnet/minecraft/world/entity/LivingEntity;FFFFF)V",
@@ -23,6 +27,14 @@ public abstract class PlayerModelMixin {
 
         float collapseProgress = RenderStateExtensions.getCollapseProgress(entity);
         PlayerModel model = (PlayerModel) (Object) this;
+        this.swimAmount = 0.0F;
+        model.body.xRot = Mth.lerp(collapseProgress, model.body.xRot, 0.0F);
+        model.body.yRot = Mth.lerp(collapseProgress, model.body.yRot, 0.0F);
+        model.body.zRot = Mth.lerp(collapseProgress, model.body.zRot, 0.0F);
+        model.jacket.xRot = model.body.xRot;
+        model.jacket.yRot = model.body.yRot;
+        model.jacket.zRot = model.body.zRot;
+
         model.head.xRot = Mth.lerp(collapseProgress, model.head.xRot, 0.0F);
         model.head.yRot = Mth.lerp(collapseProgress, model.head.yRot, 0.0F);
 

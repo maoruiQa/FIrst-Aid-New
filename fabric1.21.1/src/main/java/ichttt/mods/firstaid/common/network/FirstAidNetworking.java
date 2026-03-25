@@ -26,6 +26,7 @@ public final class FirstAidNetworking {
             typesRegistered = true;
             PayloadTypeRegistry.playC2S().register(MessageApplyHealingItem.TYPE, MessageApplyHealingItem.STREAM_CODEC);
             PayloadTypeRegistry.playC2S().register(MessageClientRequest.TYPE, MessageClientRequest.STREAM_CODEC);
+            PayloadTypeRegistry.playS2C().register(MessageUpdatePart.TYPE, MessageUpdatePart.STREAM_CODEC);
             PayloadTypeRegistry.playS2C().register(MessageSyncDamageModel.TYPE, MessageSyncDamageModel.STREAM_CODEC);
             PayloadTypeRegistry.playS2C().register(MessageSyncServerConfig.TYPE, MessageSyncServerConfig.STREAM_CODEC);
         }
@@ -38,6 +39,15 @@ public final class FirstAidNetworking {
 
     public static void sendDamageModelSync(ServerPlayer player, AbstractPlayerDamageModel model, boolean scaleMaxHealth) {
         MessageSyncDamageModel payload = new MessageSyncDamageModel(player.getId(), model, scaleMaxHealth);
+        ServerPlayNetworking.send(player, payload);
+        for (ServerPlayer trackingPlayer : PlayerLookup.tracking(player)) {
+            if (trackingPlayer != player) {
+                ServerPlayNetworking.send(trackingPlayer, payload);
+            }
+        }
+    }
+
+    public static void sendPartUpdate(ServerPlayer player, MessageUpdatePart payload) {
         ServerPlayNetworking.send(player, payload);
         for (ServerPlayer trackingPlayer : PlayerLookup.tracking(player)) {
             if (trackingPlayer != player) {

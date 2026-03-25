@@ -28,6 +28,7 @@ import ichttt.mods.firstaid.api.event.FirstAidLivingDamageEvent;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.FirstAidNetworking;
+import ichttt.mods.firstaid.common.network.MessageUpdatePart;
 import ichttt.mods.firstaid.common.util.ArmorUtils;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import ichttt.mods.firstaid.common.util.LoggingMarkers;
@@ -107,7 +108,7 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
             float minHealth = minHealth(player, part);
             float dmgDone = damage - part.damage(damage, player, !player.hasEffect(RegistryObjects.MORPHINE_EFFECT), minHealth);
             if (player instanceof ServerPlayer serverPlayer) {
-                FirstAidNetworking.sendDamageModelSync(serverPlayer, damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get());
+                FirstAidNetworking.sendPartUpdate(serverPlayer, new MessageUpdatePart(player.getId(), part));
             }
             if (addStat)
                 player.awardStat(Stats.DAMAGE_TAKEN, Math.round(dmgDone * 10.0F));

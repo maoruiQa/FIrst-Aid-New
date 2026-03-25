@@ -3,7 +3,9 @@
   "minVersion": "0.8",
   "package": "ichttt.mods.firstaid.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [],
+  "mixins": [
+    "PlayerDimensionsMixin"
+  ],
   "client": [
     "client.LivingEntityRendererMixin",
     "client.PlayerModelMixin"

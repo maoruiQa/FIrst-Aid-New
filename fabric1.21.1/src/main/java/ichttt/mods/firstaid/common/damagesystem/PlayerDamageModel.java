@@ -468,7 +468,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         if (hasNoRemainingBodyHealth()) {
             criticalConditionActive = false;
             clearUnconsciousState();
-            clearUnconsciousPenalties(player);
+            resetRecoveredPlayerState(player);
             scheduleResync();
             return;
         }
@@ -508,7 +508,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             setUnconsciousState(Math.max(unconsciousTicks, RESCUE_WAKE_UP_DELAY), false, false, UNCONSCIOUS_REASON_RECOVERING);
         } else {
             clearUnconsciousState();
-            clearUnconsciousPenalties(player);
+            resetRecoveredPlayerState(player);
             player.setHealth(Math.max(player.getHealth(), 1.0F));
         }
         scheduleResync();
@@ -524,7 +524,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         }
         criticalConditionActive = false;
         clearUnconsciousState();
-        clearUnconsciousPenalties(player);
+        resetRecoveredPlayerState(player);
         scheduleResync();
         CommonUtils.killPlayer(this, player, null);
     }
@@ -875,7 +875,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         }
 
         if (criticalConditionActive && unconsciousTicks <= 0 && unconsciousCausesDeath) {
-            clearUnconsciousPenalties(player);
+            resetRecoveredPlayerState(player);
             CommonUtils.killPlayerDirectly(player, null);
             return;
         }
@@ -911,11 +911,12 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             if (isUnconscious()) {
                 collapseAnimationTicks = COLLAPSE_ANIMATION_TICKS;
                 collapsePlacementPending = true;
+                player.refreshDimensions();
             } else {
                 collapseAnimationTicks = 0;
                 collapsePlacementPending = false;
+                resetRecoveredPlayerState(player);
             }
-            player.refreshDimensions();
         }
     }
 
@@ -1009,6 +1010,12 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private void clearUnconsciousPenalties(Player player) {
         updateUnconsciousAttributes(player, false);
         player.setPose(Pose.STANDING);
+    }
+
+    private void resetRecoveredPlayerState(Player player) {
+        clearUnconsciousPenalties(player);
+        player.setShiftKeyDown(false);
+        player.refreshDimensions();
     }
 
     @Nullable

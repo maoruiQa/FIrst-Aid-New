@@ -89,6 +89,25 @@ public enum EnumPlayerPart implements StringRepresentable {
         return neighbours;
     }
 
+    public List<EnumPlayerPart> getOverflowTargets() {
+        return switch (this) {
+            case HEAD, LEFT_ARM, RIGHT_ARM, LEFT_LEG, RIGHT_LEG -> singletonList(BODY);
+            case LEFT_FOOT -> singletonList(LEFT_LEG);
+            case RIGHT_FOOT -> singletonList(RIGHT_LEG);
+            case BODY -> Arrays.asList(LEFT_ARM, RIGHT_ARM, LEFT_LEG, RIGHT_LEG, HEAD, LEFT_FOOT, RIGHT_FOOT);
+        };
+    }
+
+    public float getOverflowTransferFactor() {
+        return switch (this) {
+            case LEFT_FOOT, RIGHT_FOOT -> 0.8F;
+            case LEFT_LEG, RIGHT_LEG -> 0.65F;
+            case LEFT_ARM, RIGHT_ARM -> 0.55F;
+            case HEAD -> 0.35F;
+            case BODY -> 0.45F;
+        };
+    }
+
     @Nonnull
     private List<EnumPlayerPart> getNeighboursUp() {
         switch (this) {

@@ -35,10 +35,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nonnull;
+import java.lang.reflect.Method;
 
 public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgorithm {
     public static final MapCodec<EqualDamageDistributionAlgorithm> CODEC = RecordCodecBuilder.mapCodec(instance ->
@@ -46,6 +48,7 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
                     Codec.BOOL.fieldOf("tryNoKill").forGetter(o -> o.tryNoKill),
                     Codec.FLOAT.fieldOf("reductionMultiplier").forGetter(o -> o.reductionMultiplier)
             ).apply(instance, EqualDamageDistributionAlgorithm::new));
+    private static final Method GET_DAMAGE_AFTER_MAGIC_ABSORB_METHOD = findDamageAfterMagicAbsorbMethod();
     private final boolean tryNoKill;
     private final float reductionMultiplier;
 
@@ -55,15 +58,25 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
     }
 
     private float reduceDamage(float originalDamage, Player player, DamageSource source) {
-        //As we damage all, also go through each armor slot
         float damage = originalDamage;
         for (EquipmentSlot slot : CommonUtils.ARMOR_SLOTS) {
             ItemStack armor = player.getItemBySlot(slot);
             damage = ArmorUtils.applyArmor(player, armor, source, damage, slot);
             if (damage <= 0F) return 0F;
         }
-        damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
-        if (damage <= 0F) return 0F; // If the damage got reduced to zero, respect that and continue.
+
+        if (GET_DAMAGE_AFTER_MAGIC_ABSORB_METHOD != null) {
+            try {
+                damage = (Float) GET_DAMAGE_AFTER_MAGIC_ABSORB_METHOD.invoke(player, source, damage);
+            } catch (ReflectiveOperationException e) {
+                FirstAid.LOGGER.error(LoggingMarkers.DAMAGE_DISTRIBUTION, "Could not invoke getDamageAfterMagicAbsorb!", e);
+                damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
+            }
+        } else {
+            damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
+        }
+
+        if (damage <= 0F) return 0F;
         float reduction = originalDamage - damage;
         if (reduction > 0F) reduction *= reductionMultiplier;
         damage = originalDamage - reduction;
@@ -128,6 +141,17 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
     @Override
     public MapCodec<EqualDamageDistributionAlgorithm> codec() {
         return CODEC;
+    }
+
+    private static Method findDamageAfterMagicAbsorbMethod() {
+        try {
+            Method method = LivingEntity.class.getDeclaredMethod("getDamageAfterMagicAbsorb", DamageSource.class, float.class);
+            method.setAccessible(true);
+            return method;
+        } catch (ReflectiveOperationException e) {
+            FirstAid.LOGGER.error(LoggingMarkers.DAMAGE_DISTRIBUTION, "Could not find getDamageAfterMagicAbsorb!", e);
+            return null;
+        }
     }
 }
 

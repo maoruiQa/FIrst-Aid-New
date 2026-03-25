@@ -22,7 +22,6 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.distribution.IDamageDistributionAlgorithm;
-import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.distribution.DamageDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
@@ -51,7 +50,6 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.ThrownPotion;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.InteractionResult;
@@ -95,7 +93,6 @@ import net.neoforged.bus.api.ICancellableEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.minecraft.util.Mth;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
 import java.util.UUID;
@@ -111,7 +108,7 @@ public class EventHandler {
     );
     private static final int RESCUE_DURATION_TICKS = PlayerDamageModel.getRescueDurationTicks();
 
-    public static final Map<Player, Pair<Entity, HitResult>> hitList = new WeakHashMap<>();
+    public static final Map<Player, ProjectileHitContext> hitList = new WeakHashMap<>();
     private static final Map<UUID, RescueProgress> rescueProgress = new HashMap<>();
 
     private static ResourceKey<Recipe<?>> recipeKey(String path) {
@@ -158,16 +155,18 @@ public class EventHandler {
 
         if (source.is(DamageTypeTags.IS_PROJECTILE)) {
             Entity directEntity = source.getDirectEntity();
-            if (directEntity instanceof AbstractArrow arrow && arrow.getPierceLevel() == 0) {
-                arrow.discard();
+            ProjectileHitContext projectileHitContext = hitList.remove(player);
+            if (projectileHitContext != null && projectileHitContext.projectile() == directEntity) {
+                IDamageDistributionAlgorithm projectileDistribution = PlayerSizeHelper.getProjectileDistribution(player, projectileHitContext.hitPosition());
+                if (projectileDistribution != null) {
+                    damageDistribution = projectileDistribution;
+                }
             }
-            Pair<Entity, HitResult> rayTraceResult = hitList.remove(player);
-            if (rayTraceResult != null) {
-                Entity entityProjectile = rayTraceResult.getLeft();
-                EquipmentSlot slot = PlayerSizeHelper.getSlotTypeForProjectileHit(entityProjectile, player);
+
+            if (damageDistribution == null && directEntity != null) {
+                EquipmentSlot slot = PlayerSizeHelper.getSlotTypeForProjectileHit(directEntity, player);
                 if (slot != null) {
-                    List<EnumPlayerPart> possibleParts = CommonUtils.getPartListForSlot(slot);
-                    damageDistribution = new StandardDamageDistributionAlgorithm(Collections.singletonMap(slot, possibleParts), false, true);
+                    damageDistribution = new StandardDamageDistributionAlgorithm(Collections.singletonMap(slot, CommonUtils.getPartListForSlot(slot)), false, true);
                 }
             }
         }
@@ -198,8 +197,11 @@ public class EventHandler {
 
         Entity entity = ((EntityHitResult) result).getEntity();
         if (!entity.level().isClientSide() && entity instanceof Player) {
-            hitList.put((Player) entity, Pair.of(event.getEntity(), event.getRayTraceResult()));
+            hitList.put((Player) entity, new ProjectileHitContext(event.getEntity(), result.getLocation()));
         }
+    }
+
+    private record ProjectileHitContext(Entity projectile, Vec3 hitPosition) {
     }
 
     @SubscribeEvent

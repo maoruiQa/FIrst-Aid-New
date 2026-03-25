@@ -29,6 +29,13 @@ public abstract class PlayerModelMixin extends HumanoidModel<AvatarRenderState> 
 
         float collapseProgress = RenderStateExtensions.getCollapseProgress(renderState);
         PlayerModel model = (PlayerModel) (Object) this;
+        model.body.xRot = Mth.lerp(collapseProgress, model.body.xRot, 0.0F);
+        model.body.yRot = Mth.lerp(collapseProgress, model.body.yRot, 0.0F);
+        model.body.zRot = Mth.lerp(collapseProgress, model.body.zRot, 0.0F);
+        model.jacket.xRot = model.body.xRot;
+        model.jacket.yRot = model.body.yRot;
+        model.jacket.zRot = model.body.zRot;
+
         model.head.xRot = Mth.lerp(collapseProgress, model.head.xRot, 0.0F);
         model.head.yRot = Mth.lerp(collapseProgress, model.head.yRot, 0.0F);
 

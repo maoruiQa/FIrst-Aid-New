@@ -80,12 +80,16 @@ public class ClientHooks {
                     state.setRenderData(RenderStateExtensions.PASSENGER, entity.isPassenger());
                     var damageModel = CommonUtils.getExistingDamageModel(entity);
                     float collapseProgress = 1.0F;
+                    boolean unconscious = false;
                     if (damageModel instanceof ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel playerDamageModel) {
                         collapseProgress = playerDamageModel.getCollapseAnimationProgress(Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));
+                        unconscious = playerDamageModel.isUnconscious();
                     }
-                    state.setRenderData(RenderStateExtensions.UNCONSCIOUS,
-                            damageModel instanceof ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel playerDamageModel
-                                    && playerDamageModel.isUnconscious());
+                    if (unconscious) {
+                        state.swimAmount = 0.0F;
+                        state.isVisuallySwimming = false;
+                    }
+                    state.setRenderData(RenderStateExtensions.UNCONSCIOUS, unconscious);
                     state.setRenderData(RenderStateExtensions.COLLAPSE_PROGRESS, collapseProgress);
                 }
         );

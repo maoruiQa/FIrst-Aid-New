@@ -22,6 +22,6 @@ public abstract class ProjectileMixin {
         if (entity.level().isClientSide() || !(entity instanceof Player player)) {
             return;
         }
-        EventHandler.recordProjectileHit(player, (Projectile) (Object) this, result);
+        EventHandler.recordProjectileHit(player, (Projectile) (Object) this, result.getLocation());
     }
 }

@@ -81,11 +81,11 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
     @Override
     public float distributeDamage(float damage, @Nonnull Player player, @Nonnull DamageSource source, boolean addStat) {
         float rest = super.distributeDamage(damage, player, source, addStat);
+        EnumSet<EnumPlayerPart> exhaustedParts = this.blockedParts;
         if (rest > 0 && doNeighbours) {
-            EnumSet<EnumPlayerPart> neighboursSet = EnumSet.noneOf(EnumPlayerPart.class);
-
             // Calculate the set of blocked parts that don't need to be considered for redistribution
             EnumSet<EnumPlayerPart> blockedParts = EnumSet.copyOf(this.blockedParts);
+            exhaustedParts = blockedParts;
             for (Pair<EquipmentSlot, EnumPlayerPart[]> pair : this.builtList) {
                 blockedParts.addAll(Arrays.asList(pair.getRight()));
             }
@@ -94,15 +94,14 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
                 // We still need to distribute some damage. Start with last element of the distribution, and search for possible neighbours
                 // Then, if there is still some damage that needs redistribution, go to the next layer
                 EnumPlayerPart[] parts = builtList.get(i).getRight();
-                for (EnumPlayerPart part : parts) {
-                    neighboursSet.addAll(part.getNeighbours());
-                }
+                List<EnumPlayerPart> neighbours = collectOverflowTargets(parts, blockedParts);
+                if (!neighbours.isEmpty()) {
+                    float overflowTransfer = getOverflowTransferFactor(parts);
+                    if (overflowTransfer <= 0.0F) {
+                        continue;
+                    }
 
-                neighboursSet.removeIf(blockedParts::contains);
-                if (!neighboursSet.isEmpty()) {
                     // Found allowed neighbours for this distribution layer. Try to redistribute
-                    List<EnumPlayerPart> neighbours = new ArrayList<>(neighboursSet);
-                    Collections.shuffle(neighbours);
                     Map<EquipmentSlot, List<EnumPlayerPart>> neighbourMapping = new LinkedHashMap<>();
                     for (EnumPlayerPart neighbour : neighbours) {
                         neighbourMapping.computeIfAbsent(neighbour.slot, type -> new ArrayList<>(3)).add(neighbour);
@@ -116,21 +115,47 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
 
                     // shuffle can be false, we already shuffle above. Always do neighbours to have a predictable order
                     StandardDamageDistributionAlgorithm remainingDistribution = new StandardDamageDistributionAlgorithm(neighbourDistributions, false, true, blockedParts);
-                    rest = remainingDistribution.distributeDamage(rest, player, source, addStat);
+                    rest = remainingDistribution.distributeDamage(rest * overflowTransfer, player, source, addStat);
                     if (rest <= 0F) break; //Check if we actually need to do next layer or if it is fine with this iteration
 
                     // Still got some damage left. Add the now drained parts to the blocked list. Take the block list from the temp distribution
                     // This is based on the old block list, so we can just replace instead of add it
                     blockedParts = remainingDistribution.blockedParts;
-                    neighboursSet.clear();
+                    exhaustedParts = blockedParts;
                 }
             }
         }
-        return rest;
+        return rest > 0.0F && exhaustedParts.contains(EnumPlayerPart.BODY) ? 0.0F : rest;
     }
 
     @Override
     public MapCodec<StandardDamageDistributionAlgorithm> codec() {
         return CODEC;
+    }
+
+    private static float getOverflowTransferFactor(EnumPlayerPart[] parts) {
+        float total = 0.0F;
+        int count = 0;
+        for (EnumPlayerPart part : parts) {
+            float factor = part.getOverflowTransferFactor();
+            if (factor > 0.0F) {
+                total += factor;
+                count++;
+            }
+        }
+        return count == 0 ? 0.0F : total / count;
+    }
+
+    private static List<EnumPlayerPart> collectOverflowTargets(EnumPlayerPart[] parts, EnumSet<EnumPlayerPart> blockedParts) {
+        List<EnumPlayerPart> neighbours = new ArrayList<>();
+        EnumSet<EnumPlayerPart> seenParts = EnumSet.noneOf(EnumPlayerPart.class);
+        for (EnumPlayerPart part : parts) {
+            for (EnumPlayerPart overflowTarget : part.getOverflowTargets()) {
+                if (!blockedParts.contains(overflowTarget) && seenParts.add(overflowTarget)) {
+                    neighbours.add(overflowTarget);
+                }
+            }
+        }
+        return neighbours;
     }
 }
