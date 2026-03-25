@@ -1,21 +1,3 @@
-/*
- * FirstAid
- * Copyright (C) 2017-2024
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package ichttt.mods.firstaid;
 
 import com.google.gson.Gson;
@@ -24,513 +6,521 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.resources.Identifier;
-
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Map.Entry;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.resources.Identifier;
 
 public final class FirstAidConfig {
+   private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+   private static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir().resolve("firstaid");
+   public static final FirstAidConfig.Server SERVER = new FirstAidConfig.Server();
+   public static final FirstAidConfig.General GENERAL = new FirstAidConfig.General();
+   public static final FirstAidConfig.Client CLIENT = new FirstAidConfig.Client();
+   public static final boolean watchSetHealth = true;
 
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir().resolve("firstaid");
+   private FirstAidConfig() {
+   }
 
-    public static final Server SERVER = new Server();
-    public static final General GENERAL = new General();
-    public static final Client CLIENT = new Client();
+   public static void loadServer() {
+      loadSection(SERVER, "firstaid-server.json");
+   }
 
-    private FirstAidConfig() {
-    }
+   public static void loadGeneral() {
+      loadSection(GENERAL, "firstaid-general.json");
+   }
 
-    public static void loadServer() {
-        loadSection(SERVER, "firstaid-server.json");
-    }
+   public static void loadClient() {
+      loadSection(CLIENT, "firstaid-client.json");
+   }
 
-    public static void loadGeneral() {
-        loadSection(GENERAL, "firstaid-general.json");
-    }
+   public static JsonObject serializeServerBundle() {
+      JsonObject root = new JsonObject();
+      root.add("server", SERVER.write());
+      root.add("general", GENERAL.write());
+      return root;
+   }
 
-    public static void loadClient() {
-        loadSection(CLIENT, "firstaid-client.json");
-    }
+   public static void applyServerBundle(JsonObject bundle) {
+      if (bundle != null) {
+         JsonObject server = bundle.has("server") && bundle.get("server").isJsonObject() ? bundle.getAsJsonObject("server") : new JsonObject();
+         JsonObject general = bundle.has("general") && bundle.get("general").isJsonObject() ? bundle.getAsJsonObject("general") : new JsonObject();
+         SERVER.read(server);
+         GENERAL.read(general);
+         applyCommandSettings();
+      }
+   }
 
-    public static JsonObject serializeServerBundle() {
-        JsonObject root = new JsonObject();
-        root.add("server", SERVER.write());
-        root.add("general", GENERAL.write());
-        return root;
-    }
+   public static void applyCommandSettings() {
+      FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
+      FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
+      FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
+      FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
+      FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+      FirstAid.injuryDebuffOverrides.clear();
+      FirstAid.injuryDebuffOverrides.putAll(SERVER.injuryDebuffOverrides.get());
+   }
 
-    public static void applyServerBundle(JsonObject bundle) {
-        if (bundle == null) {
-            return;
-        }
-        JsonObject server = bundle.has("server") && bundle.get("server").isJsonObject()
-                ? bundle.getAsJsonObject("server")
-                : new JsonObject();
-        JsonObject general = bundle.has("general") && bundle.get("general").isJsonObject()
-                ? bundle.getAsJsonObject("general")
-                : new JsonObject();
-        SERVER.read(server);
-        GENERAL.read(general);
-        applyCommandSettings();
-    }
+   public static void persistCommandSettings() {
+      SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
+      SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
+      SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
+      SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
+      SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+      SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
+      saveServer();
+   }
 
-    public static void applyCommandSettings() {
-        FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
-        FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
-        FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
-        FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
-        FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
-        FirstAid.injuryDebuffOverrides.clear();
-        FirstAid.injuryDebuffOverrides.putAll(SERVER.injuryDebuffOverrides.get());
-    }
+   private static void loadSection(FirstAidConfig.ConfigSection section, String fileName) {
+      Objects.requireNonNull(section);
+      Path file = CONFIG_DIR.resolve(fileName);
+      JsonObject data = readJson(file);
+      section.read(data);
+      writeJson(file, section.write());
+   }
 
-    public static void persistCommandSettings() {
-        SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
-        SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
-        SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
-        SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
-        SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
-        SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
-        saveServer();
-    }
-
-    private static void loadSection(ConfigSection section, String fileName) {
-        Objects.requireNonNull(section);
-        Path file = CONFIG_DIR.resolve(fileName);
-        JsonObject data = readJson(file);
-        section.read(data);
-        writeJson(file, section.write());
-    }
-
-    private static JsonObject readJson(Path file) {
-        try {
-            if (!Files.exists(file)) {
-                return new JsonObject();
-            }
+   private static JsonObject readJson(Path file) {
+      try {
+         if (!Files.exists(file)) {
+            return new JsonObject();
+         } else {
             String raw = Files.readString(file, StandardCharsets.UTF_8);
             if (raw.isBlank()) {
-                return new JsonObject();
+               return new JsonObject();
+            } else {
+               JsonElement element = JsonParser.parseString(raw);
+               return element != null && element.isJsonObject() ? element.getAsJsonObject() : new JsonObject();
             }
-            JsonElement element = com.google.gson.JsonParser.parseString(raw);
-            return element != null && element.isJsonObject() ? element.getAsJsonObject() : new JsonObject();
-        } catch (IOException | JsonParseException e) {
-            FirstAid.LOGGER.warn("Failed reading config {}: {}", file, e.getMessage());
-            return new JsonObject();
-        }
-    }
+         }
+      } catch (JsonParseException | IOException var3) {
+         FirstAid.LOGGER.warn("Failed reading config {}: {}", file, var3.getMessage());
+         return new JsonObject();
+      }
+   }
 
-    private static void writeJson(Path file, JsonObject data) {
-        try {
-            Files.createDirectories(CONFIG_DIR);
-            Files.writeString(file, GSON.toJson(data), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            FirstAid.LOGGER.warn("Failed writing config {}: {}", file, e.getMessage());
-        }
-    }
+   private static void writeJson(Path file, JsonObject data) {
+      try {
+         Files.createDirectories(CONFIG_DIR);
+         Files.writeString(file, GSON.toJson(data), StandardCharsets.UTF_8);
+      } catch (IOException var3) {
+         FirstAid.LOGGER.warn("Failed writing config {}: {}", file, var3.getMessage());
+      }
+   }
 
-    private static void saveServer() {
-        writeJson(CONFIG_DIR.resolve("firstaid-server.json"), SERVER.write());
-    }
+   private static void saveServer() {
+      writeJson(CONFIG_DIR.resolve("firstaid-server.json"), SERVER.write());
+   }
 
-    public static final class Server extends ConfigSection {
+   private static FirstAidConfig.ConfigValue<Boolean> boolValue(String key, boolean def) {
+      return new FirstAidConfig.ConfigValue<>(key, def, JsonElement::getAsBoolean, value -> new JsonPrimitive(value), null);
+   }
 
-        public enum VanillaHealthCalculationMode {
-            AVERAGE_ALL, AVERAGE_CRITICAL, MIN_CRITICAL, CRITICAL_50_PERCENT_OTHER_50_PERCENT
-        }
+   private static FirstAidConfig.ConfigValue<Integer> intValue(String key, int def, int min, int max) {
+      return new FirstAidConfig.ConfigValue<>(key, def, JsonElement::getAsInt, value -> new JsonPrimitive(value), value -> value >= min && value <= max);
+   }
 
-        public enum ArmorEnchantmentMode {
-            GLOBAL_ENCHANTMENTS, LOCAL_ENCHANTMENTS
-        }
+   private static FirstAidConfig.ConfigValue<Double> doubleValue(String key, double def, double min, double max) {
+      return new FirstAidConfig.ConfigValue<>(key, def, JsonElement::getAsDouble, value -> new JsonPrimitive(value), value -> value >= min && value <= max);
+   }
 
-        public final ConfigValue<Integer> maxHealthHead;
-        public final ConfigValue<Boolean> causeDeathHead;
-        public final ConfigValue<Integer> maxHealthLeftArm;
-        public final ConfigValue<Integer> maxHealthLeftLeg;
-        public final ConfigValue<Integer> maxHealthLeftFoot;
-        public final ConfigValue<Integer> maxHealthBody;
-        public final ConfigValue<Boolean> causeDeathBody;
-        public final ConfigValue<Integer> maxHealthRightArm;
-        public final ConfigValue<Integer> maxHealthRightLeg;
-        public final ConfigValue<Integer> maxHealthRightFoot;
+   private static <T extends Enum<T>> FirstAidConfig.ConfigValue<T> enumValue(String key, T def, Class<T> type) {
+      return new FirstAidConfig.ConfigValue<>(key, def, element -> {
+         String name = element.getAsString();
 
-        public final ConfigValue<Double> headArmorMultiplier;
-        public final ConfigValue<Double> chestArmorMultiplier;
-        public final ConfigValue<Double> legsArmorMultiplier;
-        public final ConfigValue<Double> feetArmorMultiplier;
-
-        public final ConfigValue<Double> headArmorOffset;
-        public final ConfigValue<Double> chestArmorOffset;
-        public final ConfigValue<Double> legsArmorOffset;
-        public final ConfigValue<Double> feetArmorOffset;
-
-        public final ConfigValue<Double> headThoughnessMultiplier;
-        public final ConfigValue<Double> chestThoughnessMultiplier;
-        public final ConfigValue<Double> legsThoughnessMultiplier;
-        public final ConfigValue<Double> feetThoughnessMultiplier;
-
-        public final ConfigValue<Double> headThoughnessOffset;
-        public final ConfigValue<Double> chestThoughnessOffset;
-        public final ConfigValue<Double> legsThoughnessOffset;
-        public final ConfigValue<Double> feetThoughnessOffset;
-
-        public final IEEntry bandage;
-        public final IEEntry plaster;
-
-        public final ConfigValue<Boolean> allowNaturalRegeneration;
-        public final ConfigValue<Boolean> allowOtherHealingItems;
-        public final ConfigValue<Double> sleepHealPercentage;
-        public final ConfigValue<Double> otherRegenMultiplier;
-        public final ConfigValue<Double> naturalRegenMultiplier;
-        public final ConfigValue<Integer> resistanceReductionPercentPerLevel;
-
-        public final ConfigValue<Boolean> scaleMaxHealth;
-        public final ConfigValue<Boolean> capMaxHealth;
-        public final ConfigValue<VanillaHealthCalculationMode> vanillaHealthCalculation;
-        public final ConfigValue<Boolean> useFriendlyRandomDistribution;
-        public final ConfigValue<ArmorEnchantmentMode> armorEnchantmentMode;
-
-        public final ConfigValue<Integer> enchantmentMultiplier;
-        public final ConfigValue<List<String>> enchMulOverrideIdentifiers;
-        public final ConfigValue<List<Integer>> enchMulOverrideMultiplier;
-        public final ConfigValue<Boolean> dynamicPainEnabled;
-        public final ConfigValue<Boolean> lowSuppressionEnabled;
-        public final ConfigValue<Boolean> rescueWakeUpEnabled;
-        public final ConfigValue<FirstAid.MedicineEffectMode> medicineEffectMode;
-        public final ConfigValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
-        public final ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
-
-        public Server() {
-            maxHealthHead = define(intValue("maxHealthHead", 7, 2, 12));
-            maxHealthLeftArm = define(intValue("maxHealthLeftArm", 4, 2, 12));
-            maxHealthLeftLeg = define(intValue("maxHealthLeftLeg", 4, 2, 12));
-            maxHealthLeftFoot = define(intValue("maxHealthLeftFoot", 4, 2, 12));
-            maxHealthBody = define(intValue("maxHealthBody", 11, 2, 12));
-            maxHealthRightArm = define(intValue("maxHealthRightArm", 4, 2, 12));
-            maxHealthRightLeg = define(intValue("maxHealthRightLeg", 4, 2, 12));
-            maxHealthRightFoot = define(intValue("maxHealthRightFoot", 4, 2, 12));
-            causeDeathHead = define(boolValue("causeDeathHead", true));
-            causeDeathBody = define(boolValue("causeDeathBody", true));
-
-            headArmorMultiplier = define(doubleValue("headArmorMultiplier", 6D, 1D, 16D));
-            chestArmorMultiplier = define(doubleValue("chestArmorMultiplier", 2.5D, 1D, 16D));
-            legsArmorMultiplier = define(doubleValue("legsArmorMultiplier", 3D, 1D, 16D));
-            feetArmorMultiplier = define(doubleValue("feetArmorMultiplier", 6D, 1D, 16D));
-
-            headArmorOffset = define(doubleValue("headArmorOffset", 1D, 0D, 4D));
-            chestArmorOffset = define(doubleValue("chestArmorOffset", 0D, 0D, 4D));
-            legsArmorOffset = define(doubleValue("legsArmorOffset", 0D, 0D, 4D));
-            feetArmorOffset = define(doubleValue("feetArmorOffset", 0D, 0D, 4D));
-
-            headThoughnessMultiplier = define(doubleValue("headThoughnessMultiplier", 4D, 1D, 16D));
-            chestThoughnessMultiplier = define(doubleValue("chestThoughnessMultiplier", 3D, 1D, 16D));
-            legsThoughnessMultiplier = define(doubleValue("legsThoughnessMultiplier", 3D, 1D, 16D));
-            feetThoughnessMultiplier = define(doubleValue("feetThoughnessMultiplier", 3.5D, 1D, 16D));
-
-            headThoughnessOffset = define(doubleValue("headThoughnessOffset", 0D, 0D, 4D));
-            chestThoughnessOffset = define(doubleValue("chestThoughnessOffset", 0D, 0D, 4D));
-            legsThoughnessOffset = define(doubleValue("legsThoughnessOffset", 0D, 0D, 4D));
-            feetThoughnessOffset = define(doubleValue("feetThoughnessOffset", 0D, 0D, 4D));
-
-            bandage = new IEEntry(this, "bandage", 4, 18, 2500);
-            plaster = new IEEntry(this, "plaster", 2, 22, 3000);
-
-            allowNaturalRegeneration = define(boolValue("allowNaturalRegeneration", false));
-            allowOtherHealingItems = define(boolValue("allowOtherHealingItems", true));
-            sleepHealPercentage = define(doubleValue("sleepHealPercentage", 0.07D, 0D, 1D));
-            otherRegenMultiplier = define(doubleValue("otherRegenMultiplier", 0.75D, 0D, 20D));
-            naturalRegenMultiplier = define(doubleValue("naturalRegenMultiplier", 0.5D, 0D, 20D));
-            resistanceReductionPercentPerLevel = define(intValue("resistanceReductionPercentPerLevel", 20, 1, 40));
-
-            scaleMaxHealth = define(boolValue("scaleMaxHealth", true));
-            capMaxHealth = define(boolValue("capMaxHealth", true));
-            vanillaHealthCalculation = define(enumValue("vanillaHealthCalculation", VanillaHealthCalculationMode.AVERAGE_ALL, VanillaHealthCalculationMode.class));
-            useFriendlyRandomDistribution = define(boolValue("useFriendlyRandomDistribution", false));
-            armorEnchantmentMode = define(enumValue("armorEnchantmentMode", ArmorEnchantmentMode.LOCAL_ENCHANTMENTS, ArmorEnchantmentMode.class));
-
-            enchantmentMultiplier = define(intValue("enchantmentMultiplier", 4, 1, 4));
-            enchMulOverrideIdentifiers = define(stringList("enchantmentOverrideIdentifiers", Collections.singletonList("minecraft:feather_falling"), value -> !value.isBlank()));
-            enchMulOverrideMultiplier = define(intList("enchantmentOverrideMultiplier", Collections.singletonList(2), value -> value >= 1 && value <= 4));
-
-            dynamicPainEnabled = define(boolValue("dynamicPainEnabled", true));
-            lowSuppressionEnabled = define(boolValue("lowSuppressionEnabled", false));
-            rescueWakeUpEnabled = define(boolValue("rescueWakeUpEnabled", false));
-            medicineEffectMode = define(enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class));
-            injuryDebuffMode = define(enumValue("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL, FirstAid.InjuryDebuffMode.class));
-            injuryDebuffOverrides = define(injuryDebuffOverridesValue("injuryDebuffOverrides"));
-        }
-
-        public static final class IEEntry {
-            public final ConfigValue<Integer> totalHeals;
-            public final ConfigValue<Integer> secondsPerHeal;
-            public final ConfigValue<Integer> applyTime;
-
-            IEEntry(Server owner, String name, int initialTotalHeals, int initialSecondsPerHeal, int initialApplyTime) {
-                totalHeals = owner.define(intValue(name + "TotalHeals", initialTotalHeals, 1, Byte.MAX_VALUE));
-                secondsPerHeal = owner.define(intValue(name + "SecondsPerHeal", initialSecondsPerHeal, 1, Short.MAX_VALUE));
-                applyTime = owner.define(intValue(name + "ApplyTime", initialApplyTime, 0, 16000));
+         for (T val : type.getEnumConstants()) {
+            if (val.name().equalsIgnoreCase(name)) {
+               return val;
             }
-        }
-    }
+         }
 
-    public static final class General extends ConfigSection {
-        public final ConfigValue<Boolean> debug;
+         return def;
+      }, value -> new JsonPrimitive(value.name().toLowerCase(Locale.ROOT)), null);
+   }
 
-        public General() {
-            debug = define(boolValue("debug", false));
-        }
-    }
-
-    public static final class Client extends ConfigSection {
-
-        public enum OverlayMode {
-            OFF, NUMBERS, HEARTS, PLAYER_MODEL, PLAYER_MODEL_4_COLORS;
-
-            public boolean isPlayerModel() {
-                return this == PLAYER_MODEL || this == PLAYER_MODEL_4_COLORS;
-            }
-        }
-
-        public enum Position {
-            TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, BOTTOM_LEFT
-        }
-
-        public enum TooltipMode {
-            REPLACE, APPEND, NONE
-        }
-
-        public enum VanillaHealthbarMode {
-            NORMAL, HIGHLIGHT_CRITICAL_PATH, HIDE
-        }
-
-        public final ConfigValue<VanillaHealthbarMode> vanillaHealthBarMode;
-        public final ConfigValue<OverlayMode> overlayMode;
-        public final ConfigValue<Position> pos;
-        public final ConfigValue<TooltipMode> armorTooltipMode;
-        public final ConfigValue<Integer> xOffset;
-        public final ConfigValue<Integer> yOffset;
-        public final ConfigValue<Integer> alpha;
-        public final ConfigValue<Boolean> enableSounds;
-        public final ConfigValue<Boolean> enableEasterEggs;
-        public final ConfigValue<Integer> visibleDurationTicks;
-        public final ConfigValue<Boolean> flash;
-
-        public Client() {
-            vanillaHealthBarMode = define(enumValue("vanillaHealthBarMode", VanillaHealthbarMode.HIDE, VanillaHealthbarMode.class));
-            overlayMode = define(enumValue("overlayMode", OverlayMode.PLAYER_MODEL, OverlayMode.class));
-            pos = define(enumValue("overlayPosition", Position.TOP_LEFT, Position.class));
-            armorTooltipMode = define(enumValue("armorTooltipMode", TooltipMode.REPLACE, TooltipMode.class));
-            xOffset = define(intValue("xOffset", 0, Short.MIN_VALUE, Short.MAX_VALUE));
-            yOffset = define(intValue("yOffset", 1, Short.MIN_VALUE, Short.MAX_VALUE));
-            alpha = define(intValue("alpha", 50, 0, 200));
-            visibleDurationTicks = define(intValue("visibleDurationTicks", -1, -1, 600));
-            flash = define(boolValue("flash", true));
-            enableSounds = define(boolValue("enableSoundSystem", true));
-            enableEasterEggs = define(boolValue("enableEasterEggs", true));
-        }
-    }
-
-    public static final boolean watchSetHealth = true;
-
-    private abstract static class ConfigSection {
-        private final Map<String, ConfigValue<?>> values = new LinkedHashMap<>();
-
-        protected final <T> ConfigValue<T> define(ConfigValue<T> value) {
-            values.put(value.key, value);
-            return value;
-        }
-
-        protected void read(JsonObject data) {
-            for (ConfigValue<?> value : values.values()) {
-                value.load(data);
-            }
-        }
-
-        protected JsonObject write() {
-            JsonObject root = new JsonObject();
-            for (ConfigValue<?> value : values.values()) {
-                value.write(root);
-            }
-            return root;
-        }
-    }
-
-    public static final class ConfigValue<T> {
-        private final String key;
-        private final T defaultValue;
-        private final Function<JsonElement, T> parser;
-        private final Function<T, JsonElement> serializer;
-        private final Predicate<T> validator;
-        private T value;
-
-        private ConfigValue(String key, T defaultValue, Function<JsonElement, T> parser, Function<T, JsonElement> serializer, Predicate<T> validator) {
-            this.key = key;
-            this.defaultValue = defaultValue;
-            this.parser = parser;
-            this.serializer = serializer;
-            this.validator = validator;
-            this.value = defaultValue;
-        }
-
-        public T get() {
-            return value;
-        }
-
-        public void set(T value) {
-            this.value = Objects.requireNonNull(value);
-        }
-
-        private void load(JsonObject data) {
-            if (data == null || !data.has(key)) {
-                value = defaultValue;
-                return;
-            }
-            try {
-                T parsed = parser.apply(data.get(key));
-                if (validator != null && !validator.test(parsed)) {
-                    FirstAid.LOGGER.warn("Config value {} out of range, resetting to default", key);
-                    value = defaultValue;
-                } else {
-                    value = parsed;
-                }
-            } catch (Exception e) {
-                FirstAid.LOGGER.warn("Failed parsing config value {}: {}", key, e.getMessage());
-                value = defaultValue;
-            }
-        }
-
-        private void write(JsonObject data) {
-            data.add(key, serializer.apply(value));
-        }
-    }
-
-    private static ConfigValue<Boolean> boolValue(String key, boolean def) {
-        return new ConfigValue<>(key, def, JsonElement::getAsBoolean, value -> new com.google.gson.JsonPrimitive(value), null);
-    }
-
-    private static ConfigValue<Integer> intValue(String key, int def, int min, int max) {
-        return new ConfigValue<>(key, def, JsonElement::getAsInt, value -> new com.google.gson.JsonPrimitive(value), value -> value >= min && value <= max);
-    }
-
-    private static ConfigValue<Double> doubleValue(String key, double def, double min, double max) {
-        return new ConfigValue<>(key, def, JsonElement::getAsDouble, value -> new com.google.gson.JsonPrimitive(value), value -> value >= min && value <= max);
-    }
-
-    private static <T extends Enum<T>> ConfigValue<T> enumValue(String key, T def, Class<T> type) {
-        return new ConfigValue<>(key, def, element -> {
-            String name = element.getAsString();
-            for (T val : type.getEnumConstants()) {
-                if (val.name().equalsIgnoreCase(name)) {
-                    return val;
-                }
-            }
+   private static FirstAidConfig.ConfigValue<List<String>> stringList(String key, List<String> def, Predicate<String> validator) {
+      return new FirstAidConfig.ConfigValue<>(key, def, element -> {
+         if (!element.isJsonArray()) {
             return def;
-        }, value -> new com.google.gson.JsonPrimitive(value.name().toLowerCase(Locale.ROOT)), null);
-    }
-
-    private static ConfigValue<List<String>> stringList(String key, List<String> def, Predicate<String> validator) {
-        return new ConfigValue<>(key, def, element -> {
-            if (!element.isJsonArray()) {
-                return def;
-            }
+         } else {
             List<String> values = new ArrayList<>();
-            JsonArray array = element.getAsJsonArray();
-            for (JsonElement entry : array) {
-                if (!entry.isJsonPrimitive()) {
-                    continue;
-                }
-                String value = entry.getAsString();
-                if (validator != null && !validator.test(value)) {
-                    continue;
-                }
-                values.add(value);
-            }
-            return values.isEmpty() ? def : values;
-        }, value -> {
-            JsonArray array = new JsonArray();
-            for (String entry : value) {
-                array.add(entry);
-            }
-            return array;
-        }, null);
-    }
 
-    private static ConfigValue<List<Integer>> intList(String key, List<Integer> def, Predicate<Integer> validator) {
-        return new ConfigValue<>(key, def, element -> {
-            if (!element.isJsonArray()) {
-                return def;
+            for (JsonElement entry : element.getAsJsonArray()) {
+               if (entry.isJsonPrimitive()) {
+                  String value = entry.getAsString();
+                  if (validator == null || validator.test(value)) {
+                     values.add(value);
+                  }
+               }
             }
+
+            return values.isEmpty() ? def : values;
+         }
+      }, value -> {
+         JsonArray array = new JsonArray();
+
+         for (String entry : value) {
+            array.add(entry);
+         }
+
+         return array;
+      }, null);
+   }
+
+   private static FirstAidConfig.ConfigValue<List<Integer>> intList(String key, List<Integer> def, Predicate<Integer> validator) {
+      return new FirstAidConfig.ConfigValue<>(key, def, element -> {
+         if (!element.isJsonArray()) {
+            return def;
+         } else {
             List<Integer> values = new ArrayList<>();
-            JsonArray array = element.getAsJsonArray();
-            for (JsonElement entry : array) {
-                if (!entry.isJsonPrimitive()) {
-                    continue;
-                }
-                try {
-                    int value = entry.getAsInt();
-                    if (validator != null && !validator.test(value)) {
-                        continue;
-                    }
-                    values.add(value);
-                } catch (Exception ignored) {
-                }
-            }
-            return values.isEmpty() ? def : values;
-        }, value -> {
-            JsonArray array = new JsonArray();
-            for (Integer entry : value) {
-                array.add(entry);
-            }
-            return array;
-        }, null);
-    }
 
-    private static ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverridesValue(String key) {
-        return new ConfigValue<>(key, new LinkedHashMap<>(), element -> {
-            if (element == null || !element.isJsonObject()) {
-                return new LinkedHashMap<>();
+            for (JsonElement entry : element.getAsJsonArray()) {
+               if (entry.isJsonPrimitive()) {
+                  try {
+                     int value = entry.getAsInt();
+                     if (validator == null || validator.test(value)) {
+                        values.add(value);
+                     }
+                  } catch (Exception var8) {
+                  }
+               }
             }
+
+            return values.isEmpty() ? def : values;
+         }
+      }, value -> {
+         JsonArray array = new JsonArray();
+
+         for (Integer entry : value) {
+            array.add(entry);
+         }
+
+         return array;
+      }, null);
+   }
+
+   private static FirstAidConfig.ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverridesValue(String key) {
+      return new FirstAidConfig.ConfigValue<>(key, new LinkedHashMap<>(), element -> {
+         if (element != null && element.isJsonObject()) {
             JsonObject object = element.getAsJsonObject();
             Map<Identifier, FirstAid.InjuryDebuffMode> values = new LinkedHashMap<>();
-            for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
-                Identifier id = Identifier.tryParse(entry.getKey());
-                if (id == null || !entry.getValue().isJsonPrimitive()) {
-                    continue;
-                }
-                values.put(id, parseInjuryDebuffMode(entry.getValue().getAsString()));
-            }
-            return values;
-        }, value -> {
-            JsonObject object = new JsonObject();
-            for (Map.Entry<Identifier, FirstAid.InjuryDebuffMode> entry : value.entrySet()) {
-                object.addProperty(entry.getKey().toString(), entry.getValue().name().toLowerCase(Locale.ROOT));
-            }
-            return object;
-        }, null);
-    }
 
-    private static FirstAid.InjuryDebuffMode parseInjuryDebuffMode(String raw) {
-        if (raw == null) {
-            return FirstAid.InjuryDebuffMode.NORMAL;
-        }
-        for (FirstAid.InjuryDebuffMode mode : FirstAid.InjuryDebuffMode.values()) {
-            if (mode.name().equalsIgnoreCase(raw)) {
-                return mode;
+            for (Entry<String, JsonElement> entry : object.entrySet()) {
+               Identifier id = Identifier.tryParse(entry.getKey());
+               if (id != null && entry.getValue().isJsonPrimitive()) {
+                  values.put(id, parseInjuryDebuffMode(entry.getValue().getAsString()));
+               }
             }
-        }
-        return FirstAid.InjuryDebuffMode.NORMAL;
-    }
+
+            return values;
+         } else {
+            return new LinkedHashMap<>();
+         }
+      }, value -> {
+         JsonObject object = new JsonObject();
+
+         for (Entry<Identifier, FirstAid.InjuryDebuffMode> entry : value.entrySet()) {
+            object.addProperty(entry.getKey().toString(), entry.getValue().name().toLowerCase(Locale.ROOT));
+         }
+
+         return object;
+      }, null);
+   }
+
+   private static FirstAid.InjuryDebuffMode parseInjuryDebuffMode(String raw) {
+      if (raw == null) {
+         return FirstAid.InjuryDebuffMode.NORMAL;
+      } else {
+         for (FirstAid.InjuryDebuffMode mode : FirstAid.InjuryDebuffMode.values()) {
+            if (mode.name().equalsIgnoreCase(raw)) {
+               return mode;
+            }
+         }
+
+         return FirstAid.InjuryDebuffMode.NORMAL;
+      }
+   }
+
+   public static final class Client extends FirstAidConfig.ConfigSection {
+      public final FirstAidConfig.ConfigValue<FirstAidConfig.Client.VanillaHealthbarMode> vanillaHealthBarMode = this.define(
+         FirstAidConfig.enumValue("vanillaHealthBarMode", FirstAidConfig.Client.VanillaHealthbarMode.HIDE, FirstAidConfig.Client.VanillaHealthbarMode.class)
+      );
+      public final FirstAidConfig.ConfigValue<FirstAidConfig.Client.OverlayMode> overlayMode = this.define(
+         FirstAidConfig.enumValue("overlayMode", FirstAidConfig.Client.OverlayMode.PLAYER_MODEL, FirstAidConfig.Client.OverlayMode.class)
+      );
+      public final FirstAidConfig.ConfigValue<FirstAidConfig.Client.Position> pos = this.define(
+         FirstAidConfig.enumValue("overlayPosition", FirstAidConfig.Client.Position.TOP_LEFT, FirstAidConfig.Client.Position.class)
+      );
+      public final FirstAidConfig.ConfigValue<FirstAidConfig.Client.TooltipMode> armorTooltipMode = this.define(
+         FirstAidConfig.enumValue("armorTooltipMode", FirstAidConfig.Client.TooltipMode.REPLACE, FirstAidConfig.Client.TooltipMode.class)
+      );
+      public final FirstAidConfig.ConfigValue<Integer> xOffset = this.define(FirstAidConfig.intValue("xOffset", 0, -32768, 32767));
+      public final FirstAidConfig.ConfigValue<Integer> yOffset = this.define(FirstAidConfig.intValue("yOffset", 1, -32768, 32767));
+      public final FirstAidConfig.ConfigValue<Integer> alpha = this.define(FirstAidConfig.intValue("alpha", 50, 0, 200));
+      public final FirstAidConfig.ConfigValue<Boolean> enableSounds;
+      public final FirstAidConfig.ConfigValue<Boolean> enableEasterEggs;
+      public final FirstAidConfig.ConfigValue<Integer> visibleDurationTicks = this.define(FirstAidConfig.intValue("visibleDurationTicks", -1, -1, 600));
+      public final FirstAidConfig.ConfigValue<Boolean> flash = this.define(FirstAidConfig.boolValue("flash", true));
+
+      public Client() {
+         this.enableSounds = this.define(FirstAidConfig.boolValue("enableSoundSystem", true));
+         this.enableEasterEggs = this.define(FirstAidConfig.boolValue("enableEasterEggs", true));
+      }
+
+      public static enum OverlayMode {
+         OFF,
+         NUMBERS,
+         HEARTS,
+         PLAYER_MODEL,
+         PLAYER_MODEL_4_COLORS;
+
+         public boolean isPlayerModel() {
+            return this == PLAYER_MODEL || this == PLAYER_MODEL_4_COLORS;
+         }
+      }
+
+      public static enum Position {
+         TOP_LEFT,
+         TOP_RIGHT,
+         BOTTOM_RIGHT,
+         BOTTOM_LEFT;
+      }
+
+      public static enum TooltipMode {
+         REPLACE,
+         APPEND,
+         NONE;
+      }
+
+      public static enum VanillaHealthbarMode {
+         NORMAL,
+         HIGHLIGHT_CRITICAL_PATH,
+         HIDE;
+      }
+   }
+
+   private abstract static class ConfigSection {
+      private final Map<String, FirstAidConfig.ConfigValue<?>> values = new LinkedHashMap<>();
+
+      protected final <T> FirstAidConfig.ConfigValue<T> define(FirstAidConfig.ConfigValue<T> value) {
+         this.values.put(value.key, value);
+         return value;
+      }
+
+      protected void read(JsonObject data) {
+         for (FirstAidConfig.ConfigValue<?> value : this.values.values()) {
+            value.load(data);
+         }
+      }
+
+      protected JsonObject write() {
+         JsonObject root = new JsonObject();
+
+         for (FirstAidConfig.ConfigValue<?> value : this.values.values()) {
+            value.write(root);
+         }
+
+         return root;
+      }
+   }
+
+   public static final class ConfigValue<T> {
+      private final String key;
+      private final T defaultValue;
+      private final Function<JsonElement, T> parser;
+      private final Function<T, JsonElement> serializer;
+      private final Predicate<T> validator;
+      private T value;
+
+      private ConfigValue(String key, T defaultValue, Function<JsonElement, T> parser, Function<T, JsonElement> serializer, Predicate<T> validator) {
+         this.key = key;
+         this.defaultValue = defaultValue;
+         this.parser = parser;
+         this.serializer = serializer;
+         this.validator = validator;
+         this.value = defaultValue;
+      }
+
+      public T get() {
+         return this.value;
+      }
+
+      public void set(T value) {
+         this.value = Objects.requireNonNull(value);
+      }
+
+      private void load(JsonObject data) {
+         if (data != null && data.has(this.key)) {
+            try {
+               T parsed = this.parser.apply(data.get(this.key));
+               if (this.validator != null && !this.validator.test(parsed)) {
+                  FirstAid.LOGGER.warn("Config value {} out of range, resetting to default", this.key);
+                  this.value = this.defaultValue;
+               } else {
+                  this.value = parsed;
+               }
+            } catch (Exception var3) {
+               FirstAid.LOGGER.warn("Failed parsing config value {}: {}", this.key, var3.getMessage());
+               this.value = this.defaultValue;
+            }
+         } else {
+            this.value = this.defaultValue;
+         }
+      }
+
+      private void write(JsonObject data) {
+         data.add(this.key, this.serializer.apply(this.value));
+      }
+   }
+
+   public static final class General extends FirstAidConfig.ConfigSection {
+      public final FirstAidConfig.ConfigValue<Boolean> debug = this.define(FirstAidConfig.boolValue("debug", false));
+   }
+
+   public static final class Server extends FirstAidConfig.ConfigSection {
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthHead = this.define(FirstAidConfig.intValue("maxHealthHead", 7, 2, 12));
+      public final FirstAidConfig.ConfigValue<Boolean> causeDeathHead;
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftArm = this.define(FirstAidConfig.intValue("maxHealthLeftArm", 4, 2, 12));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftLeg = this.define(FirstAidConfig.intValue("maxHealthLeftLeg", 4, 2, 12));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftFoot = this.define(FirstAidConfig.intValue("maxHealthLeftFoot", 4, 2, 12));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthBody = this.define(FirstAidConfig.intValue("maxHealthBody", 11, 2, 12));
+      public final FirstAidConfig.ConfigValue<Boolean> causeDeathBody;
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightArm = this.define(FirstAidConfig.intValue("maxHealthRightArm", 4, 2, 12));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightLeg = this.define(FirstAidConfig.intValue("maxHealthRightLeg", 4, 2, 12));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightFoot = this.define(FirstAidConfig.intValue("maxHealthRightFoot", 4, 2, 12));
+      public final FirstAidConfig.ConfigValue<Double> headArmorMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> chestArmorMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> legsArmorMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> feetArmorMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> headArmorOffset;
+      public final FirstAidConfig.ConfigValue<Double> chestArmorOffset;
+      public final FirstAidConfig.ConfigValue<Double> legsArmorOffset;
+      public final FirstAidConfig.ConfigValue<Double> feetArmorOffset;
+      public final FirstAidConfig.ConfigValue<Double> headThoughnessMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> chestThoughnessMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> legsThoughnessMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> feetThoughnessMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> headThoughnessOffset;
+      public final FirstAidConfig.ConfigValue<Double> chestThoughnessOffset;
+      public final FirstAidConfig.ConfigValue<Double> legsThoughnessOffset;
+      public final FirstAidConfig.ConfigValue<Double> feetThoughnessOffset;
+      public final FirstAidConfig.Server.IEEntry bandage;
+      public final FirstAidConfig.Server.IEEntry plaster;
+      public final FirstAidConfig.ConfigValue<Boolean> allowNaturalRegeneration;
+      public final FirstAidConfig.ConfigValue<Boolean> allowOtherHealingItems;
+      public final FirstAidConfig.ConfigValue<Double> sleepHealPercentage;
+      public final FirstAidConfig.ConfigValue<Double> otherRegenMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> naturalRegenMultiplier;
+      public final FirstAidConfig.ConfigValue<Integer> resistanceReductionPercentPerLevel;
+      public final FirstAidConfig.ConfigValue<Boolean> scaleMaxHealth;
+      public final FirstAidConfig.ConfigValue<Boolean> capMaxHealth;
+      public final FirstAidConfig.ConfigValue<FirstAidConfig.Server.VanillaHealthCalculationMode> vanillaHealthCalculation;
+      public final FirstAidConfig.ConfigValue<Boolean> useFriendlyRandomDistribution;
+      public final FirstAidConfig.ConfigValue<FirstAidConfig.Server.ArmorEnchantmentMode> armorEnchantmentMode;
+      public final FirstAidConfig.ConfigValue<Integer> enchantmentMultiplier;
+      public final FirstAidConfig.ConfigValue<List<String>> enchMulOverrideIdentifiers;
+      public final FirstAidConfig.ConfigValue<List<Integer>> enchMulOverrideMultiplier;
+      public final FirstAidConfig.ConfigValue<Boolean> dynamicPainEnabled;
+      public final FirstAidConfig.ConfigValue<Boolean> lowSuppressionEnabled;
+      public final FirstAidConfig.ConfigValue<Boolean> rescueWakeUpEnabled;
+      public final FirstAidConfig.ConfigValue<FirstAid.MedicineEffectMode> medicineEffectMode;
+      public final FirstAidConfig.ConfigValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
+      public final FirstAidConfig.ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
+
+      public Server() {
+         this.causeDeathHead = this.define(FirstAidConfig.boolValue("causeDeathHead", true));
+         this.causeDeathBody = this.define(FirstAidConfig.boolValue("causeDeathBody", true));
+         this.headArmorMultiplier = this.define(FirstAidConfig.doubleValue("headArmorMultiplier", 6.0, 1.0, 16.0));
+         this.chestArmorMultiplier = this.define(FirstAidConfig.doubleValue("chestArmorMultiplier", 2.5, 1.0, 16.0));
+         this.legsArmorMultiplier = this.define(FirstAidConfig.doubleValue("legsArmorMultiplier", 3.0, 1.0, 16.0));
+         this.feetArmorMultiplier = this.define(FirstAidConfig.doubleValue("feetArmorMultiplier", 6.0, 1.0, 16.0));
+         this.headArmorOffset = this.define(FirstAidConfig.doubleValue("headArmorOffset", 1.0, 0.0, 4.0));
+         this.chestArmorOffset = this.define(FirstAidConfig.doubleValue("chestArmorOffset", 0.0, 0.0, 4.0));
+         this.legsArmorOffset = this.define(FirstAidConfig.doubleValue("legsArmorOffset", 0.0, 0.0, 4.0));
+         this.feetArmorOffset = this.define(FirstAidConfig.doubleValue("feetArmorOffset", 0.0, 0.0, 4.0));
+         this.headThoughnessMultiplier = this.define(FirstAidConfig.doubleValue("headThoughnessMultiplier", 4.0, 1.0, 16.0));
+         this.chestThoughnessMultiplier = this.define(FirstAidConfig.doubleValue("chestThoughnessMultiplier", 3.0, 1.0, 16.0));
+         this.legsThoughnessMultiplier = this.define(FirstAidConfig.doubleValue("legsThoughnessMultiplier", 3.0, 1.0, 16.0));
+         this.feetThoughnessMultiplier = this.define(FirstAidConfig.doubleValue("feetThoughnessMultiplier", 3.5, 1.0, 16.0));
+         this.headThoughnessOffset = this.define(FirstAidConfig.doubleValue("headThoughnessOffset", 0.0, 0.0, 4.0));
+         this.chestThoughnessOffset = this.define(FirstAidConfig.doubleValue("chestThoughnessOffset", 0.0, 0.0, 4.0));
+         this.legsThoughnessOffset = this.define(FirstAidConfig.doubleValue("legsThoughnessOffset", 0.0, 0.0, 4.0));
+         this.feetThoughnessOffset = this.define(FirstAidConfig.doubleValue("feetThoughnessOffset", 0.0, 0.0, 4.0));
+         this.bandage = new FirstAidConfig.Server.IEEntry(this, "bandage", 4, 18, 2500);
+         this.plaster = new FirstAidConfig.Server.IEEntry(this, "plaster", 2, 22, 3000);
+         this.allowNaturalRegeneration = this.define(FirstAidConfig.boolValue("allowNaturalRegeneration", false));
+         this.allowOtherHealingItems = this.define(FirstAidConfig.boolValue("allowOtherHealingItems", true));
+         this.sleepHealPercentage = this.define(FirstAidConfig.doubleValue("sleepHealPercentage", 0.07, 0.0, 1.0));
+         this.otherRegenMultiplier = this.define(FirstAidConfig.doubleValue("otherRegenMultiplier", 0.75, 0.0, 20.0));
+         this.naturalRegenMultiplier = this.define(FirstAidConfig.doubleValue("naturalRegenMultiplier", 0.5, 0.0, 20.0));
+         this.resistanceReductionPercentPerLevel = this.define(FirstAidConfig.intValue("resistanceReductionPercentPerLevel", 20, 1, 40));
+         this.scaleMaxHealth = this.define(FirstAidConfig.boolValue("scaleMaxHealth", true));
+         this.capMaxHealth = this.define(FirstAidConfig.boolValue("capMaxHealth", true));
+         this.vanillaHealthCalculation = this.define(
+            FirstAidConfig.enumValue(
+               "vanillaHealthCalculation",
+               FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL,
+               FirstAidConfig.Server.VanillaHealthCalculationMode.class
+            )
+         );
+         this.useFriendlyRandomDistribution = this.define(FirstAidConfig.boolValue("useFriendlyRandomDistribution", false));
+         this.armorEnchantmentMode = this.define(
+            FirstAidConfig.enumValue(
+               "armorEnchantmentMode", FirstAidConfig.Server.ArmorEnchantmentMode.LOCAL_ENCHANTMENTS, FirstAidConfig.Server.ArmorEnchantmentMode.class
+            )
+         );
+         this.enchantmentMultiplier = this.define(FirstAidConfig.intValue("enchantmentMultiplier", 4, 1, 4));
+         this.enchMulOverrideIdentifiers = this.define(
+            FirstAidConfig.stringList("enchantmentOverrideIdentifiers", Collections.singletonList("minecraft:feather_falling"), value -> !value.isBlank())
+         );
+         this.enchMulOverrideMultiplier = this.define(
+            FirstAidConfig.intList("enchantmentOverrideMultiplier", Collections.singletonList(2), value -> value >= 1 && value <= 4)
+         );
+         this.dynamicPainEnabled = this.define(FirstAidConfig.boolValue("dynamicPainEnabled", true));
+         this.lowSuppressionEnabled = this.define(FirstAidConfig.boolValue("lowSuppressionEnabled", false));
+         this.rescueWakeUpEnabled = this.define(FirstAidConfig.boolValue("rescueWakeUpEnabled", false));
+         this.medicineEffectMode = this.define(
+            FirstAidConfig.enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class)
+         );
+         this.injuryDebuffMode = this.define(FirstAidConfig.enumValue("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL, FirstAid.InjuryDebuffMode.class));
+         this.injuryDebuffOverrides = this.define(FirstAidConfig.injuryDebuffOverridesValue("injuryDebuffOverrides"));
+      }
+
+      public static enum ArmorEnchantmentMode {
+         GLOBAL_ENCHANTMENTS,
+         LOCAL_ENCHANTMENTS;
+      }
+
+      public static final class IEEntry {
+         public final FirstAidConfig.ConfigValue<Integer> totalHeals;
+         public final FirstAidConfig.ConfigValue<Integer> secondsPerHeal;
+         public final FirstAidConfig.ConfigValue<Integer> applyTime;
+
+         IEEntry(FirstAidConfig.Server owner, String name, int initialTotalHeals, int initialSecondsPerHeal, int initialApplyTime) {
+            this.totalHeals = owner.define(FirstAidConfig.intValue(name + "TotalHeals", initialTotalHeals, 1, 127));
+            this.secondsPerHeal = owner.define(FirstAidConfig.intValue(name + "SecondsPerHeal", initialSecondsPerHeal, 1, 32767));
+            this.applyTime = owner.define(FirstAidConfig.intValue(name + "ApplyTime", initialApplyTime, 0, 16000));
+         }
+      }
+
+      public static enum VanillaHealthCalculationMode {
+         AVERAGE_ALL,
+         AVERAGE_CRITICAL,
+         MIN_CRITICAL,
+         CRITICAL_50_PERCENT_OTHER_50_PERCENT;
+      }
+   }
 }

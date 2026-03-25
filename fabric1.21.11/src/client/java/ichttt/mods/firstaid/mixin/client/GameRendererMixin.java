@@ -11,9 +11,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
-    @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
-    private void firstaid$getFov(Camera camera, float partialTick, boolean useFovSetting, CallbackInfoReturnable<Float> cir) {
-        SuppressionFeedbackController controller = ClientEventHandler.getSuppressionFeedbackController();
-        cir.setReturnValue(controller.applyFov(cir.getReturnValueF()));
-    }
+   @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
+   private void firstaid$getFov(Camera camera, float partialTick, boolean useFovSetting, CallbackInfoReturnable<Float> cir) {
+      SuppressionFeedbackController controller = ClientEventHandler.getSuppressionFeedbackController();
+      cir.setReturnValue(controller.applyFov(cir.getReturnValueF()));
+   }
 }

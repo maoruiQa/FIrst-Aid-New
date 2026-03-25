@@ -1,33 +1,13 @@
-/*
- * FirstAid
- * Copyright (C) 2017-2024
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package ichttt.mods.firstaid.common;
-
-import ichttt.mods.firstaid.FirstAid;
-import net.minecraft.resources.Identifier;
 
 import java.util.HashSet;
 import java.util.Set;
+import net.minecraft.resources.Identifier;
 
 public final class CapProvider {
-    public static final Identifier DAMAGE_MODEL_ID = Identifier.fromNamespaceAndPath(FirstAid.MODID, "damage_model");
-    public static final Set<String> tutorialDone = new HashSet<>();
+   public static final Identifier DAMAGE_MODEL_ID = Identifier.fromNamespaceAndPath("firstaid", "damage_model");
+   public static final Set<String> tutorialDone = new HashSet<>();
 
-    private CapProvider() {
-    }
+   private CapProvider() {
+   }
 }

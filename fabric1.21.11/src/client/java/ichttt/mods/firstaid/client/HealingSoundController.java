@@ -2,172 +2,159 @@ package ichttt.mods.firstaid.client;
 
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.common.RegistryObjects;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.resources.sounds.TickableSoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance.Attenuation;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.client.sounds.WeighedSoundEvents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
 public final class HealingSoundController {
-    private static @Nullable PillsUseSound activePillsSound;
+   @Nullable
+   private static HealingSoundController.PillsUseSound activePillsSound;
 
-    private HealingSoundController() {
-    }
+   private HealingSoundController() {
+   }
 
-    public static void tick(Minecraft minecraft) {
-        if (!FirstAidConfig.CLIENT.enableSounds.get()) {
-            stopPillsSound(minecraft.getSoundManager());
-            return;
-        }
-        LocalPlayer player = minecraft.player;
-        if (player == null || !player.isAlive() || !isUsingPills(player)) {
-            stopPillsSound(minecraft.getSoundManager());
-            return;
-        }
-        if (activePillsSound == null || activePillsSound.isStopped()) {
-            activePillsSound = new PillsUseSound(player, RegistryObjects.PILLS_USE.value());
-            minecraft.getSoundManager().play(activePillsSound);
-        }
-    }
-
-    public static void clear() {
-        stopPillsSound(Minecraft.getInstance().getSoundManager());
-    }
-
-    public static void playHealingApplySound() {
-        Minecraft minecraft = Minecraft.getInstance();
-        LocalPlayer player = minecraft.player;
-        if (!FirstAidConfig.CLIENT.enableSounds.get() || player == null) {
-            return;
-        }
-        player.playSound(RegistryObjects.BANDAGE_USE.value(), 1.0F, 1.0F);
-    }
-
-    private static boolean isUsingPills(LocalPlayer player) {
-        if (!player.isUsingItem()) {
-            return false;
-        }
-        ItemStack stack = player.getUseItem();
-        return stack.is(RegistryObjects.MORPHINE.get()) || stack.is(RegistryObjects.PAINKILLERS.get());
-    }
-
-    private static void stopPillsSound(SoundManager soundManager) {
-        if (activePillsSound == null) {
-            return;
-        }
-        activePillsSound.stop();
-        soundManager.stop(activePillsSound);
-        activePillsSound = null;
-    }
-
-    private static final class PillsUseSound implements TickableSoundInstance {
-        private final LocalPlayer player;
-        private final Identifier location;
-        private Sound sound = SoundManager.EMPTY_SOUND;
-        private boolean stopped;
-
-        private PillsUseSound(LocalPlayer player, SoundEvent event) {
-            this.player = player;
-            this.location = event.location();
-        }
-
-        private void stop() {
-            stopped = true;
-        }
-
-        @Override
-        public boolean isStopped() {
-            return stopped || !player.isAlive() || !isUsingPills(player);
-        }
-
-        @Override
-        public void tick() {
-            if (!player.isAlive() || !isUsingPills(player)) {
-                stopped = true;
+   public static void tick(Minecraft minecraft) {
+      if (!(Boolean)FirstAidConfig.CLIENT.enableSounds.get()) {
+         stopPillsSound(minecraft.getSoundManager());
+      } else {
+         LocalPlayer player = minecraft.player;
+         if (player != null && player.isAlive() && isUsingPills(player)) {
+            if (activePillsSound == null || activePillsSound.isStopped()) {
+               activePillsSound = new HealingSoundController.PillsUseSound(player, (SoundEvent)RegistryObjects.PILLS_USE.value());
+               minecraft.getSoundManager().play(activePillsSound);
             }
-        }
+         } else {
+            stopPillsSound(minecraft.getSoundManager());
+         }
+      }
+   }
 
-        @Nonnull
-        @Override
-        public Identifier getIdentifier() {
-            return location;
-        }
+   public static void clear() {
+      stopPillsSound(Minecraft.getInstance().getSoundManager());
+   }
 
-        @Nullable
-        @Override
-        public WeighedSoundEvents resolve(@Nonnull SoundManager soundManager) {
-            WeighedSoundEvents events = soundManager.getSoundEvent(location);
-            if (events != null) {
-                sound = events.getSound(SoundInstance.createUnseededRandom());
-            }
-            return events;
-        }
+   public static void playHealingApplySound() {
+      Minecraft minecraft = Minecraft.getInstance();
+      LocalPlayer player = minecraft.player;
+      if ((Boolean)FirstAidConfig.CLIENT.enableSounds.get() && player != null) {
+         player.playSound((SoundEvent)RegistryObjects.BANDAGE_USE.value(), 1.0F, 1.0F);
+      }
+   }
 
-        @Nonnull
-        @Override
-        public Sound getSound() {
-            return sound;
-        }
+   private static boolean isUsingPills(LocalPlayer player) {
+      if (!player.isUsingItem()) {
+         return false;
+      } else {
+         ItemStack stack = player.getUseItem();
+         return stack.is((Item)RegistryObjects.MORPHINE.get()) || stack.is((Item)RegistryObjects.PAINKILLERS.get());
+      }
+   }
 
-        @Nonnull
-        @Override
-        public SoundSource getSource() {
-            return SoundSource.PLAYERS;
-        }
+   private static void stopPillsSound(SoundManager soundManager) {
+      if (activePillsSound != null) {
+         activePillsSound.stop();
+         soundManager.stop(activePillsSound);
+         activePillsSound = null;
+      }
+   }
 
-        @Override
-        public boolean isLooping() {
-            return true;
-        }
+   private static final class PillsUseSound implements TickableSoundInstance {
+      private final LocalPlayer player;
+      private final Identifier location;
+      private Sound sound = SoundManager.EMPTY_SOUND;
+      private boolean stopped;
 
-        @Override
-        public boolean isRelative() {
-            return false;
-        }
+      private PillsUseSound(LocalPlayer player, SoundEvent event) {
+         this.player = player;
+         this.location = event.location();
+      }
 
-        @Override
-        public int getDelay() {
-            return 0;
-        }
+      private void stop() {
+         this.stopped = true;
+      }
 
-        @Override
-        public float getVolume() {
-            return 0.85F;
-        }
+      public boolean isStopped() {
+         return this.stopped || !this.player.isAlive() || !HealingSoundController.isUsingPills(this.player);
+      }
 
-        @Override
-        public float getPitch() {
-            return 1.0F;
-        }
+      public void tick() {
+         if (!this.player.isAlive() || !HealingSoundController.isUsingPills(this.player)) {
+            this.stopped = true;
+         }
+      }
 
-        @Override
-        public double getX() {
-            return player.getX();
-        }
+      @Nonnull
+      public Identifier getIdentifier() {
+         return this.location;
+      }
 
-        @Override
-        public double getY() {
-            return player.getY();
-        }
+      @Nullable
+      public WeighedSoundEvents resolve(@Nonnull SoundManager soundManager) {
+         WeighedSoundEvents events = soundManager.getSoundEvent(this.location);
+         if (events != null) {
+            this.sound = events.getSound(SoundInstance.createUnseededRandom());
+         }
 
-        @Override
-        public double getZ() {
-            return player.getZ();
-        }
+         return events;
+      }
 
-        @Nonnull
-        @Override
-        public Attenuation getAttenuation() {
-            return Attenuation.NONE;
-        }
-    }
+      @Nonnull
+      public Sound getSound() {
+         return this.sound;
+      }
+
+      @Nonnull
+      public SoundSource getSource() {
+         return SoundSource.PLAYERS;
+      }
+
+      public boolean isLooping() {
+         return true;
+      }
+
+      public boolean isRelative() {
+         return false;
+      }
+
+      public int getDelay() {
+         return 0;
+      }
+
+      public float getVolume() {
+         return 0.85F;
+      }
+
+      public float getPitch() {
+         return 1.0F;
+      }
+
+      public double getX() {
+         return this.player.getX();
+      }
+
+      public double getY() {
+         return this.player.getY();
+      }
+
+      public double getZ() {
+         return this.player.getZ();
+      }
+
+      @Nonnull
+      public Attenuation getAttenuation() {
+         return Attenuation.NONE;
+      }
+   }
 }

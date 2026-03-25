@@ -1,7 +1,7 @@
 package ichttt.mods.firstaid.api.util;
 
 public interface INBTSerializable<T> {
-    T serializeNBT();
+   T serializeNBT();
 
-    void deserializeNBT(T nbt);
+   void deserializeNBT(T var1);
 }

@@ -16,6 +16,7 @@
     "client.CameraMixin",
     "client.GuiMixin",
     "client.GameRendererMixin",
+    "client.AvatarRendererMixin",
     "client.LivingEntityRendererMixin",
     "client.LivingEntityRendererStateMixin",
     "client.MouseHandlerMixin",

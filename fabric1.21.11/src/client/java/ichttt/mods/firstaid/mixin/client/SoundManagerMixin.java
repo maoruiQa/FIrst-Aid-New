@@ -10,10 +10,10 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 @Mixin(SoundManager.class)
 public abstract class SoundManagerMixin {
-    @ModifyVariable(method = "play", at = @At("HEAD"), argsOnly = true)
-    private SoundInstance firstaid$modifySound(SoundInstance sound) {
-        SuppressionFeedbackController controller = ClientEventHandler.getSuppressionFeedbackController();
-        SoundInstance modified = controller.maybeMuffle(sound);
-        return modified == null ? sound : modified;
-    }
+   @ModifyVariable(method = "play", at = @At("HEAD"), argsOnly = true)
+   private SoundInstance firstaid$modifySound(SoundInstance sound) {
+      SuppressionFeedbackController controller = ClientEventHandler.getSuppressionFeedbackController();
+      SoundInstance modified = controller.maybeMuffle(sound);
+      return modified == null ? sound : modified;
+   }
 }

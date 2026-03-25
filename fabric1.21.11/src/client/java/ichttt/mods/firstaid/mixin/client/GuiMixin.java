@@ -1,6 +1,8 @@
 package ichttt.mods.firstaid.mixin.client;
 
 import ichttt.mods.firstaid.FirstAidConfig;
+import ichttt.mods.firstaid.FirstAidConfig.Client.VanillaHealthbarMode;
+import ichttt.mods.firstaid.FirstAidConfig.Server.VanillaHealthCalculationMode;
 import ichttt.mods.firstaid.client.gui.FirstaidIngameGui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
@@ -13,23 +15,32 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Gui.class)
 public abstract class GuiMixin {
-    @Inject(method = "renderHearts", at = @At("HEAD"), cancellable = true)
-    private void firstaid$renderHearts(GuiGraphics guiGraphics, Player player, int x, int y, int lineHeight, int regen, float maxHealth, int currentHealth, int displayHealth, int absorption, boolean blinking, CallbackInfo ci) {
-        FirstAidConfig.Client.VanillaHealthbarMode mode = FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
-        if (mode == FirstAidConfig.Client.VanillaHealthbarMode.NORMAL) {
-            return;
-        }
-
-        ci.cancel();
-        if (mode != FirstAidConfig.Client.VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
-                || FirstAidConfig.SERVER.vanillaHealthCalculation.get() != FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL) {
-            return;
-        }
-
-        Minecraft mc = Minecraft.getInstance();
-        Gui gui = (Gui) (Object) this;
-        if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.options.hideGui) {
-            FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), guiGraphics);
-        }
-    }
+   @Inject(method = "renderHearts", at = @At("HEAD"), cancellable = true)
+   private void firstaid$renderHearts(
+      GuiGraphics guiGraphics,
+      Player player,
+      int x,
+      int y,
+      int lineHeight,
+      int regen,
+      float maxHealth,
+      int currentHealth,
+      int displayHealth,
+      int absorption,
+      boolean blinking,
+      CallbackInfo ci
+   ) {
+      VanillaHealthbarMode mode = (VanillaHealthbarMode)FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
+      if (mode != VanillaHealthbarMode.NORMAL) {
+         ci.cancel();
+         if (mode == VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
+            && FirstAidConfig.SERVER.vanillaHealthCalculation.get() == VanillaHealthCalculationMode.AVERAGE_ALL) {
+            Minecraft mc = Minecraft.getInstance();
+            Gui gui = (Gui)(Object)this;
+            if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.options.hideGui) {
+               FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), guiGraphics);
+            }
+         }
+      }
+   }
 }

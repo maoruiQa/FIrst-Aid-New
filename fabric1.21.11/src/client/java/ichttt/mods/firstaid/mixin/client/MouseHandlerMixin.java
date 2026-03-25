@@ -11,20 +11,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(MouseHandler.class)
 public abstract class MouseHandlerMixin {
-    private static final double UNCONSCIOUS_TURN_SCALE = 0.12D;
+   private static final double UNCONSCIOUS_TURN_SCALE = 0.12;
+   @Shadow
+   private double accumulatedDX;
+   @Shadow
+   private double accumulatedDY;
 
-    @Shadow
-    private double accumulatedDX;
-
-    @Shadow
-    private double accumulatedDY;
-
-    @Inject(method = "turnPlayer", at = @At("HEAD"))
-    private void firstaid$turnPlayer(double movementTime, CallbackInfo ci) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null && ClientEventHandler.isUnconscious(mc.player)) {
-            this.accumulatedDX *= UNCONSCIOUS_TURN_SCALE;
-            this.accumulatedDY *= UNCONSCIOUS_TURN_SCALE;
-        }
-    }
+   @Inject(method = "turnPlayer", at = @At("HEAD"))
+   private void firstaid$turnPlayer(double movementTime, CallbackInfo ci) {
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.player != null && ClientEventHandler.isUnconscious(mc.player)) {
+         this.accumulatedDX *= 0.12;
+         this.accumulatedDY *= 0.12;
+      }
+   }
 }

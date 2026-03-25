@@ -16,22 +16,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererStateMixin<T extends LivingEntity, S extends LivingEntityRenderState, M extends EntityModel<? super S>> {
-    @Inject(method = "extractRenderState", at = @At("TAIL"))
-    private void firstaid$extractRenderState(T entity, S renderState, float partialTick, CallbackInfo ci) {
-        if (!(renderState instanceof FabricRenderState fabricState)) {
-            return;
-        }
-        fabricState.setData(RenderStateExtensions.PASSENGER, entity.isPassenger());
-        boolean unconscious = false;
-        float collapseProgress = 1.0F;
-        if (entity instanceof Player player) {
-            var damageModel = CommonUtils.getExistingDamageModel(player);
-            if (damageModel instanceof PlayerDamageModel playerDamageModel) {
-                unconscious = playerDamageModel.isUnconscious();
-                collapseProgress = playerDamageModel.getCollapseAnimationProgress(partialTick);
-            }
-        }
-        fabricState.setData(RenderStateExtensions.UNCONSCIOUS, unconscious);
-        fabricState.setData(RenderStateExtensions.COLLAPSE_PROGRESS, collapseProgress);
-    }
+   @Inject(method = "extractRenderState", at = @At("TAIL"))
+   private void firstaid$extractRenderState(T entity, S renderState, float partialTick, CallbackInfo ci) {
+      if (renderState instanceof FabricRenderState) {
+         renderState.setData(RenderStateExtensions.PASSENGER, entity.isPassenger());
+         boolean unconscious = false;
+         float collapseProgress = 1.0F;
+         if (entity instanceof Player player && CommonUtils.getExistingDamageModel(player) instanceof PlayerDamageModel playerDamageModel) {
+            unconscious = playerDamageModel.isUnconscious();
+            collapseProgress = playerDamageModel.getCollapseAnimationProgress(partialTick);
+         }
+
+         renderState.setData(RenderStateExtensions.UNCONSCIOUS, unconscious);
+         renderState.setData(RenderStateExtensions.COLLAPSE_PROGRESS, collapseProgress);
+      }
+   }
 }

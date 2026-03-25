@@ -4,8 +4,7 @@ import ichttt.mods.firstaid.FirstAid;
 import net.fabricmc.api.ModInitializer;
 
 public class FirstAidFabricEntrypoint implements ModInitializer {
-    @Override
-    public void onInitialize() {
-        FirstAid.initCommon();
-    }
+   public void onInitialize() {
+      FirstAid.initCommon();
+   }
 }

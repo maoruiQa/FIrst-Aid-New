@@ -1,30 +1,18 @@
-/*
- * FirstAid
- * Copyright (C) 2017-2024
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package ichttt.mods.firstaid.client;
 
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
+import java.util.Map;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.resources.sounds.TickableSoundInstance;
+import net.minecraft.client.resources.sounds.SoundInstance.Attenuation;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.client.sounds.WeighedSoundEvents;
 import net.minecraft.resources.Identifier;
@@ -32,152 +20,125 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.lang.ref.WeakReference;
-import java.util.HashMap;
-import java.util.Map;
-
 public class DebuffTimedSound implements TickableSoundInstance {
-    private static final float volumeMultiplier = 1.25F;
-    private final static Map<SoundEvent, DebuffTimedSound> ACTIVE_SOUNDS = new HashMap<>();
-    private final float minusPerTick;
-    private final int debuffDuration;
-    private final Identifier soundLocation;
-    private final SoundEvent event;
-    private final WeakReference<LocalPlayer> player;
-    private final RandomSource random = SoundInstance.createUnseededRandom();
-    private Sound sound;
-    private float volume = volumeMultiplier;
-    private int ticks;
+   private static final float volumeMultiplier = 1.25F;
+   private static final Map<SoundEvent, DebuffTimedSound> ACTIVE_SOUNDS = new HashMap<>();
+   private final float minusPerTick;
+   private final int debuffDuration;
+   private final Identifier soundLocation;
+   private final SoundEvent event;
+   private final WeakReference<LocalPlayer> player;
+   private final RandomSource random = SoundInstance.createUnseededRandom();
+   private Sound sound;
+   private float volume = 1.25F;
+   private int ticks;
 
-    public static void playHurtSound(SoundEvent event, int duration) {
-        if (!FirstAidConfig.CLIENT.enableSounds.get())
-            return;
-        SoundManager soundHandler = Minecraft.getInstance().getSoundManager();
-        DebuffTimedSound matchingSound = ACTIVE_SOUNDS.get(event);
-        if (matchingSound != null) {
-            if (!matchingSound.isStopped())
-                soundHandler.stop(matchingSound);
+   public static void playHurtSound(SoundEvent event, int duration) {
+      if ((Boolean)FirstAidConfig.CLIENT.enableSounds.get()) {
+         SoundManager soundHandler = Minecraft.getInstance().getSoundManager();
+         DebuffTimedSound matchingSound = ACTIVE_SOUNDS.get(event);
+         if (matchingSound != null) {
+            if (!matchingSound.isStopped()) {
+               soundHandler.stop(matchingSound);
+            }
+
             ACTIVE_SOUNDS.remove(event);
-        }
-        DebuffTimedSound newSound = new DebuffTimedSound(event, duration);
-        soundHandler.play(newSound);
-        ACTIVE_SOUNDS.put(event, newSound);
-    }
+         }
 
-    public DebuffTimedSound(SoundEvent event, int debuffDuration) {
-        this.event = event;
-        this.soundLocation = event.location();
-        this.player = new WeakReference<>(Minecraft.getInstance().player);
-        this.debuffDuration = Integer.min(15 * 20, debuffDuration);
-        this.minusPerTick = (1F / this.debuffDuration) * volumeMultiplier;
-    }
+         DebuffTimedSound newSound = new DebuffTimedSound(event, duration);
+         soundHandler.play(newSound);
+         ACTIVE_SOUNDS.put(event, newSound);
+      }
+   }
 
-    @Override
-    public boolean isStopped() {
-        LocalPlayer player = this.player.get();
-        boolean done = player == null || ticks >= debuffDuration || player.getHealth() <= 0;
-        if (done)
-            ACTIVE_SOUNDS.remove(this.event);
-        return done;
-    }
+   public DebuffTimedSound(SoundEvent event, int debuffDuration) {
+      this.event = event;
+      this.soundLocation = event.location();
+      this.player = new WeakReference<>(Minecraft.getInstance().player);
+      this.debuffDuration = Integer.min(300, debuffDuration);
+      this.minusPerTick = 1.0F / this.debuffDuration * 1.25F;
+   }
 
-    @Nonnull
-    @Override
-    public Identifier getIdentifier() {
-        return soundLocation;
-    }
+   public boolean isStopped() {
+      LocalPlayer player = this.player.get();
+      boolean done = player == null || this.ticks >= this.debuffDuration || player.getHealth() <= 0.0F;
+      if (done) {
+         ACTIVE_SOUNDS.remove(this.event);
+      }
 
-    @Nullable
-    @Override
-    public WeighedSoundEvents resolve(@Nonnull SoundManager handler) {
-        WeighedSoundEvents soundEventAccessor = handler.getSoundEvent(this.soundLocation);
+      return done;
+   }
 
-        if (soundEventAccessor == null)
-        {
-            FirstAid.LOGGER.warn("Missing sound for location " + this.soundLocation);
-            this.sound = SoundManager.EMPTY_SOUND;
-        }
-        else
-        {
-            this.sound = soundEventAccessor.getSound(random);
-        }
+   @Nonnull
+   public Identifier getIdentifier() {
+      return this.soundLocation;
+   }
 
-        return soundEventAccessor;
-    }
+   @Nullable
+   public WeighedSoundEvents resolve(@Nonnull SoundManager handler) {
+      WeighedSoundEvents soundEventAccessor = handler.getSoundEvent(this.soundLocation);
+      if (soundEventAccessor == null) {
+         FirstAid.LOGGER.warn("Missing sound for location " + this.soundLocation);
+         this.sound = SoundManager.EMPTY_SOUND;
+      } else {
+         this.sound = soundEventAccessor.getSound(this.random);
+      }
 
-    @Nonnull
-    @Override
-    public Sound getSound() {
-        return sound;
-    }
+      return soundEventAccessor;
+   }
 
-    @Nonnull
-    @Override
-    public SoundSource getSource() {
-        return SoundSource.PLAYERS;
-    }
+   @Nonnull
+   public Sound getSound() {
+      return this.sound;
+   }
 
-    @Override
-    public boolean isLooping() {
-        return false;
-    }
+   @Nonnull
+   public SoundSource getSource() {
+      return SoundSource.PLAYERS;
+   }
 
-    @Override
-    public boolean isRelative() {
-        return false;
-    }
+   public boolean isLooping() {
+      return false;
+   }
 
-    @Override
-    public int getDelay() {
-        return 0;
-    }
+   public boolean isRelative() {
+      return false;
+   }
 
-    @Override
-    public float getVolume() {
-        return volume;
-    }
+   public int getDelay() {
+      return 0;
+   }
 
-    @Override
-    public float getPitch() {
-        return 1F;
-    }
+   public float getVolume() {
+      return this.volume;
+   }
 
-    @Override
-    public double getX() {
-        LocalPlayer player = this.player.get();
-        if (player == null)
-            return 0F;
-        return player.getX();
-    }
+   public float getPitch() {
+      return 1.0F;
+   }
 
-    @Override
-    public double getY() {
-        LocalPlayer player = this.player.get();
-        if (player == null)
-            return 0F;
-        return player.getY();
-    }
+   public double getX() {
+      LocalPlayer player = this.player.get();
+      return player == null ? 0.0 : player.getX();
+   }
 
-    @Override
-    public double getZ() {
-        LocalPlayer player = this.player.get();
-        if (player == null)
-            return 0F;
-        return player.getZ();
-    }
+   public double getY() {
+      LocalPlayer player = this.player.get();
+      return player == null ? 0.0 : player.getY();
+   }
 
-    @Nonnull
-    @Override
-    public Attenuation getAttenuation() {
-        return Attenuation.NONE;
-    }
+   public double getZ() {
+      LocalPlayer player = this.player.get();
+      return player == null ? 0.0 : player.getZ();
+   }
 
-    @Override
-    public void tick() {
-        ticks++;
-        volume = Math.max(0.15F, volume - minusPerTick);
-    }
+   @Nonnull
+   public Attenuation getAttenuation() {
+      return Attenuation.NONE;
+   }
+
+   public void tick() {
+      this.ticks++;
+      this.volume = Math.max(0.15F, this.volume - this.minusPerTick);
+   }
 }
-
