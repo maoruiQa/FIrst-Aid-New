@@ -105,8 +105,10 @@ public final class EventHandler {
       recipeKey("bandage"), recipeKey("plaster"), recipeKey("morphine"), recipeKey("painkillers")
    );
    private static final int RESCUE_DURATION_TICKS = PlayerDamageModel.getRescueDurationTicks();
+   private static final int EXECUTION_DURATION_TICKS = PlayerDamageModel.getExecutionDurationTicks();
    public static final Map<Player, EventHandler.ProjectileHitContext> hitList = new WeakHashMap<>();
    private static final Map<UUID, EventHandler.RescueProgress> rescueProgress = new HashMap<>();
+   private static final Map<UUID, EventHandler.ExecutionProgress> executionProgress = new HashMap<>();
 
    private EventHandler() {
    }
@@ -238,6 +240,7 @@ public final class EventHandler {
 
                damageModel.tick(player.level(), player);
                tickRescueProgress(player);
+               tickExecutionProgress(player);
                hitList.remove(player);
             }
          }
@@ -360,6 +363,7 @@ public final class EventHandler {
    private static void onLogout(ServerPlayer player) {
       hitList.remove(player);
       rescueProgress.remove(player.getUUID());
+      executionProgress.remove(player.getUUID());
    }
 
    private static void onWorldLoad(ServerLevel world) {
@@ -408,6 +412,7 @@ public final class EventHandler {
       CapProvider.tutorialDone.clear();
       hitList.clear();
       rescueProgress.clear();
+      executionProgress.clear();
       FirstAidRegistryLookups.reset();
    }
 
@@ -519,7 +524,7 @@ public final class EventHandler {
    }
 
    private static void tickRescueProgress(ServerPlayer rescuer) {
-      EventHandler.RescueTarget rescueTarget = findRescueTarget(rescuer, true);
+      EventHandler.InteractionTarget rescueTarget = findRescueTarget(rescuer, true);
       if (rescueTarget == null) {
          rescueProgress.remove(rescuer.getUUID());
       } else {
@@ -538,7 +543,7 @@ public final class EventHandler {
    }
 
    public static void attemptImmediateRescue(ServerPlayer rescuer) {
-      EventHandler.RescueTarget rescueTarget = findRescueTarget(rescuer, true);
+      EventHandler.InteractionTarget rescueTarget = findRescueTarget(rescuer, true);
       if (rescueTarget == null) {
          rescueProgress.remove(rescuer.getUUID());
       } else {
@@ -546,7 +551,35 @@ public final class EventHandler {
       }
    }
 
-   private static void completeRescue(ServerPlayer rescuer, EventHandler.RescueTarget rescueTarget) {
+   private static void tickExecutionProgress(ServerPlayer executor) {
+      EventHandler.InteractionTarget executionTarget = findExecutionTarget(executor, true);
+      if (executionTarget == null) {
+         executionProgress.remove(executor.getUUID());
+      } else {
+         EventHandler.ExecutionProgress progress = executionProgress.get(executor.getUUID());
+         if (progress == null || !progress.matches(executionTarget)) {
+            progress = new EventHandler.ExecutionProgress(executionTarget.target().getUUID(), executionTarget.hand(), 0);
+         }
+
+         int nextTicks = Math.min(EXECUTION_DURATION_TICKS, progress.ticks() + 1);
+         if (nextTicks < EXECUTION_DURATION_TICKS) {
+            executionProgress.put(executor.getUUID(), progress.withTicks(nextTicks));
+         } else {
+            completeExecution(executor, executionTarget);
+         }
+      }
+   }
+
+   public static void attemptImmediateExecution(ServerPlayer executor) {
+      EventHandler.InteractionTarget executionTarget = findExecutionTarget(executor, true);
+      if (executionTarget == null) {
+         executionProgress.remove(executor.getUUID());
+      } else {
+         completeExecution(executor, executionTarget);
+      }
+   }
+
+   private static void completeRescue(ServerPlayer rescuer, EventHandler.InteractionTarget rescueTarget) {
       ItemStack stack = rescuer.getItemInHand(rescueTarget.hand());
       if (!isRescueItem(stack)) {
          rescueProgress.remove(rescuer.getUUID());
@@ -568,33 +601,40 @@ public final class EventHandler {
       }
    }
 
-   private static EventHandler.RescueTarget findRescueTarget(Player rescuer, boolean requireSneaking) {
+   private static void completeExecution(ServerPlayer executor, EventHandler.InteractionTarget executionTarget) {
+      ItemStack stack = executor.getItemInHand(executionTarget.hand());
+      if (!CommonUtils.isExecutionItem(stack)) {
+         executionProgress.remove(executor.getUUID());
+      } else if (CommonUtils.getDamageModel(executionTarget.target()) instanceof PlayerDamageModel playerDamageModel && playerDamageModel.canBeRescued()) {
+         if (stack.isDamageableItem()) {
+            stack.hurtAndBreak(1, executor, getEquipmentSlot(executionTarget.hand()));
+         }
+
+         executor.displayClientMessage(
+            Component.translatable("firstaid.gui.execute_other", new Object[]{executionTarget.target().getDisplayName()}).withStyle(ChatFormatting.RED), true
+         );
+         executionTarget.target()
+            .displayClientMessage(
+               Component.translatable("firstaid.gui.execute_received", new Object[]{executor.getDisplayName()}).withStyle(ChatFormatting.RED), true
+            );
+         playerDamageModel.giveUp(executionTarget.target());
+         executionProgress.remove(executor.getUUID());
+      } else {
+         executionProgress.remove(executor.getUUID());
+      }
+   }
+
+   private static EventHandler.InteractionTarget findRescueTarget(Player rescuer, boolean requireSneaking) {
       if (rescuer != null && !rescuer.level().isClientSide() && !isUnconscious(rescuer)) {
          if (requireSneaking && !rescuer.isCrouching()) {
             return null;
          } else {
-            InteractionHand hand = getRescueHand(rescuer);
-            if (hand == null) {
+            EventHandler.InteractionSelection selection = getInteractionSelection(rescuer);
+            if (selection == null || selection.type() != EventHandler.InteractionType.RESCUE) {
                return null;
             } else {
-               double maxDistanceSqr = PlayerDamageModel.getRescueRange() * PlayerDamageModel.getRescueRange();
-               Player closestTarget = null;
-               double closestDistanceSqr = maxDistanceSqr;
-
-               for (Player candidate : rescuer.level().players()) {
-                  if (candidate != rescuer
-                     && candidate.isAlive()
-                     && CommonUtils.getDamageModel(candidate) instanceof PlayerDamageModel playerDamageModel
-                     && playerDamageModel.canBeRescued()) {
-                     double distanceSqr = rescuer.distanceToSqr(candidate);
-                     if (!(distanceSqr > closestDistanceSqr)) {
-                        closestDistanceSqr = distanceSqr;
-                        closestTarget = candidate;
-                     }
-                  }
-               }
-
-               return closestTarget == null ? null : new EventHandler.RescueTarget(closestTarget, hand);
+               Player closestTarget = findClosestRescueTarget(rescuer);
+               return closestTarget == null ? null : new EventHandler.InteractionTarget(closestTarget, selection.hand());
             }
          }
       } else {
@@ -602,16 +642,65 @@ public final class EventHandler {
       }
    }
 
-   private static InteractionHand getRescueHand(Player player) {
-      if (isRescueItem(player.getMainHandItem())) {
-         return InteractionHand.MAIN_HAND;
+   private static EventHandler.InteractionTarget findExecutionTarget(Player executor, boolean requireSneaking) {
+      if (executor != null && !executor.level().isClientSide() && !isUnconscious(executor)) {
+         if (requireSneaking && !executor.isCrouching()) {
+            return null;
+         } else {
+            EventHandler.InteractionSelection selection = getInteractionSelection(executor);
+            if (selection == null || selection.type() != EventHandler.InteractionType.EXECUTE) {
+               return null;
+            } else {
+               Player closestTarget = findClosestRescueTarget(executor);
+               return closestTarget == null ? null : new EventHandler.InteractionTarget(closestTarget, selection.hand());
+            }
+         }
       } else {
-         return isRescueItem(player.getOffhandItem()) ? InteractionHand.OFF_HAND : null;
+         return null;
+      }
+   }
+
+   private static Player findClosestRescueTarget(Player actor) {
+      double maxDistanceSqr = PlayerDamageModel.getRescueRange() * PlayerDamageModel.getRescueRange();
+      Player closestTarget = null;
+      double closestDistanceSqr = maxDistanceSqr;
+
+      for (Player candidate : actor.level().players()) {
+         if (candidate != actor
+            && candidate.isAlive()
+            && CommonUtils.getDamageModel(candidate) instanceof PlayerDamageModel playerDamageModel
+            && playerDamageModel.canBeRescued()) {
+            double distanceSqr = actor.distanceToSqr(candidate);
+            if (!(distanceSqr > closestDistanceSqr)) {
+               closestDistanceSqr = distanceSqr;
+               closestTarget = candidate;
+            }
+         }
+      }
+
+      return closestTarget;
+   }
+
+   private static EventHandler.InteractionSelection getInteractionSelection(Player player) {
+      if (isRescueItem(player.getMainHandItem())) {
+         return new EventHandler.InteractionSelection(EventHandler.InteractionType.RESCUE, InteractionHand.MAIN_HAND);
+      } else if (CommonUtils.isExecutionItem(player.getMainHandItem())) {
+         return new EventHandler.InteractionSelection(EventHandler.InteractionType.EXECUTE, InteractionHand.MAIN_HAND);
+      } else if (isRescueItem(player.getOffhandItem())) {
+         return new EventHandler.InteractionSelection(EventHandler.InteractionType.RESCUE, InteractionHand.OFF_HAND);
+      } else {
+         return CommonUtils.isExecutionItem(player.getOffhandItem())
+            ? new EventHandler.InteractionSelection(EventHandler.InteractionType.EXECUTE, InteractionHand.OFF_HAND)
+            : null;
       }
    }
 
    private static boolean isRescueItem(ItemStack stack) {
       return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get());
+   }
+
+   private static EquipmentSlot getEquipmentSlot(InteractionHand hand) {
+      return hand == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
    }
 
    private record ProjectileHitContext(Entity projectile, Vec3 hitPosition) {
@@ -621,7 +710,7 @@ public final class EventHandler {
    }
 
    private record RescueProgress(UUID targetId, InteractionHand hand, int ticks) {
-      private boolean matches(EventHandler.RescueTarget rescueTarget) {
+      private boolean matches(EventHandler.InteractionTarget rescueTarget) {
          return this.targetId.equals(rescueTarget.target().getUUID()) && this.hand == rescueTarget.hand();
       }
 
@@ -630,6 +719,24 @@ public final class EventHandler {
       }
    }
 
-   private record RescueTarget(Player target, InteractionHand hand) {
+   private record ExecutionProgress(UUID targetId, InteractionHand hand, int ticks) {
+      private boolean matches(EventHandler.InteractionTarget executionTarget) {
+         return this.targetId.equals(executionTarget.target().getUUID()) && this.hand == executionTarget.hand();
+      }
+
+      private EventHandler.ExecutionProgress withTicks(int updatedTicks) {
+         return new EventHandler.ExecutionProgress(this.targetId, this.hand, updatedTicks);
+      }
+   }
+
+   private record InteractionTarget(Player target, InteractionHand hand) {
+   }
+
+   private record InteractionSelection(EventHandler.InteractionType type, InteractionHand hand) {
+   }
+
+   private static enum InteractionType {
+      RESCUE,
+      EXECUTE;
    }
 }

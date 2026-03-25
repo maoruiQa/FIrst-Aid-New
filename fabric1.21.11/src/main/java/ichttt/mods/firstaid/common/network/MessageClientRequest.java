@@ -56,6 +56,8 @@ public class MessageClientRequest implements CustomPacketPayload {
             }
          } else if (message.type == MessageClientRequest.RequestType.ATTEMPT_RESCUE) {
             EventHandler.attemptImmediateRescue(player);
+         } else if (message.type == MessageClientRequest.RequestType.ATTEMPT_EXECUTION) {
+            EventHandler.attemptImmediateExecution(player);
          }
       });
    }
@@ -64,7 +66,8 @@ public class MessageClientRequest implements CustomPacketPayload {
       TUTORIAL_COMPLETE,
       REQUEST_REFRESH,
       GIVE_UP,
-      ATTEMPT_RESCUE;
+      ATTEMPT_RESCUE,
+      ATTEMPT_EXECUTION;
 
       private static final MessageClientRequest.RequestType[] TYPES = values();
    }

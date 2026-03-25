@@ -23,10 +23,14 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.MaceItem;
+import net.minecraft.world.item.TridentItem;
 
 public class CommonUtils {
    @Nonnull
@@ -136,6 +140,17 @@ public class CommonUtils {
 
    public static boolean hasDamageModel(Entity entity) {
       return entity instanceof Player;
+   }
+
+   public static boolean isExecutionItem(ItemStack stack) {
+      return !stack.isEmpty()
+         && (stack.is(ItemTags.AXES)
+            || stack.is(ItemTags.HOES)
+            || stack.is(ItemTags.PICKAXES)
+            || stack.is(ItemTags.SHOVELS)
+            || stack.is(ItemTags.SWORDS)
+            || stack.getItem() instanceof TridentItem
+            || stack.getItem() instanceof MaceItem);
    }
 
    static {

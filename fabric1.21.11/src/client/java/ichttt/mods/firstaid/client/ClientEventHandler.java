@@ -37,6 +37,7 @@ import net.minecraft.world.item.Item.TooltipContext;
 public final class ClientEventHandler {
    private static final int GIVE_UP_HOLD_TICKS = 60;
    private static final int RESCUE_HOLD_TICKS = PlayerDamageModel.getRescueDurationTicks();
+   private static final int EXECUTION_HOLD_TICKS = PlayerDamageModel.getExecutionDurationTicks();
    private static final int SYNC_RETRY_TICKS = 20;
    private static final SuppressionFeedbackController SUPPRESSION_FEEDBACK_CONTROLLER = new SuppressionFeedbackController();
    private static final ProjectileNearMissDetector PROJECTILE_NEAR_MISS_DETECTOR = new ProjectileNearMissDetector(SUPPRESSION_FEEDBACK_CONTROLLER);
@@ -45,9 +46,9 @@ public final class ClientEventHandler {
    private static int syncRetryTicks;
    private static int giveUpHoldTicks;
    private static boolean giveUpTriggered;
-   private static int rescueHoldTicks;
-   private static boolean rescueTriggered;
-   private static ClientEventHandler.RescuePrompt rescuePrompt;
+   private static int interactionHoldTicks;
+   private static boolean interactionTriggered;
+   private static ClientEventHandler.InteractionPrompt interactionPrompt;
 
    private ClientEventHandler() {
    }
@@ -89,7 +90,7 @@ public final class ClientEventHandler {
          AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
          if (damageModel instanceof PlayerDamageModel playerDamageModel) {
             updateGiveUpHoldState(mc, playerDamageModel);
-            updateRescuePromptState(mc);
+            updateInteractionPromptState(mc);
             boolean shouldShowCriticalPrompt = playerDamageModel.canGiveUp();
             if (shouldShowCriticalPrompt && !showedCriticalPrompt) {
                mc.player.displayClientMessage(Component.translatable("firstaid.gui.waiting_for_rescue").withStyle(ChatFormatting.RED), true);
@@ -105,7 +106,7 @@ public final class ClientEventHandler {
          } else {
             showedCriticalPrompt = false;
             resetGiveUpHoldState();
-            resetRescuePromptState();
+            resetInteractionPromptState();
          }
 
          if (damageModel != null && damageModel.getUnconsciousTicks() > 0 && mc.screen instanceof GuiHealthScreen) {
@@ -170,7 +171,7 @@ public final class ClientEventHandler {
       syncRetryTicks = 0;
       showedCriticalPrompt = false;
       resetGiveUpHoldState();
-      resetRescuePromptState();
+      resetInteractionPromptState();
       HealingSoundController.clear();
       SUPPRESSION_FEEDBACK_CONTROLLER.clear();
       PROJECTILE_NEAR_MISS_DETECTOR.clear();
@@ -180,7 +181,7 @@ public final class ClientEventHandler {
       FirstAid.isSynced = false;
       syncRetryTicks = 20;
       resetGiveUpHoldState();
-      resetRescuePromptState();
+      resetInteractionPromptState();
       if (mc.player != null) {
          FirstAidClientNetworking.sendToServer(new MessageClientRequest(RequestType.REQUEST_REFRESH));
          MutableComponent message = Component.empty()
@@ -216,34 +217,74 @@ public final class ClientEventHandler {
       return 3.0F;
    }
 
-   public static boolean hasRescuePrompt() {
-      return rescuePrompt != null;
+   public static boolean hasInteractionPrompt() {
+      return interactionPrompt != null;
    }
 
-   public static Component getRescuePromptTitle() {
-      return rescuePrompt == null ? Component.empty() : Component.translatable("firstaid.gui.rescue_prompt_title", new Object[]{rescuePrompt.targetName()});
-   }
-
-   public static Component getRescuePromptDetail() {
-      if (rescuePrompt == null) {
+   public static Component getInteractionPromptTitle() {
+      if (interactionPrompt == null) {
          return Component.empty();
       } else {
-         return !rescuePrompt.hasValidItem()
-            ? Component.translatable("firstaid.gui.rescue_prompt_item")
-            : Component.translatable("firstaid.gui.rescue_prompt_crouch", new Object[]{formatSingleDecimal(getRescueHoldDurationSeconds())});
+         return switch (interactionPrompt.type()) {
+            case RESCUE -> Component.translatable("firstaid.gui.rescue_prompt_title", new Object[]{interactionPrompt.targetName()}).withStyle(ChatFormatting.GREEN);
+            case EXECUTE -> Component.translatable("firstaid.gui.execute_prompt_title", new Object[]{interactionPrompt.targetName()}).withStyle(ChatFormatting.RED);
+            default -> Component.translatable(
+               "firstaid.gui.rescue_execute_prompt_title",
+               new Object[]{getStyledRescueAction(), getStyledExecutionAction(), interactionPrompt.targetName()}
+            );
+         };
       }
    }
 
-   public static float getRescueHoldProgress(float partialTick) {
-      return Math.min(1.0F, getDisplayedRescueHoldTicks(partialTick) / RESCUE_HOLD_TICKS);
+   public static Component getInteractionPromptDetail() {
+      if (interactionPrompt == null) {
+         return Component.empty();
+      } else {
+         return switch (interactionPrompt.type()) {
+            case RESCUE -> Component.translatable("firstaid.gui.rescue_prompt_crouch", new Object[]{formatSingleDecimal(getInteractionHoldDurationSeconds())})
+               .withStyle(ChatFormatting.GREEN);
+            case EXECUTE -> Component.translatable("firstaid.gui.execute_prompt_crouch", new Object[]{formatSingleDecimal(getInteractionHoldDurationSeconds())})
+               .withStyle(ChatFormatting.RED);
+            default -> Component.translatable("firstaid.gui.rescue_execute_prompt_item", new Object[]{getStyledRescueAction(), getStyledExecutionAction()});
+         };
+      }
    }
 
-   public static float getRescueHoldSeconds(float partialTick) {
-      return getDisplayedRescueHoldTicks(partialTick) / 20.0F;
+   public static float getInteractionHoldProgress(float partialTick) {
+      int holdDurationTicks = getCurrentInteractionHoldDurationTicks();
+      return holdDurationTicks <= 0 ? 0.0F : Math.min(1.0F, getDisplayedInteractionHoldTicks(partialTick) / holdDurationTicks);
    }
 
-   public static float getRescueHoldDurationSeconds() {
-      return RESCUE_HOLD_TICKS / 20.0F;
+   public static Component getInteractionPromptProgressText(float partialTick) {
+      if (interactionPrompt == null) {
+         return Component.empty();
+      } else {
+         return switch (interactionPrompt.type()) {
+            case RESCUE -> Component.translatable(
+               "firstaid.gui.rescue_progress", new Object[]{formatSingleDecimal(getInteractionHoldSeconds(partialTick)), formatSingleDecimal(getInteractionHoldDurationSeconds())}
+            ).withStyle(ChatFormatting.GREEN);
+            case EXECUTE -> Component.translatable(
+               "firstaid.gui.execute_progress", new Object[]{formatSingleDecimal(getInteractionHoldSeconds(partialTick)), formatSingleDecimal(getInteractionHoldDurationSeconds())}
+            ).withStyle(ChatFormatting.RED);
+            default -> Component.empty();
+         };
+      }
+   }
+
+   public static boolean isRescueInteractionPrompt() {
+      return interactionPrompt != null && interactionPrompt.type() == ClientEventHandler.InteractionType.RESCUE;
+   }
+
+   public static boolean isExecutionInteractionPrompt() {
+      return interactionPrompt != null && interactionPrompt.type() == ClientEventHandler.InteractionType.EXECUTE;
+   }
+
+   public static float getInteractionHoldSeconds(float partialTick) {
+      return getDisplayedInteractionHoldTicks(partialTick) / 20.0F;
+   }
+
+   public static float getInteractionHoldDurationSeconds() {
+      return getCurrentInteractionHoldDurationTicks() / 20.0F;
    }
 
    public static SuppressionFeedbackController getSuppressionFeedbackController() {
@@ -286,60 +327,81 @@ public final class ClientEventHandler {
       }
    }
 
-   private static void updateRescuePromptState(Minecraft mc) {
-      ClientEventHandler.RescuePrompt nextPrompt = findRescuePrompt(mc);
-      if (rescuePrompt == null || nextPrompt == null || rescuePrompt.targetId() != nextPrompt.targetId()) {
-         rescueHoldTicks = 0;
-         rescueTriggered = false;
+   private static void updateInteractionPromptState(Minecraft mc) {
+      ClientEventHandler.InteractionPrompt nextPrompt = findInteractionPrompt(mc);
+      if (interactionPrompt == null
+         || nextPrompt == null
+         || interactionPrompt.targetId() != nextPrompt.targetId()
+         || interactionPrompt.type() != nextPrompt.type()) {
+         interactionHoldTicks = 0;
+         interactionTriggered = false;
       }
 
-      rescuePrompt = nextPrompt;
-      if (rescuePrompt != null && mc.screen == null && rescuePrompt.hasValidItem() && rescuePrompt.isSneaking()) {
-         rescueHoldTicks = Math.min(RESCUE_HOLD_TICKS, rescueHoldTicks + 1);
-         if (rescueHoldTicks >= RESCUE_HOLD_TICKS && !rescueTriggered) {
-            rescueTriggered = true;
-            FirstAidClientNetworking.sendToServer(new MessageClientRequest(RequestType.ATTEMPT_RESCUE));
+      interactionPrompt = nextPrompt;
+      if (interactionPrompt != null && mc.screen == null && interactionPrompt.type() != ClientEventHandler.InteractionType.INVALID_ITEM && interactionPrompt.isSneaking()) {
+         int holdDurationTicks = getCurrentInteractionHoldDurationTicks();
+         interactionHoldTicks = Math.min(holdDurationTicks, interactionHoldTicks + 1);
+         if (interactionHoldTicks >= holdDurationTicks && !interactionTriggered) {
+            interactionTriggered = true;
+            if (interactionPrompt.type() == ClientEventHandler.InteractionType.RESCUE) {
+               FirstAidClientNetworking.sendToServer(new MessageClientRequest(RequestType.ATTEMPT_RESCUE));
+            } else if (interactionPrompt.type() == ClientEventHandler.InteractionType.EXECUTE) {
+               FirstAidClientNetworking.sendToServer(new MessageClientRequest(RequestType.ATTEMPT_EXECUTION));
+            }
          }
       } else {
-         rescueHoldTicks = 0;
-         rescueTriggered = false;
+         interactionHoldTicks = 0;
+         interactionTriggered = false;
       }
    }
 
-   private static ClientEventHandler.RescuePrompt findRescuePrompt(Minecraft mc) {
+   private static ClientEventHandler.InteractionPrompt findInteractionPrompt(Minecraft mc) {
       if (mc.player != null && mc.level != null && mc.player.isAlive() && !isUnconscious(mc.player)) {
-         double maxDistanceSqr = PlayerDamageModel.getRescueRange() * PlayerDamageModel.getRescueRange();
-         Player closestTarget = null;
-         double closestDistanceSqr = maxDistanceSqr;
-
-         for (Player candidate : mc.level.players()) {
-            if (candidate != mc.player
-               && candidate.isAlive()
-               && CommonUtils.getExistingDamageModel(candidate) instanceof PlayerDamageModel playerDamageModel
-               && playerDamageModel.canBeRescued()) {
-               double distanceSqr = mc.player.distanceToSqr(candidate);
-               if (!(distanceSqr > closestDistanceSqr)) {
-                  closestDistanceSqr = distanceSqr;
-                  closestTarget = candidate;
-               }
-            }
+         Player closestTarget = findClosestRescueTarget(mc);
+         if (closestTarget == null) {
+            return null;
+         } else {
+            ClientEventHandler.InteractionSelection selection = getInteractionSelection(mc.player);
+            ClientEventHandler.InteractionType type = selection == null ? ClientEventHandler.InteractionType.INVALID_ITEM : selection.type();
+            return new ClientEventHandler.InteractionPrompt(closestTarget.getId(), closestTarget.getDisplayName().copy(), type, mc.player.isCrouching());
          }
-
-         return closestTarget == null
-            ? null
-            : new ClientEventHandler.RescuePrompt(
-               closestTarget.getId(), closestTarget.getDisplayName().copy(), getRescueHand(mc.player) != null, mc.player.isCrouching()
-            );
       } else {
          return null;
       }
    }
 
-   private static InteractionHand getRescueHand(Player player) {
+   private static Player findClosestRescueTarget(Minecraft mc) {
+      double maxDistanceSqr = PlayerDamageModel.getRescueRange() * PlayerDamageModel.getRescueRange();
+      Player closestTarget = null;
+      double closestDistanceSqr = maxDistanceSqr;
+
+      for (Player candidate : mc.level.players()) {
+         if (candidate != mc.player
+            && candidate.isAlive()
+            && CommonUtils.getExistingDamageModel(candidate) instanceof PlayerDamageModel playerDamageModel
+            && playerDamageModel.canBeRescued()) {
+            double distanceSqr = mc.player.distanceToSqr(candidate);
+            if (!(distanceSqr > closestDistanceSqr)) {
+               closestDistanceSqr = distanceSqr;
+               closestTarget = candidate;
+            }
+         }
+      }
+
+      return closestTarget;
+   }
+
+   private static ClientEventHandler.InteractionSelection getInteractionSelection(Player player) {
       if (isRescueItem(player.getMainHandItem())) {
-         return InteractionHand.MAIN_HAND;
+         return new ClientEventHandler.InteractionSelection(ClientEventHandler.InteractionType.RESCUE, InteractionHand.MAIN_HAND);
+      } else if (CommonUtils.isExecutionItem(player.getMainHandItem())) {
+         return new ClientEventHandler.InteractionSelection(ClientEventHandler.InteractionType.EXECUTE, InteractionHand.MAIN_HAND);
+      } else if (isRescueItem(player.getOffhandItem())) {
+         return new ClientEventHandler.InteractionSelection(ClientEventHandler.InteractionType.RESCUE, InteractionHand.OFF_HAND);
       } else {
-         return isRescueItem(player.getOffhandItem()) ? InteractionHand.OFF_HAND : null;
+         return CommonUtils.isExecutionItem(player.getOffhandItem())
+            ? new ClientEventHandler.InteractionSelection(ClientEventHandler.InteractionType.EXECUTE, InteractionHand.OFF_HAND)
+            : null;
       }
    }
 
@@ -347,19 +409,43 @@ public final class ClientEventHandler {
       return stack.is((Item)RegistryObjects.BANDAGE.get()) || stack.is((Item)RegistryObjects.PLASTER.get());
    }
 
-   private static float getDisplayedRescueHoldTicks(float partialTick) {
-      if (rescueHoldTicks <= 0) {
+   private static int getCurrentInteractionHoldDurationTicks() {
+      if (interactionPrompt == null) {
+         return 0;
+      } else {
+         return switch (interactionPrompt.type()) {
+            case RESCUE -> RESCUE_HOLD_TICKS;
+            case EXECUTE -> EXECUTION_HOLD_TICKS;
+            default -> 0;
+         };
+      }
+   }
+
+   private static float getDisplayedInteractionHoldTicks(float partialTick) {
+      if (interactionHoldTicks <= 0) {
          return 0.0F;
       } else {
-         float extraTicks = rescuePrompt != null && rescuePrompt.hasValidItem() && rescuePrompt.isSneaking() && Minecraft.getInstance().screen == null
+         int holdDurationTicks = getCurrentInteractionHoldDurationTicks();
+         float extraTicks = interactionPrompt != null
+            && interactionPrompt.type() != ClientEventHandler.InteractionType.INVALID_ITEM
+            && interactionPrompt.isSneaking()
+            && Minecraft.getInstance().screen == null
             ? Math.max(0.0F, partialTick)
             : 0.0F;
-         return Math.min((float)RESCUE_HOLD_TICKS, rescueHoldTicks + extraTicks);
+         return Math.min((float)holdDurationTicks, interactionHoldTicks + extraTicks);
       }
    }
 
    private static String formatSingleDecimal(float value) {
       return String.format(Locale.ROOT, "%.1f", value);
+   }
+
+   private static Component getStyledRescueAction() {
+      return Component.translatable("firstaid.gui.prompt_action_rescue").withStyle(ChatFormatting.GREEN);
+   }
+
+   private static Component getStyledExecutionAction() {
+      return Component.translatable("firstaid.gui.prompt_action_execute").withStyle(ChatFormatting.RED);
    }
 
    private static boolean isGiveUpKeyHeld() {
@@ -372,12 +458,21 @@ public final class ClientEventHandler {
       giveUpTriggered = false;
    }
 
-   private static void resetRescuePromptState() {
-      rescueHoldTicks = 0;
-      rescueTriggered = false;
-      rescuePrompt = null;
+   private static void resetInteractionPromptState() {
+      interactionHoldTicks = 0;
+      interactionTriggered = false;
+      interactionPrompt = null;
    }
 
-   private record RescuePrompt(int targetId, Component targetName, boolean hasValidItem, boolean isSneaking) {
+   private record InteractionPrompt(int targetId, Component targetName, ClientEventHandler.InteractionType type, boolean isSneaking) {
+   }
+
+   private record InteractionSelection(ClientEventHandler.InteractionType type, InteractionHand hand) {
+   }
+
+   private static enum InteractionType {
+      RESCUE,
+      EXECUTE,
+      INVALID_ITEM;
    }
 }

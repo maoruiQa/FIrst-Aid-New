@@ -75,6 +75,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private static final int CRITICAL_UNCONSCIOUS_TICKS = 20 * 150;
     private static final int RESCUE_WAKE_UP_DELAY = Math.max(1, Math.round(20 * 5 * 0.3F));
     private static final int RESCUE_DURATION_TICKS = 20 * 8;
+    private static final int EXECUTION_DURATION_TICKS = 20 * 5;
     private static final double RESCUE_RANGE = 3.0D;
     private static final int COLLAPSE_ANIMATION_TICKS = 12;
     private static final int COLLAPSE_SEARCH_RADIUS = 2;
@@ -406,6 +407,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
 
     public static int getRescueDurationTicks() {
         return RESCUE_DURATION_TICKS;
+    }
+
+    public static int getExecutionDurationTicks() {
+        return EXECUTION_DURATION_TICKS;
     }
 
     public static double getRescueRange() {

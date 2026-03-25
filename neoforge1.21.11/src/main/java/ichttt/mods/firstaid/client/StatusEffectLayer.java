@@ -161,7 +161,7 @@ public class StatusEffectLayer implements GuiLayer {
                 guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()), centerX, centerY + 28, opaque(0xFFB3B3));
                 renderGiveUpProgress(guiGraphics, minecraft, centerX, centerY + 44, partialTick);
             }
-        } else if (ClientEventHandler.hasRescuePrompt()) {
+            } else if (ClientEventHandler.hasInteractionPrompt()) {
             renderRescuePrompt(guiGraphics, minecraft, width / 2, height / 2 + 24, deltaTracker.getGameTimeDeltaTicks());
         }
     }
@@ -239,32 +239,32 @@ public class StatusEffectLayer implements GuiLayer {
     }
 
     private static void renderRescuePrompt(GuiGraphics guiGraphics, Minecraft minecraft, int centerX, int centerY, float partialTick) {
-        guiGraphics.drawCenteredString(minecraft.font, ClientEventHandler.getRescuePromptTitle(), centerX, centerY - 26, opaque(0xE9F7E2));
-        guiGraphics.drawCenteredString(minecraft.font, ClientEventHandler.getRescuePromptDetail(), centerX, centerY - 12, opaque(0xCFE4C5));
+        boolean executionPrompt = ClientEventHandler.isExecutionInteractionPrompt();
+        guiGraphics.drawCenteredString(minecraft.font, ClientEventHandler.getInteractionPromptTitle(), centerX, centerY - 26, executionPrompt ? opaque(0xFFD7CC) : opaque(0xE9F7E2));
+        guiGraphics.drawCenteredString(minecraft.font, ClientEventHandler.getInteractionPromptDetail(), centerX, centerY - 12, executionPrompt ? opaque(0xEFD2D2) : opaque(0xCFE4C5));
+        if (ClientEventHandler.getInteractionHoldDurationSeconds() <= 0.0F) {
+            return;
+        }
 
         int left = centerX - RESCUE_BAR_WIDTH / 2;
         int right = left + RESCUE_BAR_WIDTH;
         int top = centerY + 2;
         int bottom = top + RESCUE_BAR_HEIGHT;
-        float progress = ClientEventHandler.getRescueHoldProgress(partialTick);
+        float progress = ClientEventHandler.getInteractionHoldProgress(partialTick);
         int fillWidth = Math.round((RESCUE_BAR_WIDTH - 2) * progress);
 
-        guiGraphics.fill(left, top, right, bottom, color(180, 10, 38, 14));
-        guiGraphics.fill(left + 1, top + 1, right - 1, bottom - 1, color(180, 24, 74, 28));
+        guiGraphics.fill(left, top, right, bottom, executionPrompt ? color(180, 48, 8, 8) : color(180, 10, 38, 14));
+        guiGraphics.fill(left + 1, top + 1, right - 1, bottom - 1, executionPrompt ? color(180, 82, 18, 18) : color(180, 24, 74, 28));
         if (fillWidth > 0) {
-            guiGraphics.fill(left + 1, top + 1, left + 1 + fillWidth, bottom - 1, color(220, 126, 214, 110));
+            guiGraphics.fill(left + 1, top + 1, left + 1 + fillWidth, bottom - 1, executionPrompt ? color(220, 232, 70, 70) : color(220, 126, 214, 110));
         }
 
         guiGraphics.drawCenteredString(
                 minecraft.font,
-                Component.translatable(
-                        "firstaid.gui.rescue_progress",
-                        formatSingleDecimal(ClientEventHandler.getRescueHoldSeconds(partialTick)),
-                        formatSingleDecimal(ClientEventHandler.getRescueHoldDurationSeconds())
-                ),
+                ClientEventHandler.getInteractionPromptProgressText(partialTick),
                 centerX,
                 top + 12,
-                opaque(0xD8F0D0)
+                executionPrompt ? opaque(0xFFB7A0) : opaque(0xD8F0D0)
         );
     }
 
