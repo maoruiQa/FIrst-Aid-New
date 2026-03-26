@@ -271,7 +271,7 @@ public final class FirstAidConfig {
             dynamicPainEnabled = define(boolValue("dynamicPainEnabled", true));
             lowSuppressionEnabled = define(boolValue("lowSuppressionEnabled", false));
             rescueWakeUpEnabled = define(boolValue("rescueWakeUpEnabled", false));
-            rescueWakeUpDelaySeconds = define(doubleValue("rescueWakeUpDelaySeconds", 1.5D, 0D, 3600D));
+            rescueWakeUpDelaySeconds = define(doubleValue("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0D, 3600D));
             medicineEffectMode = define(enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class));
             injuryDebuffMode = define(enumValue("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL, FirstAid.InjuryDebuffMode.class));
             injuryDebuffOverrides = define(injuryDebuffOverridesValue("injuryDebuffOverrides"));

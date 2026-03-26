@@ -565,7 +565,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                rescueTarget.activeHealer = healer;
             }
 
-            this.setUnconsciousState(Math.max(this.unconsciousTicks, FirstAid.getRescueWakeUpDelayTicks()), false, false, "firstaid.gui.stabilizing");
+            this.setUnconsciousState(FirstAid.getRescueWakeUpDelayTicks(), false, false, "firstaid.gui.stabilizing");
          } else {
             this.clearUnconsciousState();
             this.resetRecoveredPlayerState(player);
@@ -793,6 +793,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
          if ((part.canCauseDeath || this.noCritical) && part.currentHealth <= 0.0F) {
             part.currentHealth = 1.0F;
          }
+      }
+
+      if (FirstAid.rescueWakeUpEnabled && FirstAid.getRescueWakeUpDelayTicks() > 0) {
+         this.setUnconsciousState(FirstAid.getRescueWakeUpDelayTicks(), false, false, UNCONSCIOUS_REASON_RECOVERING);
       }
 
       if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
@@ -1158,7 +1162,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    }
 
    private void setUnconsciousState(int ticks, boolean allowsGiveUp, boolean causesDeath, String reasonKey) {
-      this.unconsciousTicks = Math.max(this.unconsciousTicks, ticks);
+      this.unconsciousTicks = ticks;
       this.unconsciousAllowsGiveUp = allowsGiveUp;
       this.unconsciousCausesDeath = causesDeath;
       this.unconsciousReasonKey = reasonKey;

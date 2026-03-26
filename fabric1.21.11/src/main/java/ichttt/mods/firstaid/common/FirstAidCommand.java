@@ -1,7 +1,7 @@
 package ichttt.mods.firstaid.common;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
@@ -40,19 +40,19 @@ public final class FirstAidCommand {
                      ))
                   .then(
                      ((LiteralArgumentBuilder)Commands.literal("revivewakeup")
-                           .then(Commands.literal("on").executes(context -> setRescueWakeUp((CommandSourceStack)context.getSource(), true))))
+                           .then(
+                              ((LiteralArgumentBuilder)Commands.literal("on")
+                                    .executes(context -> setRescueWakeUp((CommandSourceStack)context.getSource(), true)))
+                                 .then(
+                                    Commands.argument("seconds", IntegerArgumentType.integer(0))
+                                       .executes(
+                                          context -> setRescueWakeUpDelay(
+                                                (CommandSourceStack)context.getSource(), IntegerArgumentType.getInteger(context, "seconds")
+                                             )
+                                       )
+                                 )
+                           ))
                         .then(Commands.literal("off").executes(context -> setRescueWakeUp((CommandSourceStack)context.getSource(), false)))
-                        .then(
-                           ((LiteralArgumentBuilder)Commands.literal("time"))
-                              .then(
-                                 Commands.argument("seconds", DoubleArgumentType.doubleArg(0.0))
-                                    .executes(
-                                       context -> setRescueWakeUpDelay(
-                                             (CommandSourceStack)context.getSource(), DoubleArgumentType.getDouble(context, "seconds")
-                                          )
-                                    )
-                              )
-                        )
                   ))
                .then(
                   ((LiteralArgumentBuilder)((LiteralArgumentBuilder)Commands.literal("medicineeffect")
@@ -147,7 +147,8 @@ public final class FirstAidCommand {
       return 1;
    }
 
-   private static int setRescueWakeUpDelay(CommandSourceStack source, double seconds) {
+   private static int setRescueWakeUpDelay(CommandSourceStack source, int seconds) {
+      FirstAid.rescueWakeUpEnabled = true;
       FirstAid.rescueWakeUpDelaySeconds = seconds;
       FirstAidConfig.persistCommandSettings();
       refreshRescueWakeUpState(source);

@@ -18,11 +18,12 @@ import org.apache.logging.log4j.Logger;
 public final class FirstAid {
    public static final String MODID = "firstaid";
    public static final Logger LOGGER = LogManager.getLogger("firstaid");
+   public static final double DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS = 20.0D;
    public static boolean isSynced = false;
    public static boolean dynamicPainEnabled = true;
    public static boolean lowSuppressionEnabled = false;
    public static boolean rescueWakeUpEnabled = false;
-   public static double rescueWakeUpDelaySeconds = 1.5D;
+   public static double rescueWakeUpDelaySeconds = DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
    public static FirstAid.MedicineEffectMode medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
    public static FirstAid.InjuryDebuffMode injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
    public static final Map<Identifier, FirstAid.InjuryDebuffMode> injuryDebuffOverrides = new ConcurrentHashMap<>();

@@ -45,13 +45,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FirstAid {
     public static final String MODID = "firstaid";
     public static final Logger LOGGER = LogManager.getLogger(MODID);
+    public static final double DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS = 20.0D;
 
     public static final SimpleFirstAidChannel NETWORKING = new SimpleFirstAidChannel();
     public static boolean isSynced = false;
     public static boolean dynamicPainEnabled = true;
     public static boolean lowSuppressionEnabled = false;
     public static boolean rescueWakeUpEnabled = false;
-    public static double rescueWakeUpDelaySeconds = 1.5D;
+    public static double rescueWakeUpDelaySeconds = DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
     public static MedicineEffectMode medicineEffectMode = MedicineEffectMode.REALISTIC;
     public static InjuryDebuffMode injuryDebuffMode = InjuryDebuffMode.NORMAL;
     public static final Map<Identifier, InjuryDebuffMode> injuryDebuffOverrides = new ConcurrentHashMap<>();

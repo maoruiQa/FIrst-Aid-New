@@ -495,7 +495,9 @@ public final class FirstAidConfig {
          this.dynamicPainEnabled = this.define(FirstAidConfig.boolValue("dynamicPainEnabled", true));
          this.lowSuppressionEnabled = this.define(FirstAidConfig.boolValue("lowSuppressionEnabled", false));
          this.rescueWakeUpEnabled = this.define(FirstAidConfig.boolValue("rescueWakeUpEnabled", false));
-         this.rescueWakeUpDelaySeconds = this.define(FirstAidConfig.doubleValue("rescueWakeUpDelaySeconds", 1.5, 0.0, 3600.0));
+         this.rescueWakeUpDelaySeconds = this.define(
+            FirstAidConfig.doubleValue("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0.0, 3600.0)
+         );
          this.medicineEffectMode = this.define(
             FirstAidConfig.enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class)
          );

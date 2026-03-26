@@ -261,8 +261,8 @@ public class FirstAidConfig {
                     .comment("Persistent toggle for /firstaid revivewakeup (on vs off)")
                     .define("rescueWakeUpEnabled", false);
             rescueWakeUpDelaySeconds = builder
-                    .comment("Persistent delay in seconds for /firstaid revivewakeup time")
-                    .defineInRange("rescueWakeUpDelaySeconds", 1.5D, 0D, 3600D);
+                    .comment("Persistent delay in seconds for /firstaid revivewakeup on [seconds]")
+                    .defineInRange("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0D, 3600D);
             medicineEffectMode = builder
                     .comment("Persistent toggle for /firstaid medicineeffect (realistic/assisted/casual)")
                     .defineEnum("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC);
