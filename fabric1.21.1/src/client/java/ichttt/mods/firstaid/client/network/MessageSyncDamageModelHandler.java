@@ -22,6 +22,7 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.HUDHandler;
 import ichttt.mods.firstaid.common.CapProvider;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.network.MessageSyncDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
@@ -59,7 +60,11 @@ public final class MessageSyncDamageModelHandler {
             if (message.shouldScaleMaxHealth()) {
                 damageModel.runScaleLogic(targetPlayer);
             }
+            boolean wasUnconscious = isUnconscious(damageModel);
             damageModel.deserializeNBT(message.playerDamageModel());
+            if (wasUnconscious != isUnconscious(damageModel)) {
+                targetPlayer.refreshDimensions();
+            }
             if (targetPlayer == mc.player && damageModel.hasTutorial) {
                 CapProvider.tutorialDone.add(mc.player.getName().getString());
             }
@@ -69,5 +74,11 @@ public final class MessageSyncDamageModelHandler {
             }
             FirstAid.LOGGER.debug(LoggingMarkers.NETWORK, "Sync complete");
         });
+    }
+
+    private static boolean isUnconscious(AbstractPlayerDamageModel damageModel) {
+        return damageModel instanceof PlayerDamageModel playerDamageModel
+                ? playerDamageModel.isUnconscious()
+                : damageModel.getUnconsciousTicks() > 0;
     }
 }

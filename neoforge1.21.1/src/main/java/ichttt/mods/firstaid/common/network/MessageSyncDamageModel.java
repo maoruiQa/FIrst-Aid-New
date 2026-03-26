@@ -4,6 +4,7 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.HUDHandler;
 import ichttt.mods.firstaid.common.CapProvider;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
@@ -80,7 +81,11 @@ public final class MessageSyncDamageModel implements CustomPacketPayload {
                     damageModel.runScaleLogic(targetPlayer);
                 }
 
+                boolean wasUnconscious = isUnconscious(damageModel);
                 damageModel.deserializeNBT(message.playerDamageModel());
+                if (wasUnconscious != isUnconscious(damageModel)) {
+                    targetPlayer.refreshDimensions();
+                }
                 if (targetPlayer == minecraft.player) {
                     if (damageModel.hasTutorial) {
                         CapProvider.tutorialDone.add(minecraft.player.getName().getString());
@@ -97,6 +102,12 @@ public final class MessageSyncDamageModel implements CustomPacketPayload {
             }
 
             return minecraft.level.getEntity(entityId) instanceof Player targetPlayer ? targetPlayer : null;
+        }
+
+        private static boolean isUnconscious(AbstractPlayerDamageModel damageModel) {
+            return damageModel instanceof PlayerDamageModel playerDamageModel
+                    ? playerDamageModel.isUnconscious()
+                    : damageModel.getUnconsciousTicks() > 0;
         }
     }
 }
