@@ -537,14 +537,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    }
 
    public boolean rescueFromCriticalState(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay) {
-      return this.performCriticalRescue(player, healer, keepWakeUpDelay, 0.0F);
+      return this.performCriticalRescue(player, healer, keepWakeUpDelay, 0.0F, 1.0F);
    }
 
    public boolean defibrillatorRescueFromCriticalState(Player player, boolean keepWakeUpDelay) {
-      return this.performCriticalRescue(player, null, keepWakeUpDelay, 2.0F);
+      return this.performCriticalRescue(player, null, keepWakeUpDelay, 2.0F, 0.4F);
    }
 
-   private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth) {
+   private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth, float wakeUpDelayMultiplier) {
       if (!this.canBeRescued()) {
          return false;
       } else {
@@ -565,7 +565,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                rescueTarget.activeHealer = healer;
             }
 
-            this.setUnconsciousState(FirstAid.getRescueWakeUpDelayTicks(), false, false, "firstaid.gui.stabilizing");
+            this.setUnconsciousState(this.getScaledRescueWakeUpDelayTicks(wakeUpDelayMultiplier), false, false, "firstaid.gui.stabilizing");
          } else {
             this.clearUnconsciousState();
             this.resetRecoveredPlayerState(player);
@@ -579,6 +579,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
 
          return true;
       }
+   }
+
+   private int getScaledRescueWakeUpDelayTicks(float multiplier) {
+      int delayTicks = FirstAid.getRescueWakeUpDelayTicks();
+      return delayTicks <= 0 ? 0 : Math.max(1, Math.round((float)delayTicks * multiplier));
    }
 
    public void giveUp(Player player) {

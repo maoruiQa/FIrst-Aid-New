@@ -86,7 +86,7 @@ public final class RegistryObjects {
             stack -> server.plaster.applyTime.get()
          )
       );
-      DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(5)));
+      DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));
       CREATIVE_TAB = Registry.registerForHolder(
          BuiltInRegistries.CREATIVE_MODE_TAB,
          id("main_tab"),

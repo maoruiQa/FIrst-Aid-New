@@ -69,7 +69,7 @@ public class RegistryObjects {
         // ITEMS
         BANDAGE = ITEM_REGISTER.registerItem("bandage", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack), stack -> server.bandage.applyTime.get()));
         PLASTER = ITEM_REGISTER.registerItem("plaster", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack), stack -> server.plaster.applyTime.get()));
-        DEFIBRILLATOR = ITEM_REGISTER.registerItem("defibrillator", properties -> new Item(properties.durability(5)));
+        DEFIBRILLATOR = ITEM_REGISTER.registerItem("defibrillator", properties -> new Item(properties.durability(3)));
         MORPHINE = ITEM_REGISTER.registerItem("morphine", ItemMorphine::new);
         PAINKILLERS = ITEM_REGISTER.registerItem("painkillers", ItemPainkillers::new);
 

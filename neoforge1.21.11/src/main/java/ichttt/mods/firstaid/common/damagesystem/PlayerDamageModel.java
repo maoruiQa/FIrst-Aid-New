@@ -538,14 +538,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public boolean rescueFromCriticalState(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay) {
-        return performCriticalRescue(player, healer, keepWakeUpDelay, 0.0F);
+        return performCriticalRescue(player, healer, keepWakeUpDelay, 0.0F, 1.0F);
     }
 
     public boolean defibrillatorRescueFromCriticalState(Player player, boolean keepWakeUpDelay) {
-        return performCriticalRescue(player, null, keepWakeUpDelay, 2.0F);
+        return performCriticalRescue(player, null, keepWakeUpDelay, 2.0F, 0.4F);
     }
 
-    private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth) {
+    private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth, float wakeUpDelayMultiplier) {
         if (!canBeRescued()) {
             return false;
         }
@@ -563,7 +563,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             if (healer != null && rescueTarget != null && rescueTarget.activeHealer == null) {
                 rescueTarget.activeHealer = healer;
             }
-            setUnconsciousState(FirstAid.getRescueWakeUpDelayTicks(), false, false, UNCONSCIOUS_REASON_RECOVERING);
+            setUnconsciousState(getScaledRescueWakeUpDelayTicks(wakeUpDelayMultiplier), false, false, UNCONSCIOUS_REASON_RECOVERING);
         } else {
             clearUnconsciousState();
             clearUnconsciousPenalties(player);
@@ -574,6 +574,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             CommonUtils.syncDamageModel(serverPlayer);
         }
         return true;
+    }
+
+    private int getScaledRescueWakeUpDelayTicks(float multiplier) {
+        int delayTicks = FirstAid.getRescueWakeUpDelayTicks();
+        if (delayTicks <= 0) {
+            return 0;
+        }
+        return Math.max(1, Math.round(delayTicks * multiplier));
     }
 
     public void giveUp(Player player) {

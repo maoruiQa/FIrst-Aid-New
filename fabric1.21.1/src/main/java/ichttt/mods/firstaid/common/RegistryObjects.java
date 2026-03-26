@@ -70,7 +70,7 @@ public final class RegistryObjects {
                 stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack),
                 stack -> server.plaster.applyTime.get()
         ));
-        DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(5)));
+        DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));
         MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
         PAINKILLERS = registerItem("painkillers", new ItemPainkillers(itemProperties("painkillers")));
 
