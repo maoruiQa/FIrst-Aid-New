@@ -119,6 +119,7 @@ public class FirstAid {
         if (event.getTabKey().equals(RegistryObjects.CREATIVE_TAB.getKey())) {
             event.accept(RegistryObjects.BANDAGE);
             event.accept(RegistryObjects.PLASTER);
+            event.accept(RegistryObjects.DEFIBRILLATOR);
             event.accept(RegistryObjects.MORPHINE);
             event.accept(RegistryObjects.PAINKILLERS);
         }

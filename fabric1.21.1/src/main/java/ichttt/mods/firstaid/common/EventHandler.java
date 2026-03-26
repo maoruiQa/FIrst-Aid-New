@@ -54,6 +54,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
@@ -104,13 +105,8 @@ import java.util.WeakHashMap;
 public final class EventHandler {
     public static final Random RAND = new Random();
     private static final EntityDimensions PLAYER_UNCONSCIOUS_DIMENSIONS = EntityDimensions.scalable(1.4F, 0.4F);
-    private static final List<ResourceKey<Recipe<?>>> STARTER_RECIPES = List.of(
-            recipeKey("bandage"),
-            recipeKey("plaster"),
-            recipeKey("morphine"),
-            recipeKey("painkillers")
-    );
     private static final int RESCUE_DURATION_TICKS = PlayerDamageModel.getRescueDurationTicks();
+    private static final int DEFIBRILLATOR_RESCUE_DURATION_TICKS = PlayerDamageModel.getDefibrillatorRescueDurationTicks();
     private static final int EXECUTION_DURATION_TICKS = PlayerDamageModel.getExecutionDurationTicks();
 
     public static final Map<Player, ProjectileHitContext> hitList = new WeakHashMap<>();
@@ -166,14 +162,12 @@ public final class EventHandler {
         hitList.put(player, new ProjectileHitContext(projectile, hitPosition));
     }
 
-    private static ResourceKey<Recipe<?>> recipeKey(String path) {
-        return ResourceKey.create(Registries.RECIPE, ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, path));
-    }
-
     private static void awardStarterRecipes(ServerPlayer player) {
-        List<RecipeHolder<?>> recipes = STARTER_RECIPES.stream()
-                .map(recipeKey -> Objects.requireNonNull(player.level().getServer()).getRecipeManager().byKey(recipeKey.location()))
-                .flatMap(Optional::stream)
+        List<RecipeHolder<?>> recipes = Objects.requireNonNull(player.level().getServer())
+                .getRecipeManager()
+                .getRecipes()
+                .stream()
+                .filter(recipe -> FirstAid.MODID.equals(recipe.id().getNamespace()))
                 .toList();
         if (!recipes.isEmpty()) {
             player.awardRecipes(recipes);
@@ -582,13 +576,15 @@ public final class EventHandler {
             return;
         }
 
+        ItemStack rescueStack = rescuer.getItemInHand(rescueTarget.hand());
+        int rescueDurationTicks = getRescueDurationTicks(rescueStack);
         RescueProgress progress = rescueProgress.get(rescuer.getUUID());
-        if (progress == null || !progress.matches(rescueTarget)) {
-            progress = new RescueProgress(rescueTarget.target().getUUID(), rescueTarget.hand(), 0);
+        if (progress == null || !progress.matches(rescueTarget, rescueDurationTicks)) {
+            progress = new RescueProgress(rescueTarget.target().getUUID(), rescueTarget.hand(), 0, rescueDurationTicks);
         }
 
-        int nextTicks = Math.min(RESCUE_DURATION_TICKS, progress.ticks() + 1);
-        if (nextTicks < RESCUE_DURATION_TICKS) {
+        int nextTicks = Math.min(rescueDurationTicks, progress.ticks() + 1);
+        if (nextTicks < rescueDurationTicks) {
             rescueProgress.put(rescuer.getUUID(), progress.withTicks(nextTicks));
             return;
         }
@@ -648,8 +644,17 @@ public final class EventHandler {
             return;
         }
 
-        stack.shrink(1);
-        if (playerDamageModel.rescueFromCriticalState(rescueTarget.target(), null, FirstAid.rescueWakeUpEnabled)) {
+        boolean usingDefibrillator = isDefibrillator(stack);
+        if (usingDefibrillator) {
+            stack.hurtAndBreak(1, rescuer, getEquipmentSlot(rescueTarget.hand()));
+        } else {
+            stack.shrink(1);
+        }
+
+        boolean rescued = usingDefibrillator
+                ? playerDamageModel.defibrillatorRescueFromCriticalState(rescueTarget.target(), FirstAid.rescueWakeUpEnabled)
+                : playerDamageModel.rescueFromCriticalState(rescueTarget.target(), null, FirstAid.rescueWakeUpEnabled);
+        if (rescued) {
             rescuer.displayClientMessage(Component.translatable("firstaid.gui.rescue_other", rescueTarget.target().getDisplayName()).withStyle(ChatFormatting.GREEN), true);
             rescueTarget.target().displayClientMessage(Component.translatable("firstaid.gui.rescue_received", rescuer.getDisplayName()).withStyle(ChatFormatting.GREEN), true);
         }
@@ -751,7 +756,15 @@ public final class EventHandler {
     }
 
     private static boolean isRescueItem(ItemStack stack) {
-        return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get());
+        return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get()) || isDefibrillator(stack);
+    }
+
+    private static boolean isDefibrillator(ItemStack stack) {
+        return stack.is(RegistryObjects.DEFIBRILLATOR.get());
+    }
+
+    private static int getRescueDurationTicks(ItemStack stack) {
+        return isDefibrillator(stack) ? DEFIBRILLATOR_RESCUE_DURATION_TICKS : RESCUE_DURATION_TICKS;
     }
 
     private static EquipmentSlot getEquipmentSlot(InteractionHand hand) {
@@ -761,13 +774,13 @@ public final class EventHandler {
     private record ClosestPointResult(Vec3 point, double progress) {
     }
 
-    private record RescueProgress(UUID targetId, InteractionHand hand, int ticks) {
-        private boolean matches(InteractionTarget rescueTarget) {
-            return targetId.equals(rescueTarget.target().getUUID()) && hand == rescueTarget.hand();
+    private record RescueProgress(UUID targetId, InteractionHand hand, int ticks, int durationTicks) {
+        private boolean matches(InteractionTarget rescueTarget, int rescueDurationTicks) {
+            return targetId.equals(rescueTarget.target().getUUID()) && hand == rescueTarget.hand() && durationTicks == rescueDurationTicks;
         }
 
         private RescueProgress withTicks(int updatedTicks) {
-            return new RescueProgress(targetId, hand, updatedTicks);
+            return new RescueProgress(targetId, hand, updatedTicks, durationTicks);
         }
     }
 

@@ -59,7 +59,9 @@ public class ClientEventHandler {
     private static final Identifier PLAYER_HEALTH_LAYER = VanillaGuiLayers.PLAYER_HEALTH;
     private static final int GIVE_UP_HOLD_TICKS = 20 * 3;
     private static final int RESCUE_HOLD_TICKS = PlayerDamageModel.getRescueDurationTicks();
+    private static final int DEFIBRILLATOR_RESCUE_HOLD_TICKS = PlayerDamageModel.getDefibrillatorRescueDurationTicks();
     private static final int EXECUTION_HOLD_TICKS = PlayerDamageModel.getExecutionDurationTicks();
+    private static final int RESCUE_SOUND_DELAY_TICKS = 10;
     private static final SuppressionFeedbackController SUPPRESSION_FEEDBACK_CONTROLLER = new SuppressionFeedbackController();
     private static final ProjectileNearMissDetector PROJECTILE_NEAR_MISS_DETECTOR = new ProjectileNearMissDetector(SUPPRESSION_FEEDBACK_CONTROLLER);
     private static boolean loggedRenderGuiWithoutPlayer;
@@ -71,6 +73,7 @@ public class ClientEventHandler {
     private static boolean giveUpTriggered;
     private static int interactionHoldTicks;
     private static boolean interactionTriggered;
+    private static boolean interactionSoundTriggered;
     private static InteractionPrompt interactionPrompt;
 
     @SubscribeEvent
@@ -420,18 +423,29 @@ public class ClientEventHandler {
         if (interactionPrompt == null
                 || nextPrompt == null
                 || interactionPrompt.targetId() != nextPrompt.targetId()
-                || interactionPrompt.type() != nextPrompt.type()) {
+                || interactionPrompt.type() != nextPrompt.type()
+                || interactionPrompt.hand() != nextPrompt.hand()
+                || interactionPrompt.holdDurationTicks() != nextPrompt.holdDurationTicks()) {
             interactionHoldTicks = 0;
             interactionTriggered = false;
+            interactionSoundTriggered = false;
         }
         interactionPrompt = nextPrompt;
         if (interactionPrompt == null || mc.screen != null || interactionPrompt.type() == InteractionType.INVALID_ITEM || !interactionPrompt.isSneaking()) {
             interactionHoldTicks = 0;
             interactionTriggered = false;
+            interactionSoundTriggered = false;
             return;
         }
         int holdDurationTicks = getCurrentInteractionHoldDurationTicks();
         interactionHoldTicks = Math.min(holdDurationTicks, interactionHoldTicks + 1);
+        if (interactionPrompt.type() == InteractionType.RESCUE
+                && interactionHoldTicks >= RESCUE_SOUND_DELAY_TICKS
+                && !interactionSoundTriggered
+                && mc.player != null) {
+            HealingSoundController.playRescueInteractionSound(mc.player.getItemInHand(interactionPrompt.hand()));
+            interactionSoundTriggered = true;
+        }
         if (interactionHoldTicks >= holdDurationTicks && !interactionTriggered) {
             interactionTriggered = true;
             if (interactionPrompt.type() == InteractionType.RESCUE) {
@@ -454,7 +468,9 @@ public class ClientEventHandler {
 
         InteractionSelection selection = getInteractionSelection(mc.player);
         InteractionType type = selection == null ? InteractionType.INVALID_ITEM : selection.type();
-        return new InteractionPrompt(closestTarget.getId(), closestTarget.getDisplayName().copy(), type, mc.player.isCrouching());
+        InteractionHand hand = selection == null ? InteractionHand.MAIN_HAND : selection.hand();
+        int holdDurationTicks = selection == null ? 0 : getInteractionHoldDurationTicks(mc.player.getItemInHand(hand), type);
+        return new InteractionPrompt(closestTarget.getId(), closestTarget.getDisplayName().copy(), type, mc.player.isCrouching(), hand, holdDurationTicks);
     }
 
     private static Player findClosestRescueTarget(Minecraft mc) {
@@ -496,15 +512,23 @@ public class ClientEventHandler {
     }
 
     private static boolean isRescueItem(ItemStack stack) {
-        return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get());
+        return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get()) || isDefibrillator(stack);
+    }
+
+    private static boolean isDefibrillator(ItemStack stack) {
+        return stack.is(RegistryObjects.DEFIBRILLATOR.get());
     }
 
     private static int getCurrentInteractionHoldDurationTicks() {
         if (interactionPrompt == null) {
             return 0;
         }
-        return switch (interactionPrompt.type()) {
-            case RESCUE -> RESCUE_HOLD_TICKS;
+        return interactionPrompt.holdDurationTicks();
+    }
+
+    private static int getInteractionHoldDurationTicks(ItemStack stack, InteractionType type) {
+        return switch (type) {
+            case RESCUE -> isDefibrillator(stack) ? DEFIBRILLATOR_RESCUE_HOLD_TICKS : RESCUE_HOLD_TICKS;
             case EXECUTE -> EXECUTION_HOLD_TICKS;
             default -> 0;
         };
@@ -549,10 +573,11 @@ public class ClientEventHandler {
     private static void resetInteractionPromptState() {
         interactionHoldTicks = 0;
         interactionTriggered = false;
+        interactionSoundTriggered = false;
         interactionPrompt = null;
     }
 
-    private record InteractionPrompt(int targetId, Component targetName, InteractionType type, boolean isSneaking) {
+    private record InteractionPrompt(int targetId, Component targetName, InteractionType type, boolean isSneaking, InteractionHand hand, int holdDurationTicks) {
     }
 
     private record InteractionSelection(InteractionType type, InteractionHand hand) {

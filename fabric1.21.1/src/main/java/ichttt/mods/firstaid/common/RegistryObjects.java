@@ -42,11 +42,13 @@ import net.minecraft.world.item.ItemStack;
 public final class RegistryObjects {
     public static final RegistryEntry<ItemHealing> BANDAGE;
     public static final RegistryEntry<ItemHealing> PLASTER;
+    public static final RegistryEntry<Item> DEFIBRILLATOR;
     public static final RegistryEntry<ItemMorphine> MORPHINE;
     public static final RegistryEntry<ItemPainkillers> PAINKILLERS;
 
     public static final Holder<SoundEvent> HEARTBEAT;
     public static final Holder<SoundEvent> BANDAGE_USE;
+    public static final Holder<SoundEvent> DEFIBRILLATOR_USE;
     public static final Holder<SoundEvent> PILLS_USE;
 
     public static final Holder<MobEffect> MORPHINE_EFFECT;
@@ -68,6 +70,7 @@ public final class RegistryObjects {
                 stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack),
                 stack -> server.plaster.applyTime.get()
         ));
+        DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(5)));
         MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
         PAINKILLERS = registerItem("painkillers", new ItemPainkillers(itemProperties("painkillers")));
 
@@ -75,6 +78,10 @@ public final class RegistryObjects {
         HEARTBEAT = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, soundLocation, SoundEvent.createVariableRangeEvent(soundLocation));
         ResourceLocation bandageSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.use_bandage");
         BANDAGE_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, bandageSoundLocation, SoundEvent.createVariableRangeEvent(bandageSoundLocation));
+        ResourceLocation defibrillatorSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.defibrillator_use");
+        DEFIBRILLATOR_USE = Registry.registerForHolder(
+                BuiltInRegistries.SOUND_EVENT, defibrillatorSoundLocation, SoundEvent.createVariableRangeEvent(defibrillatorSoundLocation)
+        );
         ResourceLocation pillsSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.take_pills");
         PILLS_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, pillsSoundLocation, SoundEvent.createVariableRangeEvent(pillsSoundLocation));
 
@@ -88,6 +95,7 @@ public final class RegistryObjects {
                 .displayItems((context, entries) -> {
                     entries.accept(BANDAGE.get());
                     entries.accept(PLASTER.get());
+                    entries.accept(DEFIBRILLATOR.get());
                     entries.accept(MORPHINE.get());
                     entries.accept(PAINKILLERS.get());
                 })

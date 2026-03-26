@@ -48,11 +48,13 @@ public class RegistryObjects {
 
     public static final DeferredItem<ItemHealing> BANDAGE;
     public static final DeferredItem<ItemHealing> PLASTER;
+    public static final DeferredItem<Item> DEFIBRILLATOR;
     public static final DeferredItem<ItemMorphine> MORPHINE;
     public static final DeferredItem<ItemPainkillers> PAINKILLERS;
 
     public static final Holder<SoundEvent> HEARTBEAT;
     public static final Holder<SoundEvent> BANDAGE_USE;
+    public static final Holder<SoundEvent> DEFIBRILLATOR_USE;
     public static final Holder<SoundEvent> PILLS_USE;
 
     public static final Holder<MobEffect> MORPHINE_EFFECT;
@@ -67,6 +69,7 @@ public class RegistryObjects {
         // ITEMS
         BANDAGE = ITEM_REGISTER.registerItem("bandage", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack), stack -> server.bandage.applyTime.get()));
         PLASTER = ITEM_REGISTER.registerItem("plaster", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack), stack -> server.plaster.applyTime.get()));
+        DEFIBRILLATOR = ITEM_REGISTER.registerItem("defibrillator", properties -> new Item(properties.durability(5)));
         MORPHINE = ITEM_REGISTER.registerItem("morphine", ItemMorphine::new);
         PAINKILLERS = ITEM_REGISTER.registerItem("painkillers", ItemPainkillers::new);
 
@@ -75,6 +78,10 @@ public class RegistryObjects {
         HEARTBEAT = SOUND_EVENT_REGISTER.register(soundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(soundLocation));
         Identifier bandageSoundLocation = Identifier.fromNamespaceAndPath(FirstAid.MODID, "item.use_bandage");
         BANDAGE_USE = SOUND_EVENT_REGISTER.register(bandageSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(bandageSoundLocation));
+        Identifier defibrillatorSoundLocation = Identifier.fromNamespaceAndPath(FirstAid.MODID, "item.defibrillator_use");
+        DEFIBRILLATOR_USE = SOUND_EVENT_REGISTER.register(
+                defibrillatorSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(defibrillatorSoundLocation)
+        );
         Identifier pillsSoundLocation = Identifier.fromNamespaceAndPath(FirstAid.MODID, "item.take_pills");
         PILLS_USE = SOUND_EVENT_REGISTER.register(pillsSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(pillsSoundLocation));
 

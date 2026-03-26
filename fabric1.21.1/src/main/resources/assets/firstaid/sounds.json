@@ -15,6 +15,13 @@
       }
     ]
   },
+  "item.defibrillator_use": {
+    "sounds": [
+      {
+        "name": "firstaid:defibrillator_use"
+      }
+    ]
+  },
   "item.take_pills": {
     "sounds": [
       {

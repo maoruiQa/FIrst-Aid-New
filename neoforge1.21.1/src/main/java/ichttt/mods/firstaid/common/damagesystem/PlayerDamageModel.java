@@ -74,6 +74,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private static final int MORPHINE_ACTIVATION_DELAY_TICKS = 20 * 10;
     private static final int CRITICAL_UNCONSCIOUS_TICKS = 20 * 150;
     private static final int RESCUE_DURATION_TICKS = 20 * 8;
+    private static final int DEFIBRILLATOR_RESCUE_DURATION_TICKS = 20 * 3;
     private static final int EXECUTION_DURATION_TICKS = 20 * 5;
     private static final double RESCUE_RANGE = 3.0D;
     private static final int COLLAPSE_ANIMATION_TICKS = 12;
@@ -425,6 +426,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return RESCUE_DURATION_TICKS;
     }
 
+    public static int getDefibrillatorRescueDurationTicks() {
+        return DEFIBRILLATOR_RESCUE_DURATION_TICKS;
+    }
+
     public static int getExecutionDurationTicks() {
         return EXECUTION_DURATION_TICKS;
     }
@@ -512,10 +517,21 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public boolean rescueFromCriticalState(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay) {
+        return performCriticalRescue(player, healer, keepWakeUpDelay, 0.0F);
+    }
+
+    public boolean defibrillatorRescueFromCriticalState(Player player, boolean keepWakeUpDelay) {
+        return performCriticalRescue(player, null, keepWakeUpDelay, 2.0F);
+    }
+
+    private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth) {
         if (!canBeRescued()) {
             return false;
         }
         rescueCriticalParts(keepWakeUpDelay ? 1.0F : 2.0F);
+        if (extraCriticalHealth > 0.0F) {
+            restoreDamagedCriticalParts(extraCriticalHealth);
+        }
         if (!keepWakeUpDelay) {
             rescueNonCriticalZeroParts(1.0F);
         }
@@ -1055,6 +1071,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         for (AbstractDamageablePart part : this) {
             if (!part.canCauseDeath && part.currentHealth <= 0.0F) {
                 part.currentHealth = Math.min(part.getMaxHealth(), restoredHealth);
+            }
+        }
+    }
+
+    private void restoreDamagedCriticalParts(float restoredHealth) {
+        for (AbstractDamageablePart part : this) {
+            if (part.canCauseDeath && part.currentHealth < part.getMaxHealth()) {
+                part.currentHealth = Math.min(part.getMaxHealth(), part.currentHealth + restoredHealth);
             }
         }
     }

@@ -2,21 +2,17 @@ package ichttt.mods.firstaid.common.network;
 
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
-import ichttt.mods.firstaid.client.HUDHandler;
-import ichttt.mods.firstaid.common.CapProvider;
-import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
-import ichttt.mods.firstaid.common.util.CommonUtils;
-import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public final class MessageSyncDamageModel implements CustomPacketPayload {
+    private static final String CLIENT_HANDLER_CLASS = "ichttt.mods.firstaid.client.network.ClientSyncDamageModelHandler";
     public static final CustomPacketPayload.Type<MessageSyncDamageModel> TYPE = new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "sync_damage_model"));
     public static final StreamCodec<RegistryFriendlyByteBuf, MessageSyncDamageModel> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT,
@@ -58,56 +54,17 @@ public final class MessageSyncDamageModel implements CustomPacketPayload {
         return TYPE;
     }
 
-    public static final class Handler {
-
-        public static void onMessage(MessageSyncDamageModel message, IPayloadContext context) {
-            context.enqueueWork(() -> {
-                Minecraft minecraft = Minecraft.getInstance();
-                if (minecraft.level == null || minecraft.player == null) {
-                    return;
-                }
-
-                Player targetPlayer = resolveTargetPlayer(minecraft, message.entityId());
-                if (targetPlayer == null) {
-                    return;
-                }
-
-                AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(targetPlayer);
-                if (damageModel == null) {
-                    return;
-                }
-
-                if (message.shouldScaleMaxHealth()) {
-                    damageModel.runScaleLogic(targetPlayer);
-                }
-
-                boolean wasUnconscious = isUnconscious(damageModel);
-                damageModel.deserializeNBT(message.playerDamageModel());
-                if (wasUnconscious != isUnconscious(damageModel)) {
-                    targetPlayer.refreshDimensions();
-                }
-                if (targetPlayer == minecraft.player) {
-                    if (damageModel.hasTutorial) {
-                        CapProvider.tutorialDone.add(minecraft.player.getName().getString());
-                    }
-                    HUDHandler.INSTANCE.ticker = 200;
-                    FirstAid.isSynced = true;
-                }
-            });
-        }
-
-        private static Player resolveTargetPlayer(Minecraft minecraft, int entityId) {
-            if (minecraft.player != null && minecraft.player.getId() == entityId) {
-                return minecraft.player;
+    public static void handle(MessageSyncDamageModel message, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!FMLEnvironment.dist.isClient()) {
+                return;
             }
-
-            return minecraft.level.getEntity(entityId) instanceof Player targetPlayer ? targetPlayer : null;
-        }
-
-        private static boolean isUnconscious(AbstractPlayerDamageModel damageModel) {
-            return damageModel instanceof PlayerDamageModel playerDamageModel
-                    ? playerDamageModel.isUnconscious()
-                    : damageModel.getUnconsciousTicks() > 0;
-        }
+            try {
+                Class<?> handlerClass = Class.forName(CLIENT_HANDLER_CLASS);
+                handlerClass.getMethod("handle", MessageSyncDamageModel.class).invoke(null, message);
+            } catch (ReflectiveOperationException exception) {
+                throw new RuntimeException("Failed to dispatch MessageSyncDamageModel to the client handler", exception);
+            }
+        });
     }
 }

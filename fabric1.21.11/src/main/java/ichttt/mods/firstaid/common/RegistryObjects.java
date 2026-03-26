@@ -28,12 +28,14 @@ import net.minecraft.world.level.ItemLike;
 public final class RegistryObjects {
    public static final RegistryObjects.RegistryEntry<ItemHealing> BANDAGE;
    public static final RegistryObjects.RegistryEntry<ItemHealing> PLASTER;
+   public static final RegistryObjects.RegistryEntry<Item> DEFIBRILLATOR;
    public static final RegistryObjects.RegistryEntry<ItemMorphine> MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
    public static final RegistryObjects.RegistryEntry<ItemPainkillers> PAINKILLERS = registerItem(
       "painkillers", new ItemPainkillers(itemProperties("painkillers"))
    );
    public static final Holder<SoundEvent> HEARTBEAT;
    public static final Holder<SoundEvent> BANDAGE_USE;
+   public static final Holder<SoundEvent> DEFIBRILLATOR_USE;
    public static final Holder<SoundEvent> PILLS_USE;
    public static final Holder<MobEffect> MORPHINE_EFFECT = Registry.registerForHolder(
       BuiltInRegistries.MOB_EFFECT, id("morphine"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 3549)
@@ -84,6 +86,7 @@ public final class RegistryObjects {
             stack -> server.plaster.applyTime.get()
          )
       );
+      DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(5)));
       CREATIVE_TAB = Registry.registerForHolder(
          BuiltInRegistries.CREATIVE_MODE_TAB,
          id("main_tab"),
@@ -93,6 +96,7 @@ public final class RegistryObjects {
             .displayItems((context, entries) -> {
                entries.accept((ItemLike)BANDAGE.get());
                entries.accept((ItemLike)PLASTER.get());
+               entries.accept((ItemLike)DEFIBRILLATOR.get());
                entries.accept((ItemLike)MORPHINE.get());
                entries.accept((ItemLike)PAINKILLERS.get());
             })
@@ -102,6 +106,10 @@ public final class RegistryObjects {
       HEARTBEAT = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, soundLocation, SoundEvent.createVariableRangeEvent(soundLocation));
       Identifier bandageSoundLocation = Identifier.fromNamespaceAndPath("firstaid", "item.use_bandage");
       BANDAGE_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, bandageSoundLocation, SoundEvent.createVariableRangeEvent(bandageSoundLocation));
+      Identifier defibrillatorSoundLocation = Identifier.fromNamespaceAndPath("firstaid", "item.defibrillator_use");
+      DEFIBRILLATOR_USE = Registry.registerForHolder(
+         BuiltInRegistries.SOUND_EVENT, defibrillatorSoundLocation, SoundEvent.createVariableRangeEvent(defibrillatorSoundLocation)
+      );
       Identifier pillsSoundLocation = Identifier.fromNamespaceAndPath("firstaid", "item.take_pills");
       PILLS_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, pillsSoundLocation, SoundEvent.createVariableRangeEvent(pillsSoundLocation));
    }

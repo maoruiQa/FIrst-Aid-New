@@ -53,6 +53,19 @@ public final class HealingSoundController {
       }
    }
 
+   public static void playRescueInteractionSound(ItemStack stack) {
+      Minecraft minecraft = Minecraft.getInstance();
+      LocalPlayer player = minecraft.player;
+      if (!(Boolean)FirstAidConfig.CLIENT.enableSounds.get() || player == null) {
+         return;
+      }
+
+      SoundEvent soundEvent = stack.is((Item)RegistryObjects.DEFIBRILLATOR.get())
+         ? (SoundEvent)RegistryObjects.DEFIBRILLATOR_USE.value()
+         : (SoundEvent)RegistryObjects.BANDAGE_USE.value();
+      player.playSound(soundEvent, 1.0F, 1.0F);
+   }
+
    private static boolean isUsingPills(LocalPlayer player) {
       if (!player.isUsingItem()) {
          return false;
