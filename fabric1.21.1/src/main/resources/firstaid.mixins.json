@@ -19,6 +19,7 @@
     "client.LivingEntityRendererMixin",
     "client.MouseHandlerMixin",
     "client.PlayerModelMixin",
+    "client.PlayerRendererMixin",
     "client.SoundManagerMixin"
   ],
   "injectors": {

@@ -30,6 +30,7 @@ import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -103,7 +104,7 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
                     if (FirstAidConfig.GENERAL.debug.get())
                         CommonUtils.debugLogStacktrace("Completely ignoring setHealth!");
                     return;
-                } else if (FirstAidConfig.watchSetHealth && !CommonUtils.isSetHealthInterceptionSuppressed() && !Float.isInfinite(aFloat) && !Float.isNaN(aFloat) && aFloat > 0 && player instanceof ServerPlayer && ((ServerPlayer) player).connection != null) {
+                } else if (FirstAidConfig.watchSetHealth && !CommonUtils.isSetHealthInterceptionSuppressed() && !Float.isInfinite(aFloat) && !Float.isNaN(aFloat) && player instanceof ServerPlayer && ((ServerPlayer) player).connection != null) {
                     //calculate diff
                     float orig = get(LivingEntity.DATA_HEALTH_ID);
                     if (orig > 0 && !Float.isNaN(orig) && !Float.isInfinite(orig)) {

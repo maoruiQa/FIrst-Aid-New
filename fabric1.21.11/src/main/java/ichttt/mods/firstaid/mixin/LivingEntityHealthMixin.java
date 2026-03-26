@@ -127,9 +127,9 @@ public abstract class LivingEntityHealthMixin {
                         HealthDistribution.addRandomHealth(healed, player, true);
                      }
                   }
-               }
 
-               ci.cancel();
+                  ci.cancel();
+               }
             }
          }
       }
@@ -140,7 +140,7 @@ public abstract class LivingEntityHealthMixin {
          return false;
       }
 
-      if (!(health <= 0.0F) && !Float.isNaN(health) && !Float.isInfinite(health)) {
+      if (!Float.isNaN(health) && !Float.isInfinite(health)) {
          return player instanceof ServerPlayer serverPlayer && serverPlayer.connection != null ? !isInternalFirstAidCall() : false;
       } else {
          return false;

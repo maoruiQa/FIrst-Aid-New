@@ -138,15 +138,16 @@ public abstract class LivingEntityHealthMixin {
                     HealthDistribution.addRandomHealth(healed, player, true);
                 }
             }
+
+            ci.cancel();
         }
-        ci.cancel();
     }
 
     private static boolean shouldInterceptSetHealth(Player player, float health) {
         if (CommonUtils.isSetHealthInterceptionSuppressed()) {
             return false;
         }
-        if (health <= 0.0F || Float.isNaN(health) || Float.isInfinite(health)) {
+        if (Float.isNaN(health) || Float.isInfinite(health)) {
             return false;
         }
         if (!(player instanceof ServerPlayer serverPlayer) || serverPlayer.connection == null) {

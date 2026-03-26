@@ -403,6 +403,27 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return isUnconscious() && unconsciousAllowsGiveUp;
     }
 
+    public boolean refreshRescueWakeUpState(Player player) {
+        if (!isRescueWakeUpRecoveryActive()) {
+            return false;
+        }
+
+        int delayTicks = FirstAid.rescueWakeUpEnabled ? FirstAid.getRescueWakeUpDelayTicks() : 0;
+        if (delayTicks <= 0) {
+            clearUnconsciousState();
+            clearUnconsciousPenalties(player);
+            CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(Math.max(player.getHealth(), 1.0F)));
+        } else {
+            unconsciousTicks = delayTicks;
+            unconsciousAllowsGiveUp = false;
+            unconsciousCausesDeath = false;
+            unconsciousReasonKey = UNCONSCIOUS_REASON_RECOVERING;
+        }
+
+        scheduleResync();
+        return true;
+    }
+
     public float getCollapseAnimationProgress(float partialTick) {
         if (!isUnconscious()) {
             return 1.0F;
@@ -1106,6 +1127,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         unconsciousAllowsGiveUp = allowsGiveUp;
         unconsciousCausesDeath = causesDeath;
         unconsciousReasonKey = reasonKey;
+    }
+
+    private boolean isRescueWakeUpRecoveryActive() {
+        return isUnconscious() && !criticalConditionActive && UNCONSCIOUS_REASON_RECOVERING.equals(unconsciousReasonKey);
     }
 
     private void clearUnconsciousState() {

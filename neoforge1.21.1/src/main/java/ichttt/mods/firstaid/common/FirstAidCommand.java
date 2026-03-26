@@ -112,18 +112,32 @@ public final class FirstAidCommand {
 
     private static int setRescueWakeUp(CommandSourceStack source, boolean enabled) {
         FirstAid.rescueWakeUpEnabled = enabled;
+        FirstAidConfig.persistCommandSettings();
+        refreshRescueWakeUpState(source);
         source.sendSuccess(() -> Component.translatable(enabled
                 ? "firstaid.command.revivewakeup.on"
                 : "firstaid.command.revivewakeup.off"), true);
-        FirstAidConfig.persistCommandSettings();
         return 1;
     }
 
     private static int setRescueWakeUpDelay(CommandSourceStack source, double seconds) {
         FirstAid.rescueWakeUpDelaySeconds = seconds;
-        source.sendSuccess(() -> Component.translatable("firstaid.command.revivewakeup.time", seconds), true);
         FirstAidConfig.persistCommandSettings();
+        refreshRescueWakeUpState(source);
+        source.sendSuccess(() -> Component.translatable("firstaid.command.revivewakeup.time", seconds), true);
         return 1;
+    }
+
+    private static void refreshRescueWakeUpState(CommandSourceStack source) {
+        if (source.getServer() == null) {
+            return;
+        }
+
+        for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
+            if (CommonUtils.getDamageModel(player) instanceof PlayerDamageModel playerDamageModel && playerDamageModel.refreshRescueWakeUpState(player)) {
+                CommonUtils.syncDamageModel(player);
+            }
+        }
     }
 
     private static int setMedicineEffectMode(CommandSourceStack source, FirstAid.MedicineEffectMode mode) {

@@ -405,6 +405,27 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return isUnconscious() && unconsciousAllowsGiveUp;
     }
 
+    public boolean refreshRescueWakeUpState(Player player) {
+        if (!isRescueWakeUpRecoveryActive()) {
+            return false;
+        }
+
+        int delayTicks = FirstAid.rescueWakeUpEnabled ? FirstAid.getRescueWakeUpDelayTicks() : 0;
+        if (delayTicks <= 0) {
+            clearUnconsciousState();
+            resetRecoveredPlayerState(player);
+            CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(Math.max(player.getHealth(), 1.0F)));
+        } else {
+            unconsciousTicks = delayTicks;
+            unconsciousAllowsGiveUp = false;
+            unconsciousCausesDeath = false;
+            unconsciousReasonKey = UNCONSCIOUS_REASON_RECOVERING;
+        }
+
+        scheduleResync();
+        return true;
+    }
+
     public float getCollapseAnimationProgress(float partialTick) {
         if (!isUnconscious()) {
             return 1.0F;
@@ -493,7 +514,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public void handlePostDamage(Player player) {
-        if (hasNoRemainingBodyHealth()) {
+        if (hasNoRemainingBodyHealth() || hasAllCriticalPartsCollapsed()) {
             criticalConditionActive = false;
             clearUnconsciousState();
             resetRecoveredPlayerState(player);
@@ -657,7 +678,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                 throw new RuntimeException("Unknown constant " + mode);
         }
         float scaledHealth = currentHealth * player.getMaxHealth();
-        if (criticalConditionActive && unconsciousTicks > 0 && hasCriticalPartCollapsed()) {
+        if (criticalConditionActive && unconsciousTicks > 0 && hasCriticalPartCollapsed() && !hasAllCriticalPartsCollapsed()) {
             return Math.max(1.0F, scaledHealth);
         }
         return scaledHealth;
@@ -674,6 +695,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             return true;
 
         if (hasNoRemainingBodyHealth()) {
+            return true;
+        }
+
+        if (hasAllCriticalPartsCollapsed()) {
             return true;
         }
 
@@ -898,6 +923,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
 
         tickSuppressionState();
 
+        if (hasAllCriticalPartsCollapsed()) {
+            criticalConditionActive = false;
+            clearUnconsciousState();
+            resetRecoveredPlayerState(player);
+            CommonUtils.killPlayerDirectly(player, null);
+            return;
+        }
+
         if (criticalConditionActive && !hasCriticalPartCollapsed()) {
             criticalConditionActive = false;
             if (unconsciousCausesDeath) {
@@ -1101,6 +1134,20 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return false;
     }
 
+    private boolean hasAllCriticalPartsCollapsed() {
+        boolean hasCriticalPart = false;
+        for (AbstractDamageablePart part : this) {
+            if (!part.canCauseDeath) {
+                continue;
+            }
+            hasCriticalPart = true;
+            if (part.currentHealth > 0.0F) {
+                return false;
+            }
+        }
+        return hasCriticalPart;
+    }
+
     private boolean hasNoRemainingBodyHealth() {
         for (AbstractDamageablePart part : this) {
             if (part.currentHealth > 0.0F) {
@@ -1115,6 +1162,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         unconsciousAllowsGiveUp = allowsGiveUp;
         unconsciousCausesDeath = causesDeath;
         unconsciousReasonKey = reasonKey;
+    }
+
+    private boolean isRescueWakeUpRecoveryActive() {
+        return isUnconscious() && !criticalConditionActive && UNCONSCIOUS_REASON_RECOVERING.equals(unconsciousReasonKey);
     }
 
     private void clearUnconsciousState() {
