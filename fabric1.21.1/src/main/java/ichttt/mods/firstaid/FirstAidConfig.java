@@ -92,6 +92,7 @@ public final class FirstAidConfig {
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
+        FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
         FirstAid.injuryDebuffOverrides.clear();
@@ -102,6 +103,7 @@ public final class FirstAidConfig {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
+        SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
         SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
@@ -209,6 +211,7 @@ public final class FirstAidConfig {
         public final ConfigValue<Boolean> dynamicPainEnabled;
         public final ConfigValue<Boolean> lowSuppressionEnabled;
         public final ConfigValue<Boolean> rescueWakeUpEnabled;
+        public final ConfigValue<Double> rescueWakeUpDelaySeconds;
         public final ConfigValue<FirstAid.MedicineEffectMode> medicineEffectMode;
         public final ConfigValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
         public final ConfigValue<Map<ResourceLocation, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
@@ -268,6 +271,7 @@ public final class FirstAidConfig {
             dynamicPainEnabled = define(boolValue("dynamicPainEnabled", true));
             lowSuppressionEnabled = define(boolValue("lowSuppressionEnabled", false));
             rescueWakeUpEnabled = define(boolValue("rescueWakeUpEnabled", false));
+            rescueWakeUpDelaySeconds = define(doubleValue("rescueWakeUpDelaySeconds", 1.5D, 0D, 3600D));
             medicineEffectMode = define(enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class));
             injuryDebuffMode = define(enumValue("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL, FirstAid.InjuryDebuffMode.class));
             injuryDebuffOverrides = define(injuryDebuffOverridesValue("injuryDebuffOverrides"));

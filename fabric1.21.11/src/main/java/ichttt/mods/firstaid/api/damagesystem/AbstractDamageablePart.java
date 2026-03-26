@@ -30,7 +30,11 @@ public abstract class AbstractDamageablePart implements INBTSerializable<Compoun
 
    public abstract float damage(float var1, @Nullable Player var2, boolean var3, float var4);
 
-   public abstract void tick(Level var1, Player var2, boolean var3);
+   public void tick(Level world, Player player, boolean tickDebuffs) {
+      this.tick(world, player, tickDebuffs, false);
+   }
+
+   public abstract void tick(Level var1, Player var2, boolean var3, boolean var4);
 
    public abstract void setAbsorption(float var1);
 

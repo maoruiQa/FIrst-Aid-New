@@ -73,7 +73,6 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private static final int PAINKILLER_ACTIVATION_DELAY_TICKS = 20 * 30;
     private static final int MORPHINE_ACTIVATION_DELAY_TICKS = 20 * 10;
     private static final int CRITICAL_UNCONSCIOUS_TICKS = 20 * 150;
-    private static final int RESCUE_WAKE_UP_DELAY = Math.max(1, Math.round(20 * 5 * 0.3F));
     private static final int RESCUE_DURATION_TICKS = 20 * 8;
     private static final int EXECUTION_DURATION_TICKS = 20 * 5;
     private static final double RESCUE_RANGE = 3.0D;
@@ -278,7 +277,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         for (AbstractDamageablePart part : this) {
             float previousHealth = part.currentHealth;
             boolean hadHealer = part.activeHealer != null;
-            part.tick(world, player, !painSuppressed);
+            part.tick(world, player, !painSuppressed, isUnconscious());
             if (!world.isClientSide() && (Float.compare(previousHealth, part.currentHealth) != 0 || hadHealer != (part.activeHealer != null))) {
                 healingStateChanged = true;
             }
@@ -527,7 +526,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             if (healer != null && rescueTarget != null && rescueTarget.activeHealer == null) {
                 rescueTarget.activeHealer = healer;
             }
-            setUnconsciousState(Math.max(unconsciousTicks, RESCUE_WAKE_UP_DELAY), false, false, UNCONSCIOUS_REASON_RECOVERING);
+            setUnconsciousState(Math.max(unconsciousTicks, FirstAid.getRescueWakeUpDelayTicks()), false, false, UNCONSCIOUS_REASON_RECOVERING);
         } else {
             clearUnconsciousState();
             clearUnconsciousPenalties(player);

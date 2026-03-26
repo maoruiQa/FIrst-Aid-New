@@ -19,6 +19,7 @@
 package ichttt.mods.firstaid.common;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
@@ -56,7 +57,10 @@ public final class FirstAidCommand {
                         .then(Commands.literal("on")
                                 .executes(context -> setRescueWakeUp(context.getSource(), true)))
                         .then(Commands.literal("off")
-                                .executes(context -> setRescueWakeUp(context.getSource(), false))))
+                                .executes(context -> setRescueWakeUp(context.getSource(), false)))
+                        .then(Commands.literal("time")
+                                .then(Commands.argument("seconds", DoubleArgumentType.doubleArg(0D))
+                                        .executes(context -> setRescueWakeUpDelay(context.getSource(), DoubleArgumentType.getDouble(context, "seconds"))))))
                 .then(Commands.literal("medicineeffect")
                         .then(Commands.literal("realistic")
                                 .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.REALISTIC)))
@@ -112,6 +116,13 @@ public final class FirstAidCommand {
         source.sendSuccess(() -> Component.translatable(enabled
                 ? "firstaid.command.revivewakeup.on"
                 : "firstaid.command.revivewakeup.off"), true);
+        FirstAidConfig.persistCommandSettings();
+        return 1;
+    }
+
+    private static int setRescueWakeUpDelay(CommandSourceStack source, double seconds) {
+        FirstAid.rescueWakeUpDelaySeconds = seconds;
+        source.sendSuccess(() -> Component.translatable("firstaid.command.revivewakeup.time", seconds), true);
         FirstAidConfig.persistCommandSettings();
         return 1;
     }

@@ -1,6 +1,7 @@
 package ichttt.mods.firstaid.common;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
@@ -41,6 +42,17 @@ public final class FirstAidCommand {
                      ((LiteralArgumentBuilder)Commands.literal("revivewakeup")
                            .then(Commands.literal("on").executes(context -> setRescueWakeUp((CommandSourceStack)context.getSource(), true))))
                         .then(Commands.literal("off").executes(context -> setRescueWakeUp((CommandSourceStack)context.getSource(), false)))
+                        .then(
+                           ((LiteralArgumentBuilder)Commands.literal("time"))
+                              .then(
+                                 Commands.argument("seconds", DoubleArgumentType.doubleArg(0.0))
+                                    .executes(
+                                       context -> setRescueWakeUpDelay(
+                                             (CommandSourceStack)context.getSource(), DoubleArgumentType.getDouble(context, "seconds")
+                                          )
+                                    )
+                              )
+                        )
                   ))
                .then(
                   ((LiteralArgumentBuilder)((LiteralArgumentBuilder)Commands.literal("medicineeffect")
@@ -130,6 +142,13 @@ public final class FirstAidCommand {
    private static int setRescueWakeUp(CommandSourceStack source, boolean enabled) {
       FirstAid.rescueWakeUpEnabled = enabled;
       source.sendSuccess(() -> Component.translatable(enabled ? "firstaid.command.revivewakeup.on" : "firstaid.command.revivewakeup.off"), true);
+      FirstAidConfig.persistCommandSettings();
+      return 1;
+   }
+
+   private static int setRescueWakeUpDelay(CommandSourceStack source, double seconds) {
+      FirstAid.rescueWakeUpDelaySeconds = seconds;
+      source.sendSuccess(() -> Component.translatable("firstaid.command.revivewakeup.time", new Object[]{seconds}), true);
       FirstAidConfig.persistCommandSettings();
       return 1;
    }

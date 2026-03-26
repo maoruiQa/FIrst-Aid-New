@@ -60,6 +60,7 @@ public class FirstAidConfig {
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
+        FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
         FirstAid.injuryDebuffOverrides.clear();
@@ -70,6 +71,7 @@ public class FirstAidConfig {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
+        SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
         SERVER.injuryDebuffOverrides.set(serializeInjuryDebuffOverrides(FirstAid.injuryDebuffOverrides));
@@ -258,6 +260,9 @@ public class FirstAidConfig {
             rescueWakeUpEnabled = builder
                     .comment("Persistent toggle for /firstaid revivewakeup (on vs off)")
                     .define("rescueWakeUpEnabled", false);
+            rescueWakeUpDelaySeconds = builder
+                    .comment("Persistent delay in seconds for /firstaid revivewakeup time")
+                    .defineInRange("rescueWakeUpDelaySeconds", 1.5D, 0D, 3600D);
             medicineEffectMode = builder
                     .comment("Persistent toggle for /firstaid medicineeffect (realistic/assisted/casual)")
                     .defineEnum("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC);
@@ -354,6 +359,7 @@ public class FirstAidConfig {
         public final ModConfigSpec.BooleanValue dynamicPainEnabled;
         public final ModConfigSpec.BooleanValue lowSuppressionEnabled;
         public final ModConfigSpec.BooleanValue rescueWakeUpEnabled;
+        public final ModConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
         public final ModConfigSpec.EnumValue<FirstAid.MedicineEffectMode> medicineEffectMode;
         public final ModConfigSpec.EnumValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
         public final ModConfigSpec.ConfigValue<List<? extends String>> injuryDebuffOverrides;

@@ -64,7 +64,6 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    private static final int PAINKILLER_ACTIVATION_DELAY_TICKS = 600;
    private static final int MORPHINE_ACTIVATION_DELAY_TICKS = 200;
    private static final int CRITICAL_UNCONSCIOUS_TICKS = 3000;
-   private static final int RESCUE_WAKE_UP_DELAY = Math.max(1, Math.round(30.000002F));
    private static final int RESCUE_DURATION_TICKS = 160;
    private static final int EXECUTION_DURATION_TICKS = 100;
    private static final double RESCUE_RANGE = 3.0;
@@ -278,7 +277,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             for (AbstractDamageablePart part : this) {
                float previousHealth = part.currentHealth;
                boolean hadHealer = part.activeHealer != null;
-               part.tick(world, player, !painSuppressed);
+         part.tick(world, player, !painSuppressed, this.isUnconscious());
                if (!world.isClientSide() && (Float.compare(previousHealth, part.currentHealth) != 0 || hadHealer != (part.activeHealer != null))) {
                   healingStateChanged = true;
                }
@@ -528,7 +527,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                rescueTarget.activeHealer = healer;
             }
 
-            this.setUnconsciousState(Math.max(this.unconsciousTicks, RESCUE_WAKE_UP_DELAY), false, false, "firstaid.gui.stabilizing");
+            this.setUnconsciousState(Math.max(this.unconsciousTicks, FirstAid.getRescueWakeUpDelayTicks()), false, false, "firstaid.gui.stabilizing");
          } else {
             this.clearUnconsciousState();
             this.resetRecoveredPlayerState(player);

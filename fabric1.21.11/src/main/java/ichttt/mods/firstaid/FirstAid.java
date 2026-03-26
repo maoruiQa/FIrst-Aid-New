@@ -22,6 +22,7 @@ public final class FirstAid {
    public static boolean dynamicPainEnabled = true;
    public static boolean lowSuppressionEnabled = false;
    public static boolean rescueWakeUpEnabled = false;
+   public static double rescueWakeUpDelaySeconds = 1.5D;
    public static FirstAid.MedicineEffectMode medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
    public static FirstAid.InjuryDebuffMode injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
    public static final Map<Identifier, FirstAid.InjuryDebuffMode> injuryDebuffOverrides = new ConcurrentHashMap<>();
@@ -37,6 +38,10 @@ public final class FirstAid {
 
    public static int scaleMedicalTimingTicks(int baseTicks) {
       return Math.max(1, Math.round(baseTicks * medicineEffectMode.getTimingMultiplier()));
+   }
+
+   public static int getRescueWakeUpDelayTicks() {
+      return Math.max(0, (int)Math.round(rescueWakeUpDelaySeconds * 20.0D));
    }
 
    private FirstAid() {

@@ -69,6 +69,7 @@ public final class FirstAidConfig {
       FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
       FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
       FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
+      FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
       FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
       FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
       FirstAid.injuryDebuffOverrides.clear();
@@ -79,6 +80,7 @@ public final class FirstAidConfig {
       SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
       SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
       SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
+      SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
       SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
       SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
       SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
@@ -436,6 +438,7 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Boolean> dynamicPainEnabled;
       public final FirstAidConfig.ConfigValue<Boolean> lowSuppressionEnabled;
       public final FirstAidConfig.ConfigValue<Boolean> rescueWakeUpEnabled;
+      public final FirstAidConfig.ConfigValue<Double> rescueWakeUpDelaySeconds;
       public final FirstAidConfig.ConfigValue<FirstAid.MedicineEffectMode> medicineEffectMode;
       public final FirstAidConfig.ConfigValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
       public final FirstAidConfig.ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
@@ -492,6 +495,7 @@ public final class FirstAidConfig {
          this.dynamicPainEnabled = this.define(FirstAidConfig.boolValue("dynamicPainEnabled", true));
          this.lowSuppressionEnabled = this.define(FirstAidConfig.boolValue("lowSuppressionEnabled", false));
          this.rescueWakeUpEnabled = this.define(FirstAidConfig.boolValue("rescueWakeUpEnabled", false));
+         this.rescueWakeUpDelaySeconds = this.define(FirstAidConfig.doubleValue("rescueWakeUpDelaySeconds", 1.5, 0.0, 3600.0));
          this.medicineEffectMode = this.define(
             FirstAidConfig.enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class)
          );

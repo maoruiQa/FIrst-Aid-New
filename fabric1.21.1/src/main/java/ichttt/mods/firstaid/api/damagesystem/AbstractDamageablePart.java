@@ -79,7 +79,15 @@ public abstract class AbstractDamageablePart implements INBTSerializable<Compoun
      * Updates the part.
      * Should not be called by other mods!
      */
-    public abstract void tick(Level world, Player player, boolean tickDebuffs);
+    public void tick(Level world, Player player, boolean tickDebuffs) {
+        tick(world, player, tickDebuffs, false);
+    }
+
+    /**
+     * Updates the part.
+     * Should not be called by other mods!
+     */
+    public abstract void tick(Level world, Player player, boolean tickDebuffs, boolean pauseHealing);
 
     public abstract void setAbsorption(float absorption);
 

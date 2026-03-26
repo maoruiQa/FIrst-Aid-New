@@ -107,8 +107,8 @@ public class DamageablePart extends AbstractDamageablePart {
    }
 
    @Override
-   public void tick(Level world, Player player, boolean tickDebuffs) {
-      if (this.activeHealer != null) {
+   public void tick(Level world, Player player, boolean tickDebuffs, boolean pauseHealing) {
+      if (!pauseHealing && this.activeHealer != null) {
          if (this.activeHealer.tick()) {
             this.heal(1.0F, player, !world.isClientSide());
          }

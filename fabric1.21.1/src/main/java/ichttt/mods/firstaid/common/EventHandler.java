@@ -455,6 +455,7 @@ public final class EventHandler {
         FirstAid.dynamicPainEnabled = true;
         FirstAid.lowSuppressionEnabled = false;
         FirstAid.rescueWakeUpEnabled = false;
+        FirstAid.rescueWakeUpDelaySeconds = 1.5D;
         FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
         FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
         FirstAid.injuryDebuffOverrides.clear();
