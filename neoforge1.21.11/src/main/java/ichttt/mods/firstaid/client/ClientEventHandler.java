@@ -131,6 +131,9 @@ public class ClientEventHandler {
 
         KeyEvent keyEvent = event.getKeyEvent();
         Minecraft mc = Minecraft.getInstance();
+        if (mc.screen != null) {
+            return;
+        }
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
         if (!ClientHooks.SHOW_WOUNDS.matches(keyEvent)) {
             return;

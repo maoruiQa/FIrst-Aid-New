@@ -18,7 +18,6 @@
 
 package ichttt.mods.firstaid.client.gui;
 
-import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
@@ -27,7 +26,6 @@ import ichttt.mods.firstaid.client.ClientHooks;
 import ichttt.mods.firstaid.client.HealingSoundController;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
-import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.MessageApplyHealingItem;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
@@ -40,9 +38,9 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.StringUtil;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.entity.player.Player;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -177,10 +175,6 @@ public class GuiHealthScreen extends Screen {
                     30, 0.0625F, mouseX, mouseY, minecraft.player);
         }
 
-        guiGraphics.drawCenteredString(font, title, width / 2, guiTop + 6, 0xFFFFFF);
-
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-
         drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.HEAD), false, 14);
         drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.LEFT_ARM), false, 39);
         drawHealth(guiGraphics, renderModel.getFromEnum(EnumPlayerPart.LEFT_LEG), false, 64);
@@ -198,6 +192,8 @@ public class GuiHealthScreen extends Screen {
         }
 
         renderStatusSummary(guiGraphics, renderModel);
+
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override
@@ -209,11 +205,6 @@ public class GuiHealthScreen extends Screen {
         int xTranslation = guiLeft + (right ? getRightOffset(damageablePart) : 57);
         drawPartHealthIndicator(guiGraphics, xTranslation, guiTop + yOffset, damageablePart);
         HealthRenderUtils.drawHealth(guiGraphics, font, damageablePart, xTranslation, guiTop + yOffset, true);
-        // if (damageablePart.activeHealer != null) {
-        //     guiGraphics.drawString(font, Component.translatable("firstaid.gui.next_heal",
-        //             Math.round((damageablePart.activeHealer.ticksPerHeal.getAsInt() - damageablePart.activeHealer.getTicksPassed()) / 20F)),
-        //             xTranslation, guiTop + yOffset + 10, 0xA0FFA0);
-        // }
     }
 
     private static void drawPartHealthIndicator(GuiGraphics guiGraphics, int x, int y, AbstractDamageablePart damageablePart) {
@@ -236,25 +227,7 @@ public class GuiHealthScreen extends Screen {
 
         Player player = minecraft.player;
         PlayerDamageModel playerDamageModel = renderModel instanceof PlayerDamageModel model ? model : null;
-        int lineY = guiTop + ySize - 33;
-
-        int painLevel = renderModel.getPainLevel();
-        if (painLevel <= 0) {
-            painLevel = calculateLocalPainLevel(renderModel);
-        }
-        if (painLevel > 0) {
-            boolean painSuppressed = player.hasEffect(RegistryObjects.MORPHINE_EFFECT) || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
-            Component painText = painSuppressed
-                    ? Component.translatable("firstaid.gui.status.pain_suppressed")
-                    : Component.translatable("firstaid.gui.status.pain", Component.translatable(getPainSeverityKey(painLevel)));
-            guiGraphics.drawString(font, painText, guiLeft + 8, lineY, painSuppressed ? 0x8FD3FF : 0xFF8A8A);
-            lineY += 10;
-        }
-
-        if (player.hasEffect(RegistryObjects.PAINKILLER_EFFECT)) {
-            guiGraphics.drawString(font, Component.translatable("firstaid.gui.status.painkiller"), guiLeft + 8, lineY, 0x8FD3FF);
-            lineY += 10;
-        }
+        int lineY = guiTop + ySize - 54;
 
         if (renderModel.getAdrenalineLevel() > 0) {
             int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : renderModel.getAdrenalineLevel();
@@ -305,59 +278,12 @@ public class GuiHealthScreen extends Screen {
         }
     }
 
-    private static String getPainSeverityKey(int painLevel) {
-        return switch (painLevel) {
-            case 1 -> "firstaid.gui.pain.mild";
-            case 2 -> "firstaid.gui.pain.moderate";
-            case 3 -> "firstaid.gui.pain.severe";
-            case 4 -> "firstaid.gui.pain.extreme";
-            default -> "firstaid.gui.pain.critical";
-        };
-    }
-
     private static String getSuppressionSeverityKey(int suppressionLevel) {
         return switch (suppressionLevel) {
             case 1 -> "firstaid.gui.suppression.low";
             case 2 -> "firstaid.gui.suppression.medium";
             default -> "firstaid.gui.suppression.high";
         };
-    }
-
-    private static int calculateLocalPainLevel(AbstractPlayerDamageModel model) {
-        boolean hasInjury = false;
-        float maxSeverity = 0.0F;
-        float weightedSeverity = 0.0F;
-        float totalWeight = 0.0F;
-        for (AbstractDamageablePart part : model) {
-            float visualHealth = CommonUtils.getVisualHealth(part);
-            float missingHealth = CommonUtils.getVisibleMissingHealth(part);
-            if (missingHealth <= 0F) {
-                continue;
-            }
-            hasInjury = true;
-            float injuryRatio = missingHealth / part.getMaxHealth();
-            if (visualHealth <= 0F) {
-                injuryRatio = part.canCauseDeath ? 1.0F : 0.85F;
-            }
-            if (part.canCauseDeath && injuryRatio >= 0.55F) {
-                injuryRatio = Math.min(1.0F, injuryRatio + 0.15F);
-            }
-            float weight = part.canCauseDeath ? 1.35F : 1.0F;
-            maxSeverity = Math.max(maxSeverity, injuryRatio);
-            weightedSeverity += injuryRatio * weight;
-            totalWeight += weight;
-        }
-
-        if (!hasInjury) {
-            return 0;
-        }
-        if (!FirstAid.dynamicPainEnabled) {
-            return 1;
-        }
-        float averageSeverity = totalWeight <= 0.0F ? 0.0F : weightedSeverity / totalWeight;
-        float combinedSeverity = Math.min(1.0F, maxSeverity * 0.65F + averageSeverity * 0.35F);
-        int maxPainLevel = 5;
-        return Math.max(1, Math.min(maxPainLevel, 1 + (int) Math.floor(combinedSeverity * (maxPainLevel - 0.0001F))));
     }
 
     @Override

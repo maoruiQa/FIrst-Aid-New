@@ -18,13 +18,11 @@
 
 package ichttt.mods.firstaid.client;
 
-import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.client.gui.FlashStateManager;
-import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
 import ichttt.mods.firstaid.client.util.PlayerModelRenderer;
 import ichttt.mods.firstaid.common.util.CommonUtils;
@@ -70,7 +68,7 @@ public class HUDHandler implements ResourceManagerReloadListener, LayeredDraw.La
         }
 
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(minecraft.player);
-        if (damageModel == null || !FirstAid.isSynced) {
+        if (damageModel == null) {
             return;
         }
 
@@ -100,10 +98,6 @@ public class HUDHandler implements ResourceManagerReloadListener, LayeredDraw.La
         if (minecraft.screen instanceof ChatScreen && FirstAidConfig.CLIENT.pos.get() == FirstAidConfig.Client.Position.BOTTOM_LEFT) {
             return;
         }
-        if (minecraft.getDebugOverlay().showDebugScreen() && FirstAidConfig.CLIENT.pos.get() == FirstAidConfig.Client.Position.TOP_LEFT) {
-            return;
-        }
-
         int xOffset = FirstAidConfig.CLIENT.xOffset.get();
         int yOffset = FirstAidConfig.CLIENT.yOffset.get();
         FirstAidConfig.Client.OverlayMode overlayMode = FirstAidConfig.CLIENT.overlayMode.get();

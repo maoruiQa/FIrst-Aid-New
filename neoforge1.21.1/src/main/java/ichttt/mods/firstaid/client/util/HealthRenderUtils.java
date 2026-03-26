@@ -131,8 +131,6 @@ public final class HealthRenderUtils {
         int maxExtraHealth = getMaxHearts(damageablePart.getAbsorption());
         int current = (int) Math.ceil(CommonUtils.getVisualHealth(damageablePart));
         int absorption = (int) Math.ceil(damageablePart.getAbsorption());
-        int healthColor = getHealthColor(damageablePart);
-
         if (drawAsString(damageablePart, allowSecondLine)) {
             drawHealthString(guiGraphics, font, damageablePart, xTranslation, yTranslation, allowSecondLine);
             return;
@@ -165,15 +163,15 @@ public final class HealthRenderUtils {
 
             stack.pushPose();
             stack.translate(0F, 5F, 0.0F);
-            renderLine(stack, regen, low, maxHealth2, maxExtraHealth2, current2, absorption2, guiGraphics, highlight, healthColor);
+            renderLine(stack, regen, low, maxHealth2, maxExtraHealth2, current2, absorption2, guiGraphics, highlight);
             stack.popPose();
         }
 
-        renderLine(stack, regen, low, maxHealth, maxExtraHealth, current, absorption, guiGraphics, highlight, healthColor);
+        renderLine(stack, regen, low, maxHealth, maxExtraHealth, current, absorption, guiGraphics, highlight);
         stack.popPose();
     }
 
-    private static void renderLine(PoseStack stack, int regen, boolean low, int maxHealth, int maxExtraHearts, int current, int absorption, GuiGraphics guiGraphics, boolean highlight, int healthColor) {
+    private static void renderLine(PoseStack stack, int regen, boolean low, int maxHealth, int maxExtraHearts, int current, int absorption, GuiGraphics guiGraphics, boolean highlight) {
         int[] lowOffsets = new int[maxHealth + maxExtraHearts];
         if (low) {
             for (int i = 0; i < lowOffsets.length; i++) {
@@ -191,7 +189,7 @@ public final class HealthRenderUtils {
         }
         stack.popPose();
 
-        renderCurrentHealth(regen, lowOffsets, current, guiGraphics, highlight, healthColor);
+        renderCurrentHealth(regen, lowOffsets, current, guiGraphics, highlight);
         if (absorption > 0) {
             stack.pushPose();
             stack.translate(maxHealth * 9 + (maxHealth == 0 ? 0 : 2), 0, 0.0F);
@@ -212,12 +210,10 @@ public final class HealthRenderUtils {
         renderHeartSprites(regen, lowOffsets, max, false, guiGraphics, highlight ? HEART_CONTAINER_BLINKING_SPRITE : HEART_CONTAINER_SPRITE, highlight ? HEART_CONTAINER_BLINKING_SPRITE : HEART_CONTAINER_SPRITE);
     }
 
-    private static void renderCurrentHealth(int regen, int[] lowOffsets, int current, GuiGraphics guiGraphics, boolean highlight, int healthColor) {
+    private static void renderCurrentHealth(int regen, int[] lowOffsets, int current, GuiGraphics guiGraphics, boolean highlight) {
         boolean renderLastHalf = current % 2 != 0;
         int render = current / 2 + (renderLastHalf ? 1 : 0);
-        applyColor(guiGraphics, healthColor);
         renderHeartSprites(regen, lowOffsets, render, renderLastHalf, guiGraphics, highlight ? HEART_HALF_BLINKING_SPRITE : HEART_HALF_SPRITE, highlight ? HEART_FULL_BLINKING_SPRITE : HEART_FULL_SPRITE);
-        resetColor(guiGraphics);
     }
 
     private static void renderAbsorption(int regen, int[] lowOffsets, int absorption, GuiGraphics guiGraphics, boolean highlight) {
@@ -252,17 +248,6 @@ public final class HealthRenderUtils {
             return 0xE68F39;
         }
         return 0xD95145;
-    }
-
-    private static void applyColor(GuiGraphics guiGraphics, int color) {
-        float red = ((color >> 16) & 255) / 255.0F;
-        float green = ((color >> 8) & 255) / 255.0F;
-        float blue = (color & 255) / 255.0F;
-        guiGraphics.setColor(red, green, blue, 1.0F);
-    }
-
-    private static void resetColor(GuiGraphics guiGraphics) {
-        guiGraphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
     }
 }
 

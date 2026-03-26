@@ -129,6 +129,9 @@ public class ClientEventHandler {
         }
 
         Minecraft mc = Minecraft.getInstance();
+        if (mc.screen != null) {
+            return;
+        }
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
         if (!ClientHooks.SHOW_WOUNDS.matches(event.getKey(), event.getScanCode())) {
             return;
@@ -194,8 +197,6 @@ public class ClientEventHandler {
             );
             loggedRenderGuiWithPlayer = true;
         }
-        StatusEffectLayer.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
-        HUDHandler.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
     }
 
     @SubscribeEvent

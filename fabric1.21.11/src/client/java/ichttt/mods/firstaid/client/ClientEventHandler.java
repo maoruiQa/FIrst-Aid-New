@@ -116,7 +116,7 @@ public final class ClientEventHandler {
             mc.setScreen(null);
          }
 
-         if (ClientHooks.SHOW_WOUNDS.consumeClick()) {
+         if (ClientHooks.SHOW_WOUNDS.consumeClick() && mc.screen == null) {
             onShowWoundsPressed(mc);
          }
       }

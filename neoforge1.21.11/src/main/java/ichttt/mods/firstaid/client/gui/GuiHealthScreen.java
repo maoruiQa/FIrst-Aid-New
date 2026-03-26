@@ -204,11 +204,6 @@ public class GuiHealthScreen extends Screen {
         int xTranslation = guiLeft + (right ? getRightOffset(damageablePart) : 57);
         drawPartHealthIndicator(guiGraphics, xTranslation, guiTop + yOffset, damageablePart);
         HealthRenderUtils.drawHealth(guiGraphics, font, damageablePart, xTranslation, guiTop + yOffset, true);
-        if (damageablePart.activeHealer != null) {
-            guiGraphics.drawString(font, Component.translatable("firstaid.gui.next_heal",
-                    Math.round((damageablePart.activeHealer.ticksPerHeal.getAsInt() - damageablePart.activeHealer.getTicksPassed()) / 20F)),
-                    xTranslation, guiTop + yOffset + 10, 0xA0FFA0);
-        }
     }
 
     private static void drawPartHealthIndicator(GuiGraphics guiGraphics, int x, int y, AbstractDamageablePart damageablePart) {
