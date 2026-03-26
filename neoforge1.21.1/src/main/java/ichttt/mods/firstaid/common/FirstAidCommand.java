@@ -86,7 +86,7 @@ public final class FirstAidCommand {
                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                 if (damageModel instanceof PlayerDamageModel playerDamageModel) {
                     playerDamageModel.refreshPainState(player);
-                    player.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+                    CommonUtils.syncDamageModel(player);
                 }
             }
         }

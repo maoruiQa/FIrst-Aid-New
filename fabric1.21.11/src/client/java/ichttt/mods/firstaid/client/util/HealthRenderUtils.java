@@ -1,10 +1,10 @@
 package ichttt.mods.firstaid.client.util;
-
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.client.gui.FlashStateManager;
 import ichttt.mods.firstaid.common.EventHandler;
+import ichttt.mods.firstaid.common.util.CommonUtils;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import java.text.DecimalFormat;
 import java.util.EnumMap;
@@ -52,7 +52,8 @@ public final class HealthRenderUtils {
       GuiGraphics guiGraphics, Font font, AbstractDamageablePart damageablePart, int xTranslation, int yTranslation, boolean allowSecondLine
    ) {
       float absorption = damageablePart.getAbsorption();
-      String text = TEXT_FORMAT.format(damageablePart.currentHealth) + "/" + damageablePart.getMaxHealth();
+      int healthColor = getHealthColor(damageablePart);
+      String text = TEXT_FORMAT.format(CommonUtils.getVisualHealth(damageablePart)) + "/" + damageablePart.getMaxHealth();
       if (absorption > 0.0F) {
          String line2 = "+ " + TEXT_FORMAT.format(absorption);
          if (allowSecondLine) {
@@ -63,7 +64,7 @@ public final class HealthRenderUtils {
          }
       }
 
-      guiGraphics.drawString(font, text, xTranslation, yTranslation, 16777215);
+      guiGraphics.drawString(font, text, xTranslation, yTranslation, healthColor);
    }
 
    public static boolean healthChanged(AbstractDamageablePart damageablePart, boolean playerDead) {
@@ -104,8 +105,9 @@ public final class HealthRenderUtils {
    ) {
       int maxHealth = getMaxHearts(damageablePart.getMaxHealth());
       int maxExtraHealth = getMaxHearts(damageablePart.getAbsorption());
-      int current = (int)Math.ceil(damageablePart.currentHealth);
+      int current = (int)Math.ceil(CommonUtils.getVisualHealth(damageablePart));
       int absorption = (int)Math.ceil(damageablePart.getAbsorption());
+      int healthColor = getHealthColor(damageablePart);
       if (drawAsString(damageablePart, allowSecondLine)) {
          drawHealthString(guiGraphics, font, damageablePart, xTranslation, yTranslation, allowSecondLine);
       } else {
@@ -133,17 +135,26 @@ public final class HealthRenderUtils {
             absorption -= absorption2;
             stack.pushMatrix();
             stack.translate(0.0F, 5.0F);
-            renderLine(stack, regen, low, maxHealth2, maxExtraHealth2, current2, absorption2, guiGraphics, highlight);
+            renderLine(stack, regen, low, maxHealth2, maxExtraHealth2, current2, absorption2, guiGraphics, highlight, healthColor);
             stack.popMatrix();
          }
 
-         renderLine(stack, regen, low, maxHealth, maxExtraHealth, current, absorption, guiGraphics, highlight);
+         renderLine(stack, regen, low, maxHealth, maxExtraHealth, current, absorption, guiGraphics, highlight, healthColor);
          stack.popMatrix();
       }
    }
 
    private static void renderLine(
-      Matrix3x2fStack stack, int regen, boolean low, int maxHealth, int maxExtraHearts, int current, int absorption, GuiGraphics guiGraphics, boolean highlight
+      Matrix3x2fStack stack,
+      int regen,
+      boolean low,
+      int maxHealth,
+      int maxExtraHearts,
+      int current,
+      int absorption,
+      GuiGraphics guiGraphics,
+      boolean highlight,
+      int healthColor
    ) {
       int[] lowOffsets = new int[maxHealth + maxExtraHearts];
       if (low) {
@@ -163,7 +174,7 @@ public final class HealthRenderUtils {
       }
 
       stack.popMatrix();
-      renderCurrentHealth(regen, lowOffsets, current, guiGraphics, highlight);
+      renderCurrentHealth(regen, lowOffsets, current, guiGraphics, highlight, healthColor);
       if (absorption > 0) {
          stack.pushMatrix();
          stack.translate(maxHealth * 9 + (maxHealth == 0 ? 0 : 2), 0.0F);
@@ -193,7 +204,7 @@ public final class HealthRenderUtils {
       );
    }
 
-   private static void renderCurrentHealth(int regen, int[] lowOffsets, int current, GuiGraphics guiGraphics, boolean highlight) {
+   private static void renderCurrentHealth(int regen, int[] lowOffsets, int current, GuiGraphics guiGraphics, boolean highlight, int healthColor) {
       boolean renderLastHalf = current % 2 != 0;
       int render = current / 2 + (renderLastHalf ? 1 : 0);
       renderHeartSprites(
@@ -233,6 +244,19 @@ public final class HealthRenderUtils {
                RenderPipelines.GUI_TEXTURED, renderHalf ? halfSprite : fullSprite, (int)(9.0F * i), (i == regen ? -2 : 0) - lowOffsets[i], 9, 9
             );
          }
+      }
+   }
+
+   public static int getHealthColor(AbstractDamageablePart damageablePart) {
+      float healthRatio = CommonUtils.getVisibleHealthRatio(damageablePart);
+      if (healthRatio > 0.85F) {
+         return 6540653;
+      } else if (healthRatio > 0.65F) {
+         return 14864706;
+      } else if (healthRatio > 0.40F) {
+         return 15109945;
+      } else {
+         return 14242117;
       }
    }
 

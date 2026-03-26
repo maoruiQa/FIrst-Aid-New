@@ -56,7 +56,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
@@ -109,12 +108,16 @@ public final class EventHandler {
    public static final Map<Player, EventHandler.ProjectileHitContext> hitList = new WeakHashMap<>();
    private static final Map<UUID, EventHandler.RescueProgress> rescueProgress = new HashMap<>();
    private static final Map<UUID, EventHandler.ExecutionProgress> executionProgress = new HashMap<>();
+   private static final IDamageDistributionAlgorithm FOOT_ONLY_DAMAGE_DISTRIBUTION = new StandardDamageDistributionAlgorithm(
+      Collections.singletonMap(EquipmentSlot.FEET, CommonUtils.getPartListForSlot(EquipmentSlot.FEET)),
+      false,
+      true
+   );
 
    private EventHandler() {
    }
 
    public static void registerServerEvents() {
-      ServerLivingEntityEvents.ALLOW_DAMAGE.register(EventHandler::onAllowDamage);
       ServerTickEvents.END_WORLD_TICK.register(EventHandler::tickPlayers);
       EntitySleepEvents.STOP_SLEEPING.register(EventHandler::onStopSleeping);
       LootTableEvents.MODIFY.register(EventHandler::onLootTableModify);
@@ -163,63 +166,79 @@ public final class EventHandler {
       }
    }
 
-   private static boolean onAllowDamage(LivingEntity entity, DamageSource source, float amount) {
-      if (!entity.level().isClientSide() && CommonUtils.hasDamageModel(entity)) {
-         Player player = (Player)entity;
-         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-         if (damageModel == null) {
-            return true;
-         } else if (isProtectedUnconsciousSuffocation(damageModel, source)) {
-            hitList.remove(player);
-            return false;
-         } else if (amount != Float.MAX_VALUE && !Float.isNaN(amount) && amount != Float.POSITIVE_INFINITY) {
-            boolean addStat = amount < 3.4028235E37F;
-            IDamageDistributionAlgorithm damageDistribution = FirstAidRegistryLookups.getDamageDistributions(source.type());
-            if (source.is(DamageTypeTags.IS_PROJECTILE)) {
-               Entity directEntity = source.getDirectEntity();
-               EventHandler.ProjectileHitContext projectileHitContext = hitList.remove(player);
-               if (projectileHitContext != null && projectileHitContext.projectile() == directEntity) {
-                  IDamageDistributionAlgorithm projectileDistribution = PlayerSizeHelper.getProjectileDistribution(player, projectileHitContext.hitPosition());
-                  if (projectileDistribution != null) {
-                     damageDistribution = projectileDistribution;
-                  }
-               }
-
-               if (damageDistribution == null && directEntity != null) {
-                  EquipmentSlot slot = PlayerSizeHelper.getSlotTypeForProjectileHit(directEntity, player);
-                  if (slot != null) {
-                     damageDistribution = new StandardDamageDistributionAlgorithm(Collections.singletonMap(slot, CommonUtils.getPartListForSlot(slot)), false, true);
-                  }
-               }
-            }
-
-            if (damageDistribution == null) {
-               damageDistribution = PlayerSizeHelper.getMeleeDistribution(player, source);
-               if (damageDistribution == null) {
-                  damageDistribution = RandomDamageDistributionAlgorithm.getDefault();
-               }
-            }
-
-            DamageDistribution.handleDamageTaken(damageDistribution, damageModel, amount, player, source, addStat, true);
-            if (amount > 0.0F && player.isAlive()) {
-               float pitch = 0.9F + player.level().random.nextFloat() * 0.2F;
-               player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_HURT, player.getSoundSource(), 1.0F, pitch);
-            }
-
-            hitList.remove(player);
-            return false;
-         } else {
-            damageModel.forEach(damageablePart -> damageablePart.currentHealth = 0.0F);
-            if (player instanceof ServerPlayer serverPlayer) {
-               FirstAidNetworking.sendDamageModelSync(serverPlayer, damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get());
-            }
-
-            CommonUtils.killPlayer(damageModel, player, source);
-            return false;
-         }
+   public static Boolean preHandleCustomPlayerDamage(Player player, DamageSource source, float amount) {
+      AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
+      if (damageModel == null) {
+         return null;
+      } else if (isProtectedUnconsciousSuffocation(damageModel, source)) {
+         hitList.remove(player);
+         return false;
+      } else if (amount != Float.MAX_VALUE && !Float.isNaN(amount) && amount != Float.POSITIVE_INFINITY) {
+         return null;
       } else {
+         damageModel.forEach(damageablePart -> damageablePart.currentHealth = 0.0F);
+         if (player instanceof ServerPlayer serverPlayer) {
+            FirstAidNetworking.sendDamageModelSync(serverPlayer, damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get());
+         }
+
+         CommonUtils.killPlayer(damageModel, player, source);
+         hitList.remove(player);
          return true;
       }
+   }
+
+   public static boolean handleCustomPlayerDamage(Player player, DamageSource source, float amount) {
+      AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
+      if (damageModel == null) {
+         return false;
+      } else {
+         boolean addStat = amount < 3.4028235E37F;
+         IDamageDistributionAlgorithm damageDistribution = getForcedDamageDistribution(source);
+         if (damageDistribution == null) {
+            damageDistribution = FirstAidRegistryLookups.getDamageDistributions(source.type());
+         }
+         if (source.is(DamageTypeTags.IS_PROJECTILE)) {
+            Entity directEntity = source.getDirectEntity();
+            EventHandler.ProjectileHitContext projectileHitContext = hitList.remove(player);
+            if (projectileHitContext != null && projectileHitContext.projectile() == directEntity) {
+               IDamageDistributionAlgorithm projectileDistribution = PlayerSizeHelper.getProjectileDistribution(player, projectileHitContext.hitPosition());
+               if (projectileDistribution != null) {
+                  damageDistribution = projectileDistribution;
+               }
+            }
+
+            if (damageDistribution == null && directEntity != null) {
+               EquipmentSlot slot = PlayerSizeHelper.getSlotTypeForProjectileHit(directEntity, player);
+               if (slot != null) {
+                  damageDistribution = new StandardDamageDistributionAlgorithm(Collections.singletonMap(slot, CommonUtils.getPartListForSlot(slot)), false, true);
+               }
+            }
+         }
+
+         if (damageDistribution == null) {
+            damageDistribution = PlayerSizeHelper.getMeleeDistribution(player, source);
+            if (damageDistribution == null) {
+               damageDistribution = RandomDamageDistributionAlgorithm.getDefault();
+            }
+         }
+
+         IDamageDistributionAlgorithm finalDamageDistribution = damageDistribution;
+         float finalAmount = amount;
+         boolean redistributeLeftoverDamage = shouldRedistributeLeftoverDamage(source);
+         CommonUtils.runWithoutSetHealthInterception(
+            () -> DamageDistribution.handleDamageTaken(finalDamageDistribution, damageModel, finalAmount, player, source, addStat, redistributeLeftoverDamage)
+         );
+         hitList.remove(player);
+         return true;
+      }
+   }
+
+   public static IDamageDistributionAlgorithm getForcedDamageDistribution(DamageSource source) {
+      return CommonUtils.isFootOnlyDamageSource(source) ? FOOT_ONLY_DAMAGE_DISTRIBUTION : null;
+   }
+
+   private static boolean shouldRedistributeLeftoverDamage(DamageSource source) {
+      return !CommonUtils.isFootOnlyDamageSource(source);
    }
 
    private static void tickPlayers(ServerLevel world) {

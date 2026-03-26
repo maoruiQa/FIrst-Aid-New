@@ -34,7 +34,10 @@ public class ItemMorphine extends Item {
          }
       }
 
-      stack.shrink(1);
+      if (!(entityLiving instanceof Player) || !((Player)entityLiving).getAbilities().instabuild) {
+         stack.shrink(1);
+      }
+
       return stack;
    }
 

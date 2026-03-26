@@ -233,16 +233,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             resyncTimer--;
             if (resyncTimer == 0) {
                 resyncTimer = -1;
-                ((ServerPlayer) player).syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+                CommonUtils.syncDamageModel((ServerPlayer) player);
             }
         }
 
         if (Float.isInfinite(newCurrentHealth)) {
             FirstAid.LOGGER.error("Error calculating current health: Value was infinite"); //Shouldn't happen anymore, but let's be safe
         } else {
-            if (newCurrentHealth != prevHealthCurrent) {
-                player.setHealth(newCurrentHealth);
-            }
+            syncVanillaHealth(player, newCurrentHealth);
             prevHealthCurrent = newCurrentHealth;
         }
 
@@ -288,7 +286,28 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         if (!painSuppressed && !world.isClientSide())
             sharedDebuffs.forEach(sharedDebuff -> sharedDebuff.tick(player));
         if (healingStateChanged && player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+            CommonUtils.syncDamageModel(serverPlayer);
+        }
+    }
+
+    public void syncVanillaHealth(Player player) {
+        float newCurrentHealth = calculateNewCurrentHealth(player);
+        if (Float.isNaN(newCurrentHealth)) {
+            FirstAid.LOGGER.warn("New current health is not a number, setting it to 0!");
+            newCurrentHealth = 0F;
+        }
+        if (Float.isInfinite(newCurrentHealth)) {
+            FirstAid.LOGGER.error("Error calculating current health: Value was infinite");
+            return;
+        }
+        syncVanillaHealth(player, newCurrentHealth);
+        prevHealthCurrent = newCurrentHealth;
+    }
+
+    private void syncVanillaHealth(Player player, float newCurrentHealth) {
+        if (newCurrentHealth != prevHealthCurrent) {
+            float syncedHealth = newCurrentHealth;
+            CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(syncedHealth));
         }
     }
 
@@ -481,7 +500,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         criticalConditionActive = true;
         setUnconsciousState(CRITICAL_UNCONSCIOUS_TICKS, true, true, UNCONSCIOUS_REASON_CRITICAL);
         painLevel = Math.max(painLevel, MAX_PAIN_LEVEL);
-        player.setHealth(Math.max(player.getHealth(), 1.0F));
+        CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(Math.max(player.getHealth(), 1.0F)));
         scheduleResync();
     }
 
@@ -512,11 +531,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         } else {
             clearUnconsciousState();
             clearUnconsciousPenalties(player);
-            player.setHealth(Math.max(player.getHealth(), 1.0F));
+            CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(Math.max(player.getHealth(), 1.0F)));
         }
         scheduleResync();
         if (player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+            CommonUtils.syncDamageModel(serverPlayer);
         }
         return true;
     }
@@ -538,7 +557,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         if (previousPainLevel != painLevel) {
             scheduleResync();
             if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
-                serverPlayer.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+                CommonUtils.syncDamageModel(serverPlayer);
             }
         }
     }
@@ -724,7 +743,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         }
         //make sure to resync the client health
         if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer)
-            serverPlayer.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+            CommonUtils.syncDamageModel(serverPlayer);
     }
 
     @Override
@@ -929,13 +948,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         float weightedSeverity = 0.0F;
         float totalWeight = 0.0F;
         for (AbstractDamageablePart part : this) {
-            float missingHealth = part.getMaxHealth() - part.currentHealth;
+            float visualHealth = CommonUtils.getVisualHealth(part);
+            float missingHealth = CommonUtils.getVisibleMissingHealth(part);
             if (missingHealth <= 0F) {
                 continue;
             }
             hasInjury = true;
             float injuryRatio = missingHealth / part.getMaxHealth();
-            if (part.currentHealth <= 0F) {
+            if (visualHealth <= 0F) {
                 fullyLostParts++;
                 injuryRatio = part.canCauseDeath ? 1.0F : 0.85F;
             }

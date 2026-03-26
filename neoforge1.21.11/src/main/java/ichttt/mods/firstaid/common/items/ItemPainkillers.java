@@ -49,7 +49,10 @@ public class ItemPainkillers extends Item {
                 player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, PlayerDamageModel.getPainkillerDuration(), 0, false, false));
             }
         }
-        stack.shrink(1);
+        if (!(entityLiving instanceof Player) || !((Player) entityLiving).getAbilities().instabuild) {
+            stack.shrink(1);
+        }
+
         return stack;
     }
 

@@ -239,10 +239,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             if (Float.isInfinite(newCurrentHealth)) {
                FirstAid.LOGGER.error("Error calculating current health: Value was infinite");
             } else {
-               if (newCurrentHealth != this.prevHealthCurrent) {
-                  player.setHealth(newCurrentHealth);
-               }
-
+               this.syncVanillaHealth(player, newCurrentHealth);
                this.prevHealthCurrent = newCurrentHealth;
             }
 
@@ -295,6 +292,29 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                FirstAidNetworking.sendDamageModelSync(serverPlayer, this, FirstAidConfig.SERVER.scaleMaxHealth.get());
             }
          }
+      }
+   }
+
+   public void syncVanillaHealth(Player player) {
+      float newCurrentHealth = this.calculateNewCurrentHealth(player);
+      if (Float.isNaN(newCurrentHealth)) {
+         FirstAid.LOGGER.warn("New current health is not a number, setting it to 0!");
+         newCurrentHealth = 0.0F;
+      }
+
+      if (Float.isInfinite(newCurrentHealth)) {
+         FirstAid.LOGGER.error("Error calculating current health: Value was infinite");
+         return;
+      }
+
+      this.syncVanillaHealth(player, newCurrentHealth);
+      this.prevHealthCurrent = newCurrentHealth;
+   }
+
+   private void syncVanillaHealth(Player player, float newCurrentHealth) {
+      if (newCurrentHealth != this.prevHealthCurrent) {
+         float syncedHealth = newCurrentHealth;
+         CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(syncedHealth));
       }
    }
 
@@ -478,7 +498,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
          this.criticalConditionActive = true;
          this.setUnconsciousState(3000, true, true, "firstaid.gui.critical_condition");
          this.painLevel = Math.max(this.painLevel, 5);
-         player.setHealth(Math.max(player.getHealth(), 1.0F));
+         CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(Math.max(player.getHealth(), 1.0F)));
          this.scheduleResync();
       }
    }
@@ -512,7 +532,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
          } else {
             this.clearUnconsciousState();
             this.resetRecoveredPlayerState(player);
-            player.setHealth(Math.max(player.getHealth(), 1.0F));
+            CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(Math.max(player.getHealth(), 1.0F)));
          }
 
          this.scheduleResync();
@@ -957,11 +977,12 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       float totalWeight = 0.0F;
 
       for (AbstractDamageablePart part : this) {
-         float missingHealth = part.getMaxHealth() - part.currentHealth;
+         float visualHealth = CommonUtils.getVisualHealth(part);
+         float missingHealth = CommonUtils.getVisibleMissingHealth(part);
          if (!(missingHealth <= 0.0F)) {
             hasInjury = true;
             float injuryRatio = missingHealth / part.getMaxHealth();
-            if (part.currentHealth <= 0.0F) {
+            if (visualHealth <= 0.0F) {
                fullyLostParts++;
                injuryRatio = part.canCauseDeath ? 1.0F : 0.85F;
             }

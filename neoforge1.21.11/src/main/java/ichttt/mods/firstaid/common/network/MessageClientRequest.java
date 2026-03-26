@@ -66,12 +66,12 @@ public class MessageClientRequest implements CustomPacketPayload {
                     AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                     if (damageModel == null) return;
                     damageModel.hasTutorial = true;
-                    player.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+                    CommonUtils.syncDamageModel(player);
                 });
             } else if (message.type == RequestType.REQUEST_REFRESH) {
                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                 if (damageModel == null) return;
-                player.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+                CommonUtils.syncDamageModel(player);
             } else if (message.type == RequestType.GIVE_UP) {
                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                 if (damageModel instanceof ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel playerDamageModel) {

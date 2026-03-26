@@ -28,6 +28,8 @@ import net.minecraft.world.entity.player.Player;
 import org.apache.commons.lang3.tuple.Pair;
 
 public abstract class DamageDistribution implements IDamageDistributionAlgorithm {
+   private static final float UNCONSCIOUS_DAMAGE_MULTIPLIER = 0.2F;
+
    public static float handleDamageTaken(
       IDamageDistributionAlgorithm damageDistribution,
       AbstractPlayerDamageModel damageModel,
@@ -53,6 +55,10 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
       CompoundTag beforeCache = damageModel.serializeNBT();
       if (!damageDistribution.skipGlobalPotionModifiers()) {
          damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
+      }
+
+      if (damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious()) {
+         damage *= UNCONSCIOUS_DAMAGE_MULTIPLIER;
       }
 
       if (damage != 0.0F) {
@@ -86,6 +92,7 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
       } else {
          if (damageModel instanceof PlayerDamageModel playerDamageModel) {
             playerDamageModel.handlePostDamage(player);
+            playerDamageModel.syncVanillaHealth(player);
          }
 
          if (damageModel.isDead(player)) {

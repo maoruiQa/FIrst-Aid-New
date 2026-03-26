@@ -53,9 +53,10 @@ public class MessageApplyHealingItem implements CustomPacketPayload {
                AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                if (damageModel != null) {
                   ItemStack stack = player.getItemInHand(message.hand);
+                  ItemStack healerStack = stack.copyWithCount(1);
                   AbstractPartHealer healer = null;
-                  if (stack.getItem() instanceof ItemHealing itemHealing) {
-                     healer = itemHealing.createNewHealer(stack);
+                  if (healerStack.getItem() instanceof ItemHealing itemHealing) {
+                     healer = itemHealing.createNewHealer(healerStack);
                   }
 
                   if (healer == null) {
@@ -69,8 +70,11 @@ public class MessageApplyHealingItem implements CustomPacketPayload {
                      player.sendSystemMessage(Component.literal("Unable to apply healing item!"));
                   } else {
                      AbstractDamageablePart damageablePart = damageModel.getFromEnum(message.part);
-                     if (damageablePart.activeHealer == null && !(damageablePart.currentHealth >= damageablePart.getMaxHealth())) {
-                        stack.shrink(1);
+                     if (damageablePart.activeHealer == null && !CommonUtils.isPartVisuallyFull(damageablePart)) {
+                        if (!player.getAbilities().instabuild) {
+                           stack.shrink(1);
+                        }
+
                         damageablePart.activeHealer = healer;
                         damageModel.scheduleResync();
                         FirstAidNetworking.sendDamageModelSync(player, damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get());

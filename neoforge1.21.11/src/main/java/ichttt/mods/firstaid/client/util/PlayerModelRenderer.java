@@ -21,6 +21,7 @@ package ichttt.mods.firstaid.client.util;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import ichttt.mods.firstaid.common.util.CommonUtils;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.ARGB;
@@ -86,27 +87,16 @@ public final class PlayerModelRenderer {
             return ARGB.color(opacity, 60, 60, 60);
         }
 
-        float maxHealth = part.getMaxHealth();
-        float percent = maxHealth <= 0 ? 0F : part.currentHealth / maxHealth;
+        float percent = CommonUtils.getVisibleHealthRatio(part);
 
-        if (fourColors) {
-            if (percent > 0.75F) {
-                return ARGB.color(opacity, 60, 220, 60);
-            }
-            if (percent > 0.5F) {
-                return ARGB.color(opacity, 180, 235, 60);
-            }
-            if (percent > 0.25F) {
-                return ARGB.color(opacity, 245, 200, 40);
-            }
-            return ARGB.color(opacity, 235, 70, 60);
-        }
-
-        if (percent > 0.5F) {
+        if (percent > 0.85F) {
             return ARGB.color(opacity, 60, 220, 60);
         }
-        if (percent > 0.25F) {
-            return ARGB.color(opacity, 245, 200, 40);
+        if (percent > 0.65F) {
+            return ARGB.color(opacity, 180, 235, 60);
+        }
+        if (percent > 0.4F) {
+            return ARGB.color(opacity, 245, 140, 60);
         }
         return ARGB.color(opacity, 235, 70, 60);
     }

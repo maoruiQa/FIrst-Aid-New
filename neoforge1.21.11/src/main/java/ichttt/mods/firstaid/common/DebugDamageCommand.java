@@ -75,7 +75,7 @@ public class DebugDamageCommand {
             CommonUtils.killPlayer(damageModel, player, null);
         }
 
-        player.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+        CommonUtils.syncDamageModel(player);
         return 1;
     }
 

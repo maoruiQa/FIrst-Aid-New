@@ -28,9 +28,12 @@ import ichttt.mods.firstaid.common.compat.playerrevive.IPRCompatHandler;
 import ichttt.mods.firstaid.common.compat.playerrevive.PRCompatManager;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import ichttt.mods.firstaid.common.init.FirstAidDataAttachments;
+import ichttt.mods.firstaid.common.network.MessageSyncDamageModel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
@@ -47,12 +50,15 @@ import net.minecraftforge.network.NetworkEvent;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.Supplier;
 
 public class CommonUtils {
     @Nonnull
     public static final EquipmentSlot[] ARMOR_SLOTS;
     @Nonnull
     private static final Map<EquipmentSlot, List<EnumPlayerPart>> SLOT_TO_PARTS;
+    private static final ThreadLocal<Integer> SET_HEALTH_INTERCEPTION_SUPPRESSION = ThreadLocal.withInitial(() -> 0);
+    private static final ThreadLocal<Deque<DamageSource>> ACTIVE_DAMAGE_SOURCES = ThreadLocal.withInitial(ArrayDeque::new);
 
     static {
         ARMOR_SLOTS = new EquipmentSlot[4];
@@ -129,8 +135,53 @@ public class CommonUtils {
             part.heal(healAmount, player, applyDebuff);
         }
         if (player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+            syncDamageModel(serverPlayer);
         }
+    }
+
+    public static void syncDamageModel(ServerPlayer player) {
+        AbstractPlayerDamageModel damageModel = getDamageModel(player);
+        if (damageModel == null) {
+            return;
+        }
+        FirstAid.NETWORKING.sendDamageModelSync(player, new MessageSyncDamageModel(player.getId(), damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get()));
+    }
+
+    public static boolean drawsHealthAsText(AbstractDamageablePart part) {
+        int maxHealth = getMaxHearts(part.getMaxHealth());
+        int maxExtraHealth = getMaxHearts(part.getAbsorption());
+        return maxHealth + maxExtraHealth > 8;
+    }
+
+    public static float getVisualHealth(AbstractDamageablePart part) {
+        float maxHealth = part.getMaxHealth();
+        float currentHealth = Mth.clamp(part.currentHealth, 0.0F, maxHealth);
+        if (drawsHealthAsText(part)) {
+            return Math.min(maxHealth, Math.round(currentHealth * 10.0F) / 10.0F);
+        }
+
+        return Math.min(maxHealth, (float) Math.ceil(currentHealth));
+    }
+
+    public static float getVisibleMissingHealth(AbstractDamageablePart part) {
+        return Math.max(0.0F, part.getMaxHealth() - getVisualHealth(part));
+    }
+
+    public static float getVisibleHealthRatio(AbstractDamageablePart part) {
+        return part.getMaxHealth() <= 0 ? 1.0F : getVisualHealth(part) / part.getMaxHealth();
+    }
+
+    public static boolean isPartVisuallyFull(AbstractDamageablePart part) {
+        return getVisibleMissingHealth(part) <= 0.0F;
+    }
+
+    private static int getMaxHearts(float value) {
+        int maxCurrentHearts = Mth.ceil(value);
+        if (maxCurrentHearts % 2 != 0) {
+            maxCurrentHearts++;
+        }
+
+        return maxCurrentHearts >> 1;
     }
 
     public static void debugLogStacktrace(String name) {
@@ -196,6 +247,68 @@ public class CommonUtils {
                 || stack.is(ItemTags.SWORDS)
                 || stack.getItem() instanceof TridentItem
                 || stack.getItem() instanceof MaceItem);
+    }
+
+    public static boolean isFootOnlyDamageSource(@Nullable DamageSource source) {
+        if (source == null) {
+            return false;
+        }
+        if (source.is(DamageTypes.FALL) || source.is(DamageTypes.HOT_FLOOR)) {
+            return true;
+        }
+        String normalizedDamageId = normalizeDamageId(source.type().msgId());
+        return "fall".equals(normalizedDamageId) || "hotfloor".equals(normalizedDamageId);
+    }
+
+    public static void pushActiveDamageSource(@Nullable DamageSource source) {
+        if (source != null) {
+            ACTIVE_DAMAGE_SOURCES.get().push(source);
+        }
+    }
+
+    public static void popActiveDamageSource() {
+        Deque<DamageSource> damageSources = ACTIVE_DAMAGE_SOURCES.get();
+        if (!damageSources.isEmpty()) {
+            damageSources.pop();
+        }
+        if (damageSources.isEmpty()) {
+            ACTIVE_DAMAGE_SOURCES.remove();
+        }
+    }
+
+    @Nullable
+    public static DamageSource getActiveDamageSource() {
+        Deque<DamageSource> damageSources = ACTIVE_DAMAGE_SOURCES.get();
+        return damageSources.isEmpty() ? null : damageSources.peek();
+    }
+
+    public static boolean isSetHealthInterceptionSuppressed() {
+        return SET_HEALTH_INTERCEPTION_SUPPRESSION.get() > 0;
+    }
+
+    public static void runWithoutSetHealthInterception(Runnable action) {
+        callWithoutSetHealthInterception(() -> {
+            action.run();
+            return null;
+        });
+    }
+
+    public static <T> T callWithoutSetHealthInterception(Supplier<T> action) {
+        int depth = SET_HEALTH_INTERCEPTION_SUPPRESSION.get();
+        SET_HEALTH_INTERCEPTION_SUPPRESSION.set(depth + 1);
+        try {
+            return action.get();
+        } finally {
+            if (depth == 0) {
+                SET_HEALTH_INTERCEPTION_SUPPRESSION.remove();
+            } else {
+                SET_HEALTH_INTERCEPTION_SUPPRESSION.set(depth);
+            }
+        }
+    }
+
+    private static String normalizeDamageId(String damageId) {
+        return damageId == null ? "" : damageId.replace("_", "").replace("-", "").toLowerCase(Locale.ROOT);
     }
 
     @Nonnull

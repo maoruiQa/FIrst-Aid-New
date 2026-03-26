@@ -166,7 +166,6 @@ sourceSets.main.java.exclude(
         'ichttt/mods/firstaid/common/network/MessageApplyAbsorption.java',
         'ichttt/mods/firstaid/common/network/MessageConfiguration.java',
         'ichttt/mods/firstaid/common/network/MessagePlayHurtSound.java',
-        'ichttt/mods/firstaid/common/network/MessageSyncDamageModel.java',
         'ichttt/mods/firstaid/common/network/MessageUpdatePart.java',
         'ichttt/mods/firstaid/common/SynchedEntityDataWrapper.java',
         'ichttt/mods/firstaid/common/compat/playerrevive/PRPresentCompatHandler.java',

@@ -130,7 +130,7 @@ public class GuiHealthScreen extends Screen {
         if (!(stack.getItem() instanceof ItemHealing)) {
             return false;
         }
-        return part.activeHealer == null && part.currentHealth < part.getMaxHealth();
+        return part.activeHealer == null && !CommonUtils.isPartVisuallyFull(part);
     }
 
     private void applyHealing(EnumPlayerPart part) {
@@ -202,12 +202,18 @@ public class GuiHealthScreen extends Screen {
 
     private void drawHealth(GuiGraphics guiGraphics, AbstractDamageablePart damageablePart, boolean right, int yOffset) {
         int xTranslation = guiLeft + (right ? getRightOffset(damageablePart) : 57);
+        drawPartHealthIndicator(guiGraphics, xTranslation, guiTop + yOffset, damageablePart);
         HealthRenderUtils.drawHealth(guiGraphics, font, damageablePart, xTranslation, guiTop + yOffset, true);
         if (damageablePart.activeHealer != null) {
             guiGraphics.drawString(font, Component.translatable("firstaid.gui.next_heal",
                     Math.round((damageablePart.activeHealer.ticksPerHeal.getAsInt() - damageablePart.activeHealer.getTicksPassed()) / 20F)),
                     xTranslation, guiTop + yOffset + 10, 0xA0FFA0);
         }
+    }
+
+    private static void drawPartHealthIndicator(GuiGraphics guiGraphics, int x, int y, AbstractDamageablePart damageablePart) {
+        int color = 0xCC000000 | HealthRenderUtils.getHealthColor(damageablePart);
+        guiGraphics.fill(x - 6, y, x - 3, y + 10, color);
     }
 
     private static int getRightOffset(AbstractDamageablePart damageablePart) {
@@ -319,13 +325,14 @@ public class GuiHealthScreen extends Screen {
         float weightedSeverity = 0.0F;
         float totalWeight = 0.0F;
         for (AbstractDamageablePart part : model) {
-            float missingHealth = part.getMaxHealth() - part.currentHealth;
+            float visualHealth = CommonUtils.getVisualHealth(part);
+            float missingHealth = CommonUtils.getVisibleMissingHealth(part);
             if (missingHealth <= 0F) {
                 continue;
             }
             hasInjury = true;
             float injuryRatio = missingHealth / part.getMaxHealth();
-            if (part.currentHealth <= 0F) {
+            if (visualHealth <= 0F) {
                 fullyLostParts++;
                 injuryRatio = part.canCauseDeath ? 1.0F : 0.85F;
             }

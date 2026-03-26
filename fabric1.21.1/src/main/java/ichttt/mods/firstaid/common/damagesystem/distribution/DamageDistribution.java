@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.List;
 
 public abstract class DamageDistribution implements IDamageDistributionAlgorithm {
+    private static final float UNCONSCIOUS_DAMAGE_MULTIPLIER = 0.2F;
 
     public static float handleDamageTaken(IDamageDistributionAlgorithm damageDistribution, AbstractPlayerDamageModel damageModel, float damage, @Nonnull Player player, @Nonnull DamageSource source, boolean addStat, boolean redistributeIfLeft) {
         if (FirstAidConfig.GENERAL.debug.get()) {
@@ -55,6 +56,9 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
         CompoundTag beforeCache = damageModel.serializeNBT();
         if (!damageDistribution.skipGlobalPotionModifiers())
             damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
+        if (damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious()) {
+            damage *= UNCONSCIOUS_DAMAGE_MULTIPLIER;
+        }
         //VANILLA COPY - combat tracker and exhaustion
         if (damage != 0.0F) {
             player.causeFoodExhaustion(source.getFoodExhaustion());
@@ -85,6 +89,7 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
 
         if (damageModel instanceof PlayerDamageModel playerDamageModel) {
             playerDamageModel.handlePostDamage(player);
+            playerDamageModel.syncVanillaHealth(player);
         }
         if (damageModel.isDead(player))
             CommonUtils.killPlayer(damageModel, player, source);

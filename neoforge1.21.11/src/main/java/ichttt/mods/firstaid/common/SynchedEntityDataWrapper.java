@@ -21,6 +21,7 @@ package ichttt.mods.firstaid.common;
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import ichttt.mods.firstaid.api.distribution.IDamageDistributionAlgorithm;
 import ichttt.mods.firstaid.common.damagesystem.distribution.DamageDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.RandomDamageDistributionAlgorithm;
@@ -83,7 +84,7 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
             if (player instanceof ServerPlayer) { //may be EntityOtherPlayerMP as well
                 ServerPlayer playerMP = (ServerPlayer) player;
                 if (playerMP.connection != null) //also fired when connecting, ignore(otherwise the net handler would crash)
-                    playerMP.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+                    CommonUtils.syncDamageModel(playerMP);
             }
             AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
             if (damageModel != null) {
@@ -102,7 +103,7 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
                     if (FirstAidConfig.GENERAL.debug.get())
                         CommonUtils.debugLogStacktrace("Completely ignoring setHealth!");
                     return;
-                } else if (FirstAidConfig.watchSetHealth && !Float.isInfinite(aFloat) && !Float.isNaN(aFloat) && aFloat > 0 && player instanceof ServerPlayer && ((ServerPlayer) player).connection != null) {
+                } else if (FirstAidConfig.watchSetHealth && !CommonUtils.isSetHealthInterceptionSuppressed() && !Float.isInfinite(aFloat) && !Float.isNaN(aFloat) && aFloat > 0 && player instanceof ServerPlayer && ((ServerPlayer) player).connection != null) {
                     //calculate diff
                     float orig = get(LivingEntity.DATA_HEALTH_ID);
                     if (orig > 0 && !Float.isNaN(orig) && !Float.isInfinite(orig)) {
@@ -116,7 +117,23 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
                                 }
                                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                                 if (damageModel != null) {
-                                    DamageDistribution.handleDamageTaken(RandomDamageDistributionAlgorithm.getDefault(), damageModel, -healed, player, player.damageSources().magic(), true, true);
+                                    DamageSource activeSource = CommonUtils.getActiveDamageSource();
+                                    DamageSource damageSource = activeSource != null ? activeSource : player.damageSources().magic();
+                                    IDamageDistributionAlgorithm damageDistribution = activeSource != null
+                                            ? EventHandler.getForcedDamageDistribution(activeSource)
+                                            : null;
+                                    if (damageDistribution == null) {
+                                        damageDistribution = RandomDamageDistributionAlgorithm.getDefault();
+                                    }
+                                    DamageDistribution.handleDamageTaken(
+                                            damageDistribution,
+                                            damageModel,
+                                            -healed,
+                                            player,
+                                            damageSource,
+                                            true,
+                                            activeSource == null || !CommonUtils.isFootOnlyDamageSource(activeSource)
+                                    );
                                 }
                             } else {
                                 if (FirstAidConfig.GENERAL.debug.get()) {

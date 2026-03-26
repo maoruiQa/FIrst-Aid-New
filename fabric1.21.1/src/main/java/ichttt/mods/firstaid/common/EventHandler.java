@@ -72,7 +72,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ThrownPotion;
 import net.minecraft.world.food.FoodData;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -117,12 +116,16 @@ public final class EventHandler {
     public static final Map<Player, ProjectileHitContext> hitList = new WeakHashMap<>();
     private static final Map<UUID, RescueProgress> rescueProgress = new HashMap<>();
     private static final Map<UUID, ExecutionProgress> executionProgress = new HashMap<>();
+    private static final IDamageDistributionAlgorithm FOOT_ONLY_DAMAGE_DISTRIBUTION = new StandardDamageDistributionAlgorithm(
+            Collections.singletonMap(EquipmentSlot.FEET, CommonUtils.getPartListForSlot(EquipmentSlot.FEET)),
+            false,
+            true
+    );
 
     private EventHandler() {
     }
 
     public static void registerServerEvents() {
-        ServerLivingEntityEvents.ALLOW_DAMAGE.register(EventHandler::onAllowDamage);
         ServerTickEvents.END_WORLD_TICK.register(EventHandler::tickPlayers);
         EntitySleepEvents.STOP_SLEEPING.register(EventHandler::onStopSleeping);
         LootTableEvents.MODIFY.register(EventHandler::onLootTableModify);
@@ -177,18 +180,14 @@ public final class EventHandler {
         }
     }
 
-    private static boolean onAllowDamage(LivingEntity entity, DamageSource source, float amount) {
-        if (entity.level().isClientSide() || !CommonUtils.hasDamageModel(entity)) {
-            return true;
-        }
-        Player player = (Player) entity;
+    public static Boolean preHandleCustomPlayerDamage(Player player, DamageSource source, float amount) {
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
         if (damageModel == null) {
-            return true;
+            return null;
         }
         if (isProtectedUnconsciousSuffocation(damageModel, source)) {
             hitList.remove(player);
-            return false;
+            return Boolean.FALSE;
         }
 
         if (amount == Float.MAX_VALUE || Float.isNaN(amount) || amount == Float.POSITIVE_INFINITY) {
@@ -197,11 +196,23 @@ public final class EventHandler {
                 FirstAidNetworking.sendDamageModelSync(serverPlayer, damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get());
             }
             CommonUtils.killPlayer(damageModel, player, source);
+            hitList.remove(player);
+            return Boolean.TRUE;
+        }
+        return null;
+    }
+
+    public static boolean handleCustomPlayerDamage(Player player, DamageSource source, float amount) {
+        AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
+        if (damageModel == null) {
             return false;
         }
 
         boolean addStat = amount < 3.4028235E37F;
-        IDamageDistributionAlgorithm damageDistribution = FirstAidRegistryLookups.getDamageDistributions(source.type());
+        IDamageDistributionAlgorithm damageDistribution = getForcedDamageDistribution(source);
+        if (damageDistribution == null) {
+            damageDistribution = FirstAidRegistryLookups.getDamageDistributions(source.type());
+        }
 
         if (source.is(DamageTypeTags.IS_PROJECTILE)) {
             Entity directEntity = source.getDirectEntity();
@@ -227,14 +238,21 @@ public final class EventHandler {
             }
         }
 
-        DamageDistribution.handleDamageTaken(damageDistribution, damageModel, amount, player, source, addStat, true);
-        if (amount > 0.0F && player.isAlive()) {
-            float pitch = 0.9F + (player.level().random.nextFloat() * 0.2F);
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_HURT, player.getSoundSource(), 1.0F, pitch);
-        }
-
+        IDamageDistributionAlgorithm finalDamageDistribution = damageDistribution;
+        float finalAmount = amount;
+        boolean redistributeLeftoverDamage = shouldRedistributeLeftoverDamage(source);
+        CommonUtils.runWithoutSetHealthInterception(
+                () -> DamageDistribution.handleDamageTaken(finalDamageDistribution, damageModel, finalAmount, player, source, addStat, redistributeLeftoverDamage));
         hitList.remove(player);
-        return false;
+        return true;
+    }
+
+    public static IDamageDistributionAlgorithm getForcedDamageDistribution(DamageSource source) {
+        return CommonUtils.isFootOnlyDamageSource(source) ? FOOT_ONLY_DAMAGE_DISTRIBUTION : null;
+    }
+
+    private static boolean shouldRedistributeLeftoverDamage(DamageSource source) {
+        return !CommonUtils.isFootOnlyDamageSource(source);
     }
 
     private record ProjectileHitContext(Entity projectile, Vec3 hitPosition) {

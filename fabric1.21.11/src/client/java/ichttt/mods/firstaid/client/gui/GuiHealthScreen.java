@@ -101,7 +101,7 @@ public class GuiHealthScreen extends Screen {
    private boolean canTreat(AbstractDamageablePart part) {
       if (!this.disableButtons && this.activeHand != null && this.minecraft != null && this.minecraft.player != null) {
          ItemStack stack = this.minecraft.player.getItemInHand(this.activeHand);
-         return !(stack.getItem() instanceof ItemHealing) ? false : part.activeHealer == null && part.currentHealth < part.getMaxHealth();
+         return !(stack.getItem() instanceof ItemHealing) ? false : part.activeHealer == null && !CommonUtils.isPartVisuallyFull(part);
       } else {
          return false;
       }
@@ -177,6 +177,7 @@ public class GuiHealthScreen extends Screen {
 
    private void drawHealth(GuiGraphics guiGraphics, AbstractDamageablePart damageablePart, boolean right, int yOffset) {
       int xTranslation = this.guiLeft + (right ? getRightOffset(damageablePart) : 57);
+      drawPartHealthIndicator(guiGraphics, xTranslation, this.guiTop + yOffset, damageablePart);
       HealthRenderUtils.drawHealth(guiGraphics, this.font, damageablePart, xTranslation, this.guiTop + yOffset, true);
       if (damageablePart.activeHealer != null) {
          guiGraphics.drawString(
@@ -190,6 +191,11 @@ public class GuiHealthScreen extends Screen {
             10551200
          );
       }
+   }
+
+   private static void drawPartHealthIndicator(GuiGraphics guiGraphics, int x, int y, AbstractDamageablePart damageablePart) {
+      int color = -872415232 | HealthRenderUtils.getHealthColor(damageablePart);
+      guiGraphics.fill(x - 6, y, x - 3, y + 10, color);
    }
 
    private static int getRightOffset(AbstractDamageablePart damageablePart) {

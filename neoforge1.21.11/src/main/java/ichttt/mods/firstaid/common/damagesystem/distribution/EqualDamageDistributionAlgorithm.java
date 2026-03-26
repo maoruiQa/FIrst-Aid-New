@@ -125,7 +125,7 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
         if (damageLeft > 0F && tryNoKill)
             damageLeft = distributeOnParts(damage, damageModel, player, false);
 
-        ((ServerPlayer) player).syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+        CommonUtils.syncDamageModel((ServerPlayer) player);
         float effectiveDmg = damage - damageLeft;
         if (effectiveDmg < 3.4028235E37F) {
             player.awardStat(Stats.DAMAGE_TAKEN, Math.round(effectiveDmg * 10.0F));

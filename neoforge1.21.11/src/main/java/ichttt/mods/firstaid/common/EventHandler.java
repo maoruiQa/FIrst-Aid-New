@@ -55,7 +55,6 @@ import net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThr
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.food.FoodData;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.LevelAccessor;
@@ -80,7 +79,6 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.EntityEvent;
 import net.neoforged.neoforge.event.entity.living.LivingHealEvent;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
-import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -113,6 +111,11 @@ public class EventHandler {
     public static final Map<Player, ProjectileHitContext> hitList = new WeakHashMap<>();
     private static final Map<UUID, RescueProgress> rescueProgress = new HashMap<>();
     private static final Map<UUID, ExecutionProgress> executionProgress = new HashMap<>();
+    private static final IDamageDistributionAlgorithm FOOT_ONLY_DAMAGE_DISTRIBUTION = new StandardDamageDistributionAlgorithm(
+            Collections.singletonMap(EquipmentSlot.FEET, CommonUtils.getPartListForSlot(EquipmentSlot.FEET)),
+            false,
+            true
+    );
 
     private static ResourceKey<Recipe<?>> recipeKey(String path) {
         return ResourceKey.create(Registries.RECIPE, Identifier.fromNamespaceAndPath(FirstAid.MODID, path));
@@ -128,33 +131,33 @@ public class EventHandler {
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.LOWEST) //so all other can modify their damage first, and we apply after that
-    public static void onLivingHurt(LivingIncomingDamageEvent event) {
-        LivingEntity entity = event.getEntity();
-        if (entity.level().isClientSide() || !CommonUtils.hasDamageModel(entity))
-            return;
-        float amountToDamage = event.getAmount();
-        Player player = (Player) entity;
+    public static Boolean preHandleCustomPlayerDamage(Player player, DamageSource source, float amountToDamage) {
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-        if (damageModel == null) return;
-        DamageSource source = event.getSource();
+        if (damageModel == null) return null;
         if (isProtectedUnconsciousSuffocation(damageModel, source)) {
-            event.setCanceled(true);
             hitList.remove(player);
-            return;
+            return Boolean.FALSE;
         }
 
         if (amountToDamage == Float.MAX_VALUE || Float.isNaN(amountToDamage) || amountToDamage == Float.POSITIVE_INFINITY) {
             damageModel.forEach(damageablePart -> damageablePart.currentHealth = 0F);
             if (player instanceof ServerPlayer serverPlayer)
-                serverPlayer.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
-            event.setCanceled(true);
+                CommonUtils.syncDamageModel(serverPlayer);
             CommonUtils.killPlayer(damageModel, player, source);
-            return;
+            hitList.remove(player);
+            return Boolean.TRUE;
         }
+        return null;
+    }
 
+    public static boolean handleCustomPlayerDamage(Player player, DamageSource source, float amountToDamage) {
+        AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
+        if (damageModel == null) return false;
         boolean addStat = amountToDamage < 3.4028235E37F;
-        IDamageDistributionAlgorithm damageDistribution = FirstAidRegistryLookups.getDamageDistributions(source.type());
+        IDamageDistributionAlgorithm damageDistribution = getForcedDamageDistribution(source);
+        if (damageDistribution == null) {
+            damageDistribution = FirstAidRegistryLookups.getDamageDistributions(source.type());
+        }
 
         if (source.is(DamageTypeTags.IS_PROJECTILE)) {
             Entity directEntity = source.getDirectEntity();
@@ -181,15 +184,21 @@ public class EventHandler {
             }
         }
 
-        DamageDistribution.handleDamageTaken(damageDistribution, damageModel, amountToDamage, player, source, addStat, true);
-        if (amountToDamage > 0.0F && player.isAlive()) {
-            float pitch = 0.9F + (player.level().random.nextFloat() * 0.2F);
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_HURT, player.getSoundSource(), 1.0F, pitch);
-        }
-
-        event.setCanceled(true);
-
+        IDamageDistributionAlgorithm finalDamageDistribution = damageDistribution;
+        float finalAmountToDamage = amountToDamage;
+        boolean redistributeLeftoverDamage = shouldRedistributeLeftoverDamage(source);
+        CommonUtils.runWithoutSetHealthInterception(
+                () -> DamageDistribution.handleDamageTaken(finalDamageDistribution, damageModel, finalAmountToDamage, player, source, addStat, redistributeLeftoverDamage));
         hitList.remove(player);
+        return true;
+    }
+
+    public static IDamageDistributionAlgorithm getForcedDamageDistribution(DamageSource source) {
+        return CommonUtils.isFootOnlyDamageSource(source) ? FOOT_ONLY_DAMAGE_DISTRIBUTION : null;
+    }
+
+    private static boolean shouldRedistributeLeftoverDamage(DamageSource source) {
+        return !CommonUtils.isFootOnlyDamageSource(source);
     }
 
     @SubscribeEvent(priority =  EventPriority.LOWEST)
@@ -331,7 +340,7 @@ public class EventHandler {
                 CapProvider.tutorialDone.add(event.getEntity().getName().getString());
             ServerPlayer playerMP = (ServerPlayer) event.getEntity();
             awardStarterRecipes(playerMP);
-            playerMP.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+            CommonUtils.syncDamageModel(playerMP);
             sendOpCommandTip(playerMP);
         }
     }
@@ -357,7 +366,7 @@ public class EventHandler {
         if (!player.level().isClientSide() && player instanceof ServerPlayer) {
             AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
             if (damageModel == null) return;
-            ((ServerPlayer) player).syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+            CommonUtils.syncDamageModel((ServerPlayer) player);
         }
     }
 

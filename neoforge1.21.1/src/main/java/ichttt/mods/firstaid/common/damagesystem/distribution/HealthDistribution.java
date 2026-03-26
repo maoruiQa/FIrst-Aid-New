@@ -77,7 +77,7 @@ public class HealthDistribution {
 
         if (sendChanges) {
             ServerPlayer playerMP = (ServerPlayer) player;
-            playerMP.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+            CommonUtils.syncDamageModel(playerMP);
         }
     }
 

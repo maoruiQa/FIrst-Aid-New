@@ -80,13 +80,15 @@ public class MessageApplyHealingItem implements CustomPacketPayload {
                     return;
                 }
                 AbstractDamageablePart damageablePart = damageModel.getFromEnum(message.part);
-                if (damageablePart.activeHealer != null || damageablePart.currentHealth >= damageablePart.getMaxHealth()) {
+                if (damageablePart.activeHealer != null || CommonUtils.isPartVisuallyFull(damageablePart)) {
                     return;
                 }
-                stack.shrink(1);
+                if (!player.getAbilities().instabuild) {
+                    stack.shrink(1);
+                }
                 damageablePart.activeHealer = healer;
                 damageModel.scheduleResync();
-                player.syncData(FirstAidDataAttachments.DAMAGE_MODEL.get());
+                CommonUtils.syncDamageModel(player);
             });
         }
     }

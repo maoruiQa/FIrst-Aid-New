@@ -67,9 +67,10 @@ public class MessageApplyHealingItem implements CustomPacketPayload {
                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                 if (damageModel == null) return;
                 ItemStack stack = player.getItemInHand(message.hand);
+                ItemStack healerStack = stack.copyWithCount(1);
                 AbstractPartHealer healer = null;
-                if (stack.getItem() instanceof ItemHealing itemHealing) {
-                    healer = itemHealing.createNewHealer(stack);
+                if (healerStack.getItem() instanceof ItemHealing itemHealing) {
+                    healer = itemHealing.createNewHealer(healerStack);
                 }
                 if (healer == null) {
                     FirstAid.LOGGER.warn(LoggingMarkers.NETWORK, "Player {} has invalid item in hand {} while it should be an healing item", player.getName(), BuiltInRegistries.ITEM.getKey(stack.getItem()));
@@ -77,10 +78,12 @@ public class MessageApplyHealingItem implements CustomPacketPayload {
                     return;
                 }
                 AbstractDamageablePart damageablePart = damageModel.getFromEnum(message.part);
-                if (damageablePart.activeHealer != null || damageablePart.currentHealth >= damageablePart.getMaxHealth()) {
+                if (damageablePart.activeHealer != null || CommonUtils.isPartVisuallyFull(damageablePart)) {
                     return;
                 }
-                stack.shrink(1);
+                if (!player.getAbilities().instabuild) {
+                    stack.shrink(1);
+                }
                 damageablePart.activeHealer = healer;
                 damageModel.scheduleResync();
                 FirstAidNetworking.sendDamageModelSync(player, damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get());
