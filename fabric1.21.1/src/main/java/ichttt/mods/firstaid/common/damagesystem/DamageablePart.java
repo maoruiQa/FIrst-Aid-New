@@ -47,7 +47,6 @@ public class DamageablePart extends AbstractDamageablePart {
     private int maxHealth;
     @Nullable
     private IDebuff[] debuffs;
-    private float absorption;
 
     public DamageablePart(int maxHealth, boolean canCauseDeath, @Nonnull EnumPlayerPart playerPart) {
         super(maxHealth, canCauseDeath, playerPart);
@@ -98,16 +97,11 @@ public class DamageablePart extends AbstractDamageablePart {
             return 0F;
         if (minHealth > maxHealth)
             throw new IllegalArgumentException("Cannot damage part with minHealth " + minHealth + " while he has more max health (" + maxHealth + ")");
-        float origAmount = amount;
-        if (absorption > 0) {
-            amount = Math.abs(Math.min(0, absorption - origAmount));
-            absorption = Math.max(0, absorption - origAmount);
-        }
         float notFitting = Math.abs(Math.min(minHealth, currentHealth - amount) - minHealth);
         currentHealth = Math.max(minHealth, currentHealth - amount);
         if (applyDebuff && debuffs != null && FirstAid.injuryDebuffMode != FirstAid.InjuryDebuffMode.OFF) {
             Objects.requireNonNull(player, "Got null player with applyDebuff = true");
-            float debuffDamage = origAmount - notFitting;
+            float debuffDamage = amount - notFitting;
             float debuffHealthFraction = currentHealth / maxHealth;
             if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
                 debuffDamage *= LOW_DEBUFF_DAMAGE_SCALE;
@@ -146,8 +140,6 @@ public class DamageablePart extends AbstractDamageablePart {
         compound.putFloat("health", currentHealth);
         if (FirstAidConfig.SERVER.scaleMaxHealth.get())
             compound.putInt("maxHealth", maxHealth);
-        if (absorption > 0F)
-            compound.putFloat("absorption", absorption);
         if (activeHealer != null) {
             ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(activeHealer.stack.getItem());
             if (itemId != null) {
@@ -164,7 +156,6 @@ public class DamageablePart extends AbstractDamageablePart {
         if (nbt == null)
             return;
         activeHealer = null;
-        absorption = 0F;
         if (nbt.contains("maxHealth", Tag.TAG_INT) && FirstAidConfig.SERVER.scaleMaxHealth.get()) {
             maxHealth = nbt.getInt("maxHealth");
         }
@@ -194,9 +185,6 @@ public class DamageablePart extends AbstractDamageablePart {
                 activeHealer = healer.loadNBT(nbt.getInt("itemTicks"), nbt.getInt("itemHeals"));
             }
         }
-        if (nbt.contains("absorption", Tag.TAG_ANY_NUMERIC)) {
-            absorption = nbt.getFloat("absorption");
-        }
         //kick constant debuffs active
         if (debuffs != null) {
             for (IDebuff debuff : debuffs) {
@@ -205,18 +193,10 @@ public class DamageablePart extends AbstractDamageablePart {
         }
     }
 
-    @Override
-    public void setAbsorption(float absorption) {
-        if (absorption > 4F && FirstAidConfig.SERVER.capMaxHealth.get())
-            absorption = 4F;
-        if (absorption > 32F) absorption = 32F;
-        this.absorption = absorption;
-        currentHealth = Math.min(maxHealth + absorption, currentHealth);
-    }
+    public void setAbsorption(float absorption) {}
 
-    @Override
     public float getAbsorption() {
-        return absorption;
+        return 0F;
     }
 
     @Override

@@ -123,7 +123,7 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
          }
       }
 
-      return rest > 0.0F && exhaustedParts.contains(EnumPlayerPart.BODY) ? 0.0F : rest;
+      return rest > 0.0F && exhaustedParts.contains(EnumPlayerPart.BODY) && exhaustedParts.contains(EnumPlayerPart.HEAD) ? 0.0F : rest;
    }
 
    @Override

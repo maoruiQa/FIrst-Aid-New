@@ -4,6 +4,7 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.common.damagesystem.PartHealer;
+import ichttt.mods.firstaid.common.items.ItemAdrenalineInjector;
 import ichttt.mods.firstaid.common.items.ItemMorphine;
 import ichttt.mods.firstaid.common.items.ItemPainkillers;
 import ichttt.mods.firstaid.common.potion.FirstAidPotion;
@@ -29,13 +30,16 @@ public final class RegistryObjects {
    public static final RegistryObjects.RegistryEntry<ItemHealing> BANDAGE;
    public static final RegistryObjects.RegistryEntry<ItemHealing> PLASTER;
    public static final RegistryObjects.RegistryEntry<Item> DEFIBRILLATOR;
+   public static final RegistryObjects.RegistryEntry<ItemAdrenalineInjector> ADRENALINE_INJECTOR;
    public static final RegistryObjects.RegistryEntry<ItemMorphine> MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
    public static final RegistryObjects.RegistryEntry<ItemPainkillers> PAINKILLERS = registerItem(
       "painkillers", new ItemPainkillers(itemProperties("painkillers"))
    );
    public static final Holder<SoundEvent> HEARTBEAT;
+   public static final Holder<SoundEvent> TINNITUS;
    public static final Holder<SoundEvent> BANDAGE_USE;
    public static final Holder<SoundEvent> DEFIBRILLATOR_USE;
+    public static final Holder<SoundEvent> ADRENALINE_INJECTOR_USE;
    public static final Holder<SoundEvent> PILLS_USE;
    public static final Holder<MobEffect> MORPHINE_EFFECT = Registry.registerForHolder(
       BuiltInRegistries.MOB_EFFECT, id("morphine"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 3549)
@@ -87,6 +91,7 @@ public final class RegistryObjects {
          )
       );
       DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));
+      ADRENALINE_INJECTOR = registerItem("adrenaline_injector", new ItemAdrenalineInjector(itemProperties("adrenaline_injector").durability(2)));
       CREATIVE_TAB = Registry.registerForHolder(
          BuiltInRegistries.CREATIVE_MODE_TAB,
          id("main_tab"),
@@ -97,6 +102,7 @@ public final class RegistryObjects {
                entries.accept((ItemLike)BANDAGE.get());
                entries.accept((ItemLike)PLASTER.get());
                entries.accept((ItemLike)DEFIBRILLATOR.get());
+               entries.accept((ItemLike)ADRENALINE_INJECTOR.get());
                entries.accept((ItemLike)MORPHINE.get());
                entries.accept((ItemLike)PAINKILLERS.get());
             })
@@ -104,11 +110,17 @@ public final class RegistryObjects {
       );
       Identifier soundLocation = Identifier.fromNamespaceAndPath("firstaid", "debuff.heartbeat");
       HEARTBEAT = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, soundLocation, SoundEvent.createVariableRangeEvent(soundLocation));
+      Identifier tinnitusSoundLocation = Identifier.fromNamespaceAndPath("firstaid", "debuff.tinnitus");
+      TINNITUS = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, tinnitusSoundLocation, SoundEvent.createVariableRangeEvent(tinnitusSoundLocation));
       Identifier bandageSoundLocation = Identifier.fromNamespaceAndPath("firstaid", "item.use_bandage");
       BANDAGE_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, bandageSoundLocation, SoundEvent.createVariableRangeEvent(bandageSoundLocation));
       Identifier defibrillatorSoundLocation = Identifier.fromNamespaceAndPath("firstaid", "item.defibrillator_use");
       DEFIBRILLATOR_USE = Registry.registerForHolder(
          BuiltInRegistries.SOUND_EVENT, defibrillatorSoundLocation, SoundEvent.createVariableRangeEvent(defibrillatorSoundLocation)
+      );
+      Identifier adrenalineInjectorSoundLocation = Identifier.fromNamespaceAndPath("firstaid", "item.adrenaline_injector_use");
+      ADRENALINE_INJECTOR_USE = Registry.registerForHolder(
+         BuiltInRegistries.SOUND_EVENT, adrenalineInjectorSoundLocation, SoundEvent.createVariableRangeEvent(adrenalineInjectorSoundLocation)
       );
       Identifier pillsSoundLocation = Identifier.fromNamespaceAndPath("firstaid", "item.take_pills");
       PILLS_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, pillsSoundLocation, SoundEvent.createVariableRangeEvent(pillsSoundLocation));

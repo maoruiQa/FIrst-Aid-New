@@ -26,11 +26,13 @@ import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
 import ichttt.mods.firstaid.client.util.EventCalendar;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.util.CommonUtils;
+import ichttt.mods.firstaid.common.items.ItemAdrenalineInjector;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.world.InteractionHand;
 import org.lwjgl.glfw.GLFW;
@@ -52,6 +54,10 @@ public final class ClientHooks {
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(HUDHandler.INSTANCE);
         ClientEventHandler.register();
         EventCalendar.checkDate();
+        ItemAdrenalineInjector.clientStopSoundCallback = () -> {
+            Minecraft mc = Minecraft.getInstance();
+            mc.getSoundManager().stop(ichttt.mods.firstaid.common.RegistryObjects.ADRENALINE_INJECTOR_USE.value().getLocation(), SoundSource.PLAYERS);
+        };
     }
 
     public static void showGuiApplyHealth(InteractionHand activeHand) {

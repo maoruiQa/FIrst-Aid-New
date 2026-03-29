@@ -65,12 +65,12 @@ public class ConstantDebuff extends AbstractDebuff {
                   amplifier = this.scaleAmplifierForMode(amplifier);
                }
 
-               player.addEffect(new MobEffectInstance(this.effect, 169, amplifier, false, false));
+               player.addEffect(new MobEffectInstance(this.effect, 60, amplifier, false, false));
             }
          }
 
          this.ticks++;
-         if (this.ticks >= 79) {
+         if (this.ticks >= 45) {
             this.ticks = 0;
          }
       }

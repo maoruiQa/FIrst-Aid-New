@@ -66,16 +66,24 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private static final int MAX_ADRENALINE_LEVEL = 3;
     private static final int MAX_ADRENALINE_TICKS = 200;
     private static final float MAX_SUPPRESSION_INTENSITY = 1.0F;
+    private static final float ADRENALINE_ABSORPTION_AMOUNT = 8.0F;
+    private static final int ADRENALINE_ABSORPTION_AMPLIFIER = 1;
+    private static final int ADRENALINE_HASTE_AMPLIFIER = 0;
+    private static final int ADRENALINE_STRENGTH_AMPLIFIER = 0;
+    private static final int ADRENALINE_SPEED_AMPLIFIER = 0;
+    private static final float ADRENALINE_INJECTION_SUPPRESSION_STRENGTH = 0.35F;
     private static final float SUPPRESSION_GAIN_MULTIPLIER = 0.48F;
     private static final int SUPPRESSION_HOLD_TICKS = 20 * 4;
     private static final float SUPPRESSION_DECAY_STEP = 0.03F;
     private static final int SUPPRESSION_DECAY_INTERVAL = 4;
+    private static final int ADRENALINE_DURATION_TICKS = 20 * 35;
     private static final int PAINKILLER_ACTIVATION_DELAY_TICKS = 20 * 30;
     private static final int MORPHINE_ACTIVATION_DELAY_TICKS = 20 * 10;
     private static final int CRITICAL_UNCONSCIOUS_TICKS = 20 * 150;
     private static final int RESCUE_DURATION_TICKS = 20 * 8;
     private static final int DEFIBRILLATOR_RESCUE_DURATION_TICKS = 20 * 3;
     private static final int EXECUTION_DURATION_TICKS = 20 * 5;
+    private static final float CRITICAL_DOWNED_CRITICAL_PART_DAMAGE_MULTIPLIER = 0.1F;
     private static final double RESCUE_RANGE = 3.0D;
     private static final int COLLAPSE_ANIMATION_TICKS = 12;
     private static final int COLLAPSE_SEARCH_RADIUS = 2;
@@ -100,6 +108,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private int painLevel = 0;
     private int adrenalineLevel = 0;
     private int adrenalineTicks = 0;
+    private int adrenalineHeartbeatTriggerId = 0;
     private float suppressionIntensity = 0.0F;
     private int suppressionHoldTicks = 0;
     private int suppressionDecayTicker = 0;
@@ -110,6 +119,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private String unconsciousReasonKey = UNCONSCIOUS_REASON_NONE;
     private int collapseAnimationTicks = 0;
     private boolean collapsePlacementPending = false;
+    private boolean externalRevivePending = false;
 
     public PlayerDamageModel() {
         super(new DamageablePart(FirstAidConfig.SERVER.maxHealthHead.get(),      FirstAidConfig.SERVER.causeDeathHead.get(),  EnumPlayerPart.HEAD),
@@ -142,6 +152,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         tagCompound.putInt("painLevel", painLevel);
         tagCompound.putInt("adrenalineLevel", adrenalineLevel);
         tagCompound.putInt("adrenalineTicks", adrenalineTicks);
+        tagCompound.putInt("adrenalineHeartbeatTriggerId", adrenalineHeartbeatTriggerId);
         tagCompound.putFloat("suppressionIntensity", suppressionIntensity);
         tagCompound.putInt("suppressionHoldTicks", suppressionHoldTicks);
         tagCompound.putInt("suppressionDecayTicker", suppressionDecayTicker);
@@ -149,6 +160,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         tagCompound.putBoolean("criticalConditionActive", criticalConditionActive);
         tagCompound.putBoolean("unconsciousAllowsGiveUp", unconsciousAllowsGiveUp);
         tagCompound.putBoolean("unconsciousCausesDeath", unconsciousCausesDeath);
+        tagCompound.putBoolean("externalRevivePending", externalRevivePending);
         tagCompound.putInt("collapseAnimationTicks", collapseAnimationTicks);
         if (!unconsciousReasonKey.isEmpty()) {
             tagCompound.putString("unconsciousReasonKey", unconsciousReasonKey);
@@ -179,6 +191,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         painLevel = nbt.getInt("painLevel");
         adrenalineLevel = nbt.getInt("adrenalineLevel");
         adrenalineTicks = nbt.getInt("adrenalineTicks");
+        adrenalineHeartbeatTriggerId = nbt.getInt("adrenalineHeartbeatTriggerId");
         suppressionIntensity = nbt.contains("suppressionIntensity")
                 ? Mth.clamp(nbt.getFloat("suppressionIntensity"), 0.0F, MAX_SUPPRESSION_INTENSITY)
                 : Mth.clamp(adrenalineTicks / (float) MAX_ADRENALINE_TICKS, 0.0F, MAX_SUPPRESSION_INTENSITY);
@@ -188,6 +201,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         criticalConditionActive = nbt.getBoolean("criticalConditionActive");
         unconsciousAllowsGiveUp = nbt.contains("unconsciousAllowsGiveUp") ? nbt.getBoolean("unconsciousAllowsGiveUp") : criticalConditionActive;
         unconsciousCausesDeath = nbt.contains("unconsciousCausesDeath") ? nbt.getBoolean("unconsciousCausesDeath") : criticalConditionActive;
+        externalRevivePending = nbt.getBoolean("externalRevivePending");
         unconsciousReasonKey = nbt.contains("unconsciousReasonKey") ? nbt.getString("unconsciousReasonKey") : (criticalConditionActive ? UNCONSCIOUS_REASON_CRITICAL : UNCONSCIOUS_REASON_NONE);
         collapseAnimationTicks = nbt.getInt("collapseAnimationTicks");
         collapsePlacementPending = false;
@@ -323,6 +337,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return 20 * 120;
     }
 
+    public static int getAdrenalineDuration() {
+        return ADRENALINE_DURATION_TICKS;
+    }
+
+    public static float getAdrenalineAbsorptionAmount() {
+        return ADRENALINE_ABSORPTION_AMOUNT;
+    }
+
     public static int getPainkillerActivationDelay() {
         return FirstAid.scaleMedicalTimingTicks(PAINKILLER_ACTIVATION_DELAY_TICKS);
     }
@@ -373,6 +395,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return adrenalineTicks;
     }
 
+    public int getAdrenalineHeartbeatTriggerId() {
+        return adrenalineHeartbeatTriggerId;
+    }
+
     public int getSuppressionLevel() {
         return adrenalineLevel;
     }
@@ -383,6 +409,35 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
 
     public int getSuppressionHoldTicks() {
         return suppressionHoldTicks;
+    }
+
+    public void applyAdrenalineInjection(Player player) {
+        MobEffectInstance activePainkiller = player.getEffect(RegistryObjects.PAINKILLER_EFFECT);
+        MobEffectInstance activeAbsorption = player.getEffect(MobEffects.ABSORPTION);
+        MobEffectInstance activeHaste = player.getEffect(MobEffects.DIG_SPEED);
+        MobEffectInstance activeStrength = player.getEffect(MobEffects.DAMAGE_BOOST);
+        MobEffectInstance activeSpeed = player.getEffect(MobEffects.MOVEMENT_SPEED);
+        int duration = Math.max(getAdrenalineDuration(), activePainkiller == null ? 0 : activePainkiller.getDuration());
+        int absorptionDuration = Math.max(getAdrenalineDuration(), activeAbsorption == null ? 0 : activeAbsorption.getDuration());
+        int absorptionAmplifier = Math.max(ADRENALINE_ABSORPTION_AMPLIFIER, activeAbsorption == null ? 0 : activeAbsorption.getAmplifier());
+        int hasteDuration = Math.max(getAdrenalineDuration(), activeHaste == null ? 0 : activeHaste.getDuration());
+        int hasteAmplifier = Math.max(ADRENALINE_HASTE_AMPLIFIER, activeHaste == null ? 0 : activeHaste.getAmplifier());
+        int strengthDuration = Math.max(getAdrenalineDuration(), activeStrength == null ? 0 : activeStrength.getDuration());
+        int strengthAmplifier = Math.max(ADRENALINE_STRENGTH_AMPLIFIER, activeStrength == null ? 0 : activeStrength.getAmplifier());
+        int speedDuration = Math.max(getAdrenalineDuration(), activeSpeed == null ? 0 : activeSpeed.getDuration());
+        int speedAmplifier = Math.max(ADRENALINE_SPEED_AMPLIFIER, activeSpeed == null ? 0 : activeSpeed.getAmplifier());
+        player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, duration, 0, false, false));
+        player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, absorptionDuration, absorptionAmplifier, false, false));
+        player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, hasteDuration, hasteAmplifier, false, false));
+        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, strengthDuration, strengthAmplifier, false, false));
+        player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, speedDuration, speedAmplifier, false, false));
+        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 140, 0, false, false));
+        registerAdrenalineNearMiss(player, ADRENALINE_INJECTION_SUPPRESSION_STRENGTH, getAdrenalineDuration());
+        adrenalineHeartbeatTriggerId++;
+        scheduleResync();
+        if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            CommonUtils.syncDamageModel(serverPlayer);
+        }
     }
 
     @Override
@@ -397,6 +452,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
 
     public boolean isUnconscious() {
         return unconsciousTicks > 0;
+    }
+
+    public boolean isCriticalDowned() {
+        return criticalConditionActive && unconsciousTicks > 0;
+    }
+
+    public float getIncomingPartDamageMultiplier(AbstractDamageablePart part) {
+        return isCriticalDowned() && part.canCauseDeath ? CRITICAL_DOWNED_CRITICAL_PART_DAMAGE_MULTIPLIER : 1.0F;
     }
 
     public boolean canGiveUp() {
@@ -475,7 +538,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return Math.max(0.0F, Math.min(1.0F, progress));
     }
 
-    public void registerAdrenalineNearMiss(float strength) {
+    public void registerAdrenalineNearMiss(Player player, float strength) {
+        registerAdrenalineNearMiss(player, strength, SUPPRESSION_HOLD_TICKS);
+    }
+
+    public void registerAdrenalineNearMiss(Player player, float strength, int holdTicks) {
         float clampedStrength = Mth.clamp(strength, 0.35F, 1.45F);
         float previousIntensity = suppressionIntensity;
         int previousHoldTicks = suppressionHoldTicks;
@@ -485,8 +552,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                 0.36F * SUPPRESSION_GAIN_MULTIPLIER,
                 0.62F * SUPPRESSION_GAIN_MULTIPLIER);
         suppressionIntensity = Mth.clamp(suppressionIntensity + addedIntensity, 0.0F, MAX_SUPPRESSION_INTENSITY);
-        suppressionHoldTicks = Math.max(suppressionHoldTicks, SUPPRESSION_HOLD_TICKS);
+        suppressionHoldTicks = Math.max(suppressionHoldTicks, holdTicks);
         suppressionDecayTicker = 0;
+        MobEffectInstance activePainkiller = player.getEffect(RegistryObjects.PAINKILLER_EFFECT);
+        int painkillerDuration = Math.max(holdTicks, activePainkiller == null ? 0 : activePainkiller.getDuration());
+        player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, painkillerDuration, 0, false, false));
         refreshSuppressionSnapshot();
         if (previousIntensity != suppressionIntensity || previousHoldTicks != suppressionHoldTicks || previousAdrenalineTicks != adrenalineTicks) {
             scheduleResync();
@@ -509,6 +579,19 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         unconsciousAllowsGiveUp = false;
         unconsciousCausesDeath = false;
         unconsciousReasonKey = UNCONSCIOUS_REASON_NONE;
+        externalRevivePending = false;
+    }
+
+    public void markExternalRevivePending(Player player) {
+        externalRevivePending = true;
+        criticalConditionActive = false;
+        clearUnconsciousState();
+        clearUnconsciousPenalties(player);
+        player.refreshDimensions();
+        scheduleResync();
+        if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            CommonUtils.syncDamageModel(serverPlayer);
+        }
     }
 
     public void handlePostDamage(Player player) {
@@ -542,7 +625,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public boolean defibrillatorRescueFromCriticalState(Player player, boolean keepWakeUpDelay) {
-        return performCriticalRescue(player, null, keepWakeUpDelay, 2.0F, 0.4F);
+        boolean rescued = performCriticalRescue(player, null, keepWakeUpDelay, 2.0F, 0.4F);
+        if (rescued) {
+            player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 20 * 20, 0, false, false));
+        }
+        return rescued;
     }
 
     private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth, float wakeUpDelayMultiplier) {
@@ -684,7 +771,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                 throw new RuntimeException("Unknown constant " + mode);
         }
         float scaledHealth = currentHealth * player.getMaxHealth();
-        if (criticalConditionActive && unconsciousTicks > 0 && hasCriticalPartCollapsed() && !hasAllCriticalPartsCollapsed()) {
+        if (isCriticalDowned() && hasCriticalPartCollapsed() && !hasAllCriticalPartsCollapsed()) {
             return Math.max(1.0F, scaledHealth);
         }
         return scaledHealth;
@@ -708,7 +795,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             return true;
         }
 
-        if (criticalConditionActive && unconsciousTicks > 0) {
+        if (isCriticalDowned()) {
             return false;
         }
 
@@ -732,20 +819,6 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     @Override
-    public Float getAbsorption() { //Float class because of DataManager
-        float value = 0;
-        for (AbstractDamageablePart part : this)
-                value += part.getAbsorption();
-        return value; //Autoboxing FTW
-    }
-
-    @Override
-    public void setAbsorption(float absorption) {
-        final float newAbsorption = absorption / 8F;
-        forEach(damageablePart -> damageablePart.setAbsorption(newAbsorption));
-    }
-
-    @Override
     public int getMaxRenderSize() {
         int max = 0;
         for (AbstractDamageablePart part : this) {
@@ -753,7 +826,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             if (FirstAidConfig.CLIENT.overlayMode.get() == FirstAidConfig.Client.OverlayMode.NUMBERS)
                 newMax = Minecraft.getInstance().font.width(TEXT_FORMAT.format(part.currentHealth) + "/" + part.getMaxHealth()) + 1;
             else
-                newMax = (int) (((((int) (part.getMaxHealth() + part.getAbsorption() + 0.9999F)) + 1) / 2F) * 9F);
+                newMax = (int) (((((int) (part.getMaxHealth() + 0.9999F)) + 1) / 2F) * 9F);
             max = Math.max(max, newMax);
         }
         return max;
@@ -784,6 +857,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         }
         player.revive();
         clearStatusEffects();
+        externalRevivePending = false;
         for (AbstractDamageablePart part : this) {
             if ((part.canCauseDeath || this.noCritical) && part.currentHealth <= 0F) {
                 part.currentHealth = 1F; // Set the critical health to a non-zero value
@@ -927,6 +1001,9 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         boolean previousGiveUpState = unconsciousAllowsGiveUp;
         boolean previousDeathState = unconsciousCausesDeath;
         String previousUnconsciousReasonKey = unconsciousReasonKey;
+        if (resolveExternalReviveState(player)) {
+            return;
+        }
 
         painLevel = calculatePainLevel();
 
@@ -998,6 +1075,26 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             }
             player.refreshDimensions();
         }
+    }
+
+    private boolean resolveExternalReviveState(Player player) {
+        if (!externalRevivePending || PRCompatManager.getHandler().isBleeding(player)) {
+            return false;
+        }
+
+        externalRevivePending = false;
+        if (player.isAlive() && player.getHealth() > 0.0F) {
+            revivePlayer(player);
+        } else {
+            clearStatusEffects();
+            clearUnconsciousPenalties(player);
+            player.refreshDimensions();
+            scheduleResync();
+            if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+                CommonUtils.syncDamageModel(serverPlayer);
+            }
+        }
+        return true;
     }
 
     private int calculatePainLevel() {
@@ -1292,4 +1389,3 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         }
     }
 }
-

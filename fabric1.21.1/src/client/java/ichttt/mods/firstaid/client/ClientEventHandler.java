@@ -53,6 +53,7 @@ public final class ClientEventHandler {
     private static final int RESCUE_SOUND_DELAY_TICKS = 10;
     private static final SuppressionFeedbackController SUPPRESSION_FEEDBACK_CONTROLLER = new SuppressionFeedbackController();
     private static final ProjectileNearMissDetector PROJECTILE_NEAR_MISS_DETECTOR = new ProjectileNearMissDetector(SUPPRESSION_FEEDBACK_CONTROLLER);
+    private static final HeartbeatSoundController HEARTBEAT_SOUND_CONTROLLER = new HeartbeatSoundController();
     private static int id;
     private static boolean showedCriticalPrompt;
     private static int giveUpHoldTicks;
@@ -82,6 +83,7 @@ public final class ClientEventHandler {
             return;
         }
         SUPPRESSION_FEEDBACK_CONTROLLER.tick(mc);
+        HEARTBEAT_SOUND_CONTROLLER.tick(mc);
         HealingSoundController.tick(mc);
         PROJECTILE_NEAR_MISS_DETECTOR.tick(mc);
         if (EventCalendar.isGuiFun()) {
@@ -152,6 +154,12 @@ public final class ClientEventHandler {
                     "2:00").withStyle(ChatFormatting.GRAY));
             return;
         }
+        if (stack.is(RegistryObjects.ADRENALINE_INJECTOR.get())) {
+            lines.add(Component.translatable("firstaid.tooltip.adrenaline_injector",
+                    StringUtil.formatTickDuration(40, 20F),
+                    StringUtil.formatTickDuration(PlayerDamageModel.getAdrenalineDuration(), 20F)).withStyle(ChatFormatting.GRAY));
+            return;
+        }
 
         if (stack.getItem() instanceof ItemHealing itemHealing) {
             AbstractPartHealer healer = itemHealing.createNewHealer(stack);
@@ -170,6 +178,7 @@ public final class ClientEventHandler {
         resetGiveUpHoldState();
         resetInteractionPromptState();
         HealingSoundController.clear();
+        HEARTBEAT_SOUND_CONTROLLER.clear();
         SUPPRESSION_FEEDBACK_CONTROLLER.clear();
         PROJECTILE_NEAR_MISS_DETECTOR.clear();
     }

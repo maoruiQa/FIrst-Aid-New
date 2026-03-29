@@ -7,7 +7,6 @@ import ichttt.mods.firstaid.common.EventHandler;
 import ichttt.mods.firstaid.common.damagesystem.distribution.DamageDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.RandomDamageDistributionAlgorithm;
-import ichttt.mods.firstaid.common.network.FirstAidNetworking;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -22,37 +21,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityHealthMixin {
-    @Inject(method = "getAbsorptionAmount", at = @At("HEAD"), cancellable = true)
-    private void firstaid$getAbsorptionAmount(CallbackInfoReturnable<Float> cir) {
-        LivingEntity entity = (LivingEntity) (Object) this;
-        if (!(entity instanceof Player player)) {
-            return;
-        }
-        AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-        if (damageModel != null) {
-            Float absorption = damageModel.getAbsorption();
-            if (absorption != null) {
-                cir.setReturnValue(absorption);
-            }
-        }
-    }
-
-    @Inject(method = "setAbsorptionAmount", at = @At("HEAD"))
-    private void firstaid$setAbsorptionAmount(float absorptionAmount, CallbackInfo ci) {
-        LivingEntity entity = (LivingEntity) (Object) this;
-        if (!(entity instanceof Player player) || entity.level().isClientSide()) {
-            return;
-        }
-        AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-        if (damageModel == null) {
-            return;
-        }
-        damageModel.setAbsorption(absorptionAmount);
-        if (player instanceof ServerPlayer serverPlayer && serverPlayer.connection != null) {
-            FirstAidNetworking.sendDamageModelSync(serverPlayer, damageModel, FirstAidConfig.SERVER.scaleMaxHealth.get());
-        }
-    }
-
     @Inject(method = "hurt", at = @At("HEAD"), cancellable = true)
     private void firstaid$hurt(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof Player) {

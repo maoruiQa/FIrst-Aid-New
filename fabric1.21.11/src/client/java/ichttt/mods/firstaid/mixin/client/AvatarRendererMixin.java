@@ -13,6 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(AvatarRenderer.class)
 public abstract class AvatarRendererMixin {
+   private static final double UNCONSCIOUS_VERTICAL_OFFSET = -0.16D;
+
    @Inject(method = "setupRotations", at = @At("HEAD"), cancellable = true)
    private void firstaid$setupRotations(AvatarRenderState renderState, PoseStack poseStack, float bodyRot, float scale, CallbackInfo ci) {
       if (RenderStateExtensions.shouldApplyUnconsciousAttributes(renderState)) {
@@ -20,7 +22,7 @@ public abstract class AvatarRendererMixin {
          poseStack.mulPose(Axis.YP.rotationDegrees(Mth.lerp(collapseProgress, 180.0F - bodyRot, 90.0F - bodyRot)));
          poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F * collapseProgress));
          poseStack.mulPose(Axis.YP.rotationDegrees(270.0F * collapseProgress));
-         poseStack.translate(0.0, -0.9 * collapseProgress, -0.1 * collapseProgress);
+         poseStack.translate(0.0D, -0.9D * collapseProgress, UNCONSCIOUS_VERTICAL_OFFSET * collapseProgress);
          ci.cancel();
       }
    }

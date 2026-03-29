@@ -18,6 +18,7 @@
 
 package ichttt.mods.firstaid.client;
 
+import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
@@ -68,7 +69,7 @@ public class HUDHandler implements ResourceManagerReloadListener, LayeredDraw.La
         }
 
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(minecraft.player);
-        if (damageModel == null) {
+        if (damageModel == null || !FirstAid.isSynced) {
             return;
         }
 
@@ -96,6 +97,9 @@ public class HUDHandler implements ResourceManagerReloadListener, LayeredDraw.La
             return;
         }
         if (minecraft.screen instanceof ChatScreen && FirstAidConfig.CLIENT.pos.get() == FirstAidConfig.Client.Position.BOTTOM_LEFT) {
+            return;
+        }
+        if (minecraft.getDebugOverlay().showDebugScreen() && FirstAidConfig.CLIENT.pos.get() == FirstAidConfig.Client.Position.TOP_LEFT) {
             return;
         }
         int xOffset = FirstAidConfig.CLIENT.xOffset.get();

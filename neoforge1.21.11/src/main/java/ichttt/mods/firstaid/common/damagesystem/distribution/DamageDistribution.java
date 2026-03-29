@@ -47,7 +47,6 @@ import java.util.Collections;
 import java.util.List;
 
 public abstract class DamageDistribution implements IDamageDistributionAlgorithm {
-    private static final float UNCONSCIOUS_DAMAGE_MULTIPLIER = 0.2F;
 
     public static float handleDamageTaken(IDamageDistributionAlgorithm damageDistribution, AbstractPlayerDamageModel damageModel, float damage, @Nonnull Player player, @Nonnull DamageSource source, boolean addStat, boolean redistributeIfLeft) {
         if (FirstAidConfig.GENERAL.debug.get()) {
@@ -56,9 +55,6 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
         CompoundTag beforeCache = damageModel.serializeNBT();
         if (!damageDistribution.skipGlobalPotionModifiers())
             damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
-        if (damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious()) {
-            damage *= UNCONSCIOUS_DAMAGE_MULTIPLIER;
-        }
         //VANILLA COPY - combat tracker and exhaustion
         if (damage != 0.0F) {
             player.causeFoodExhaustion(source.getFoodExhaustion());
@@ -103,6 +99,43 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
         return 0F;
     }
 
+    static float getIncomingPartDamageMultiplier(AbstractPlayerDamageModel damageModel, AbstractDamageablePart part) {
+        if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+            return playerDamageModel.getIncomingPartDamageMultiplier(part);
+        }
+        return 1.0F;
+    }
+
+    static float restoreOriginalDamageScale(float scaledDamage, float damageMultiplier) {
+        if (damageMultiplier <= 0.0F) {
+            return 0.0F;
+        }
+        return scaledDamage / damageMultiplier;
+    }
+
+    static float consumeGlobalAbsorption(AbstractPlayerDamageModel damageModel, Player player, float damage) {
+        if (damage <= 0.0F) {
+            return 0.0F;
+        }
+        float modelAbsorption = 0.0F;
+        Float storedAbsorption = damageModel.getAbsorption();
+        if (storedAbsorption != null) {
+            modelAbsorption = storedAbsorption;
+        }
+        float vanillaAbsorption = player.getAbsorptionAmount();
+        float absorption = Math.max(modelAbsorption, vanillaAbsorption);
+        if (absorption <= 0.0F) {
+            return damage;
+        }
+        float remainingAbsorption = Math.max(0.0F, absorption - damage);
+        damageModel.setAbsorption(remainingAbsorption);
+        player.setAbsorptionAmount(remainingAbsorption);
+        if (absorption >= damage) {
+            return 0.0F;
+        }
+        return damage - absorption;
+    }
+
     protected float distributeDamageOnParts(float damage, @Nonnull AbstractPlayerDamageModel damageModel, @Nonnull EnumPlayerPart[] enumParts, @Nonnull Player player, boolean addStat) {
         ArrayList<AbstractDamageablePart> damageableParts = new ArrayList<>(enumParts.length);
         for (EnumPlayerPart part : enumParts) {
@@ -111,17 +144,17 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
         Collections.shuffle(damageableParts);
         for (AbstractDamageablePart part : damageableParts) {
             float minHealth = minHealth(player, part);
-            float dmgDone = damage - part.damage(damage, player, !player.hasEffect(RegistryObjects.MORPHINE_EFFECT), minHealth);
+            float damageMultiplier = getIncomingPartDamageMultiplier(damageModel, part);
+            float scaledDamage = damage * damageMultiplier;
+            float scaledLeft = part.damage(scaledDamage, player, !player.hasEffect(RegistryObjects.MORPHINE_EFFECT), minHealth);
+            float scaledDamageDone = scaledDamage - scaledLeft;
+            float dmgConsumed = Math.min(damage, restoreOriginalDamageScale(scaledDamageDone, damageMultiplier));
             CommonUtils.syncDamageModel((ServerPlayer) player);
             if (addStat)
-                player.awardStat(Stats.DAMAGE_TAKEN, Math.round(dmgDone * 10.0F));
-            damage -= dmgDone;
+                player.awardStat(Stats.DAMAGE_TAKEN, Math.round(scaledDamageDone * 10.0F));
+            damage = Math.max(0.0F, damage - dmgConsumed);
             if (damage == 0)
                 break;
-            else if (damage < 0) {
-                FirstAid.LOGGER.error(LoggingMarkers.DAMAGE_DISTRIBUTION, "Got negative damage {} left? Logic error? ", damage);
-                break;
-            }
         }
         return damage;
     }
@@ -136,6 +169,11 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
         if (damageModel == null) return 0F;
         if (FirstAidConfig.GENERAL.debug.get()) {
             FirstAid.LOGGER.info(LoggingMarkers.DAMAGE_DISTRIBUTION, "Starting distribution of {} damage...", damage);
+        }
+        damage = consumeGlobalAbsorption(damageModel, player, damage);
+        if (damage <= 0.0F) {
+            CommonUtils.syncDamageModel((ServerPlayer) player);
+            return 0.0F;
         }
         for (Pair<EquipmentSlot, EnumPlayerPart[]> pair : getPartList()) {
             EquipmentSlot slot = pair.getLeft();

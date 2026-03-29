@@ -24,8 +24,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
 public final class SuppressionFeedbackController {
-   private static final Identifier TINNITUS_SOUND = Identifier.fromNamespaceAndPath("firstaid", "debuff.heartbeat");
-   private static final Set<Identifier> INTERNAL_SOUNDS = Set.of(TINNITUS_SOUND);
+   private static final Identifier TINNITUS_SOUND = Identifier.fromNamespaceAndPath("firstaid", "debuff.tinnitus");
+   private static final Identifier HEARTBEAT_SOUND = Identifier.fromNamespaceAndPath("firstaid", "debuff.heartbeat");
+   private static final Set<Identifier> INTERNAL_SOUNDS = Set.of(TINNITUS_SOUND, HEARTBEAT_SOUND);
    private static final float PAIN_FOV_MAX_REDUCTION = 12.0F;
    private static final float PAIN_FOV_GAIN = 0.18F;
    private static final float PAIN_FOV_DECAY = 0.04F;

@@ -62,13 +62,16 @@ public class ClientEventHandler {
     private static final int DEFIBRILLATOR_RESCUE_HOLD_TICKS = PlayerDamageModel.getDefibrillatorRescueDurationTicks();
     private static final int EXECUTION_HOLD_TICKS = PlayerDamageModel.getExecutionDurationTicks();
     private static final int RESCUE_SOUND_DELAY_TICKS = 10;
+    private static final int SYNC_RETRY_TICKS = 20;
     private static final SuppressionFeedbackController SUPPRESSION_FEEDBACK_CONTROLLER = new SuppressionFeedbackController();
     private static final ProjectileNearMissDetector PROJECTILE_NEAR_MISS_DETECTOR = new ProjectileNearMissDetector(SUPPRESSION_FEEDBACK_CONTROLLER);
+    private static final HeartbeatSoundController HEARTBEAT_SOUND_CONTROLLER = new HeartbeatSoundController();
     private static boolean loggedRenderGuiWithoutPlayer;
     private static boolean loggedRenderGuiWithPlayer;
     private static boolean loggedPlayerHealthLayerIntercept;
     private static int id;
     private static boolean showedCriticalPrompt;
+    private static int syncRetryTicks;
     private static int giveUpHoldTicks;
     private static boolean giveUpTriggered;
     private static int interactionHoldTicks;
@@ -80,13 +83,16 @@ public class ClientEventHandler {
     public static void clientTick(ClientTickEvent.Pre event) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null || mc.player.connection == null) {
+            syncRetryTicks = 0;
             resetGiveUpHoldState();
             return;
         }
         if (mc.isPaused()) {
             return;
         }
+        retryDamageModelSync(mc);
         SUPPRESSION_FEEDBACK_CONTROLLER.tick(mc);
+        HEARTBEAT_SOUND_CONTROLLER.tick(mc);
         HealingSoundController.tick(mc);
         PROJECTILE_NEAR_MISS_DETECTOR.tick(mc);
         if (EventCalendar.isGuiFun()) {
@@ -230,7 +236,7 @@ public class ClientEventHandler {
 
         event.setCanceled(true);
         if (vanillaHealthBarMode == FirstAidConfig.Client.VanillaHealthbarMode.HIDE) {
-            FirstaidIngameGui.reserveHealthBarSpace(gui, mc.player);
+            FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), event.getGuiGraphics());
             return;
         }
 
@@ -254,6 +260,12 @@ public class ClientEventHandler {
                     "2:00").withStyle(ChatFormatting.GRAY));
             return;
         }
+        if (stack.is(RegistryObjects.ADRENALINE_INJECTOR.get())) {
+            event.getToolTip().add(Component.translatable("firstaid.tooltip.adrenaline_injector",
+                    StringUtil.formatTickDuration(40, 20F),
+                    StringUtil.formatTickDuration(PlayerDamageModel.getAdrenalineDuration(), 20F)).withStyle(ChatFormatting.GRAY));
+            return;
+        }
 
         if (stack.getItem() instanceof ItemHealing itemHealing && event.getEntity() != null) {
             AbstractPartHealer healer = itemHealing.createNewHealer(stack);
@@ -269,10 +281,12 @@ public class ClientEventHandler {
     public static void onDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         FirstAid.isSynced = false;
         HUDHandler.INSTANCE.ticker = -1;
+        syncRetryTicks = 0;
         showedCriticalPrompt = false;
         resetGiveUpHoldState();
         resetInteractionPromptState();
         HealingSoundController.clear();
+        HEARTBEAT_SOUND_CONTROLLER.clear();
         SUPPRESSION_FEEDBACK_CONTROLLER.clear();
         PROJECTILE_NEAR_MISS_DETECTOR.clear();
         loggedRenderGuiWithoutPlayer = false;
@@ -284,12 +298,15 @@ public class ClientEventHandler {
 
     @SubscribeEvent
     public static void onLogin(ClientPlayerNetworkEvent.LoggingIn event) {
+        FirstAid.isSynced = false;
+        syncRetryTicks = SYNC_RETRY_TICKS;
         resetGiveUpHoldState();
         resetInteractionPromptState();
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
             return;
         }
+        FirstAid.NETWORKING.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
         MutableComponent message = Component.empty()
                 .append(Component.literal("✚ ").withStyle(ChatFormatting.RED, ChatFormatting.BOLD))
                 .append(Component.literal("[First Aid] ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
@@ -392,6 +409,19 @@ public class ClientEventHandler {
 
     public static SuppressionFeedbackController getSuppressionFeedbackController() {
         return SUPPRESSION_FEEDBACK_CONTROLLER;
+    }
+
+    private static void retryDamageModelSync(Minecraft mc) {
+        if (mc.player == null || mc.player.connection == null) {
+            syncRetryTicks = 0;
+        } else if (FirstAid.isSynced) {
+            syncRetryTicks = 0;
+        } else if (syncRetryTicks <= 0) {
+            FirstAid.NETWORKING.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
+            syncRetryTicks = SYNC_RETRY_TICKS;
+        } else {
+            syncRetryTicks--;
+        }
     }
 
     private static float getDisplayedGiveUpHoldTicks(float partialTick) {

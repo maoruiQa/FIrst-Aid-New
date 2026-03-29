@@ -189,10 +189,7 @@ public class GuiHealthScreen extends Screen {
    private static int getRightOffset(AbstractDamageablePart damageablePart) {
       return HealthRenderUtils.drawAsString(damageablePart, true)
          ? 160
-         : 200
-            - Math.min(
-               40, HealthRenderUtils.getMaxHearts(damageablePart.getMaxHealth()) * 9 + HealthRenderUtils.getMaxHearts(damageablePart.getAbsorption()) * 9 + 2
-            );
+         : 200 - Math.min(40, HealthRenderUtils.getHeartRenderWidth(damageablePart, true));
    }
 
    private void renderStatusSummary(GuiGraphics guiGraphics, AbstractPlayerDamageModel renderModel) {

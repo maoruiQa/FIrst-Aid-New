@@ -52,6 +52,16 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
     private final boolean tryNoKill;
     private final float reductionMultiplier;
 
+    private static final class DistributionResult {
+        private final float damageLeft;
+        private final float effectiveDamageDone;
+
+        private DistributionResult(float damageLeft, float effectiveDamageDone) {
+            this.damageLeft = damageLeft;
+            this.effectiveDamageDone = effectiveDamageDone;
+        }
+    }
+
     public EqualDamageDistributionAlgorithm(boolean tryNoKill, float reductionMultiplier) {
         this.tryNoKill = tryNoKill;
         this.reductionMultiplier = reductionMultiplier;
@@ -84,11 +94,12 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
         return damage;
     }
 
-    private float distributeOnParts(float damage, AbstractPlayerDamageModel damageModel, Player player, boolean tryNoKillThisRound) {
+    private DistributionResult distributeOnParts(float damage, AbstractPlayerDamageModel damageModel, Player player, boolean tryNoKillThisRound) {
         int iterationCounter = 0;
         int divCount = EnumPlayerPart.VALUES.length;
         float prevDamageLeft;
         float damageLeft = damage;
+        float effectiveDamageDone = 0.0F;
         do {
             //Setup values for next round
             prevDamageLeft = damageLeft;
@@ -99,7 +110,11 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
 
             for (AbstractDamageablePart part : damageModel) {
                 if (part.currentHealth > 0F) {
-                    damageLeft += part.damage(toDamage, player, !player.hasEffect(RegistryObjects.MORPHINE_EFFECT), tryNoKillThisRound ? 1F : 0F);
+                    float damageMultiplier = DamageDistribution.getIncomingPartDamageMultiplier(damageModel, part);
+                    float scaledDamage = toDamage * damageMultiplier;
+                    float scaledLeft = part.damage(scaledDamage, player, !player.hasEffect(RegistryObjects.MORPHINE_EFFECT), tryNoKillThisRound ? 1F : 0F);
+                    effectiveDamageDone += scaledDamage - scaledLeft;
+                    damageLeft += Math.min(toDamage, DamageDistribution.restoreOriginalDamageScale(scaledLeft, damageMultiplier));
                     divCount++;
                 }
             }
@@ -111,7 +126,7 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
             }
             iterationCounter++;
         } while (prevDamageLeft != damageLeft);
-        return damageLeft;
+        return new DistributionResult(damageLeft, effectiveDamageDone);
     }
 
     @Override
@@ -120,17 +135,22 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
         if (damage <= 0F) return 0F;
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
         if (damageModel == null) return 0F;
+        damage = DamageDistribution.consumeGlobalAbsorption(player, damage);
+        if (damage <= 0.0F) {
+            CommonUtils.syncDamageModel((ServerPlayer) player);
+            return 0.0F;
+        }
 
-        float damageLeft = distributeOnParts(damage, damageModel, player, tryNoKill);
-        if (damageLeft > 0F && tryNoKill)
-            damageLeft = distributeOnParts(damage, damageModel, player, false);
+        DistributionResult result = distributeOnParts(damage, damageModel, player, tryNoKill);
+        if (result.damageLeft > 0F && tryNoKill)
+            result = distributeOnParts(damage, damageModel, player, false);
 
         CommonUtils.syncDamageModel((ServerPlayer) player);
-        float effectiveDmg = damage - damageLeft;
+        float effectiveDmg = result.effectiveDamageDone;
         if (effectiveDmg < 3.4028235E37F) {
             player.awardStat(Stats.DAMAGE_TAKEN, Math.round(effectiveDmg * 10.0F));
         }
-        return damageLeft;
+        return result.damageLeft;
     }
 
     @Override

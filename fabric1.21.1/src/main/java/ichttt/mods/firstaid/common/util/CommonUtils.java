@@ -27,6 +27,7 @@ import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.common.FirstAidDamageModelHolder;
 import ichttt.mods.firstaid.common.compat.playerrevive.IPRCompatHandler;
 import ichttt.mods.firstaid.common.compat.playerrevive.PRCompatManager;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
@@ -85,10 +86,16 @@ public class CommonUtils {
             }
         }
         IPRCompatHandler handler = PRCompatManager.getHandler();
-        if (!handler.isBleeding(player)) {
-            if (!handler.tryKnockOutPlayer(player, source)) {
-                killPlayerDirectly(player, source);
+        if (handler.isBleeding(player)) {
+            if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+                playerDamageModel.markExternalRevivePending(player);
             }
+        } else if (handler.tryKnockOutPlayer(player, source)) {
+            if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+                playerDamageModel.markExternalRevivePending(player);
+            }
+        } else {
+            killPlayerDirectly(player, source);
         }
     }
 
@@ -136,8 +143,7 @@ public class CommonUtils {
 
     public static boolean drawsHealthAsText(AbstractDamageablePart part) {
         int maxHealth = getMaxHearts(part.getMaxHealth());
-        int maxExtraHealth = getMaxHearts(part.getAbsorption());
-        return maxHealth + maxExtraHealth > 8;
+        return maxHealth > 8;
     }
 
     public static float getVisualHealth(AbstractDamageablePart part) {

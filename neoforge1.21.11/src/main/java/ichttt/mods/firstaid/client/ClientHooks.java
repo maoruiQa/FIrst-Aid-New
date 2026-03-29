@@ -31,6 +31,7 @@ import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
@@ -49,6 +50,7 @@ public class ClientHooks {
         FirstAid.LOGGER.debug("Loading ClientHooks");
         NeoForge.EVENT_BUS.register(ClientEventHandler.class);
         modEventBus.addListener(ClientHooks::registerKeybindEvent);
+        modEventBus.addListener(ClientHooks::registerOverlayEvent);
         modEventBus.addListener(ClientHooks::registerReloadListenerEvent);
         modEventBus.addListener(ClientHooks::registerRenderStateExtensions);
         EventCalendar.checkDate();
@@ -66,6 +68,11 @@ public class ClientHooks {
         event.registerCategory(CATEGORY);
         event.register(ClientHooks.SHOW_WOUNDS);
         event.register(ClientHooks.GIVE_UP);
+    }
+
+    public static void registerOverlayEvent(RegisterGuiLayersEvent event) {
+        event.registerAboveAll(Identifier.fromNamespaceAndPath(FirstAid.MODID, "status_overlay"), StatusEffectLayer.INSTANCE);
+        event.registerAboveAll(Identifier.fromNamespaceAndPath(FirstAid.MODID, "hud_overlay"), HUDHandler.INSTANCE);
     }
 
     public static void registerReloadListenerEvent(AddClientReloadListenersEvent event) {

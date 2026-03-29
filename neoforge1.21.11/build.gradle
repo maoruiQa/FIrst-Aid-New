@@ -168,7 +168,6 @@ sourceSets.main.java.exclude(
         'ichttt/mods/firstaid/common/network/MessagePlayHurtSound.java',
         'ichttt/mods/firstaid/common/network/MessageUpdatePart.java',
         'ichttt/mods/firstaid/common/SynchedEntityDataWrapper.java',
-        'ichttt/mods/firstaid/common/compat/playerrevive/PRPresentCompatHandler.java',
         'ichttt/mods/firstaid/common/compat/playerrevive/PlayerReviveEventHandler.java'
 )
 // To avoid having to run "generateModMetadata" manually, make it run on every project reload

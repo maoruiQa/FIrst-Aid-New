@@ -44,8 +44,9 @@ import javax.annotation.Nullable;
 import java.util.Set;
 
 public final class SuppressionFeedbackController {
-    private static final Identifier TINNITUS_SOUND = Identifier.fromNamespaceAndPath(FirstAid.MODID, "debuff.heartbeat");
-    private static final Set<Identifier> INTERNAL_SOUNDS = Set.of(TINNITUS_SOUND);
+    private static final Identifier TINNITUS_SOUND = Identifier.fromNamespaceAndPath(FirstAid.MODID, "debuff.tinnitus");
+    private static final Identifier HEARTBEAT_SOUND = Identifier.fromNamespaceAndPath(FirstAid.MODID, "debuff.heartbeat");
+    private static final Set<Identifier> INTERNAL_SOUNDS = Set.of(TINNITUS_SOUND, HEARTBEAT_SOUND);
     private static final float PAIN_FOV_MAX_REDUCTION = 12.0F;
     private static final float PAIN_FOV_GAIN = 0.18F;
     private static final float PAIN_FOV_DECAY = 0.04F;

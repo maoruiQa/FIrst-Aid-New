@@ -121,6 +121,7 @@ public class FirstAid {
             event.accept(RegistryObjects.BANDAGE);
             event.accept(RegistryObjects.PLASTER);
             event.accept(RegistryObjects.DEFIBRILLATOR);
+            event.accept(RegistryObjects.ADRENALINE_INJECTOR);
             event.accept(RegistryObjects.MORPHINE);
             event.accept(RegistryObjects.PAINKILLERS);
         }

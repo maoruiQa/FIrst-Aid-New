@@ -94,7 +94,7 @@ public enum EnumPlayerPart implements StringRepresentable {
             case HEAD, LEFT_ARM, RIGHT_ARM, LEFT_LEG, RIGHT_LEG -> singletonList(BODY);
             case LEFT_FOOT -> singletonList(LEFT_LEG);
             case RIGHT_FOOT -> singletonList(RIGHT_LEG);
-            case BODY -> Arrays.asList(LEFT_ARM, RIGHT_ARM, LEFT_LEG, RIGHT_LEG, HEAD, LEFT_FOOT, RIGHT_FOOT);
+            case BODY -> Arrays.asList(LEFT_ARM, RIGHT_ARM, LEFT_LEG, RIGHT_LEG, LEFT_FOOT, RIGHT_FOOT, HEAD);
         };
     }
 

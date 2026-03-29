@@ -43,6 +43,7 @@ public final class ClientEventHandler {
    private static final int SYNC_RETRY_TICKS = 20;
    private static final SuppressionFeedbackController SUPPRESSION_FEEDBACK_CONTROLLER = new SuppressionFeedbackController();
    private static final ProjectileNearMissDetector PROJECTILE_NEAR_MISS_DETECTOR = new ProjectileNearMissDetector(SUPPRESSION_FEEDBACK_CONTROLLER);
+   private static final HeartbeatSoundController HEARTBEAT_SOUND_CONTROLLER = new HeartbeatSoundController();
    private static int id;
    private static boolean showedCriticalPrompt;
    private static int syncRetryTicks;
@@ -70,6 +71,7 @@ public final class ClientEventHandler {
       } else if (!mc.isPaused()) {
          retryDamageModelSync(mc);
          SUPPRESSION_FEEDBACK_CONTROLLER.tick(mc);
+         HEARTBEAT_SOUND_CONTROLLER.tick(mc);
          HealingSoundController.tick(mc);
          PROJECTILE_NEAR_MISS_DETECTOR.tick(mc);
          if (EventCalendar.isGuiFun()) {
@@ -153,6 +155,14 @@ public final class ClientEventHandler {
                )
                .withStyle(ChatFormatting.GRAY)
          );
+      } else if (stack.is((Item)RegistryObjects.ADRENALINE_INJECTOR.get())) {
+         lines.add(
+            Component.translatable(
+                  "firstaid.tooltip.adrenaline_injector",
+                  new Object[]{StringUtil.formatTickDuration(40, 20.0F), StringUtil.formatTickDuration(PlayerDamageModel.getAdrenalineDuration(), 20.0F)}
+               )
+               .withStyle(ChatFormatting.GRAY)
+         );
       } else {
          if (stack.getItem() instanceof ItemHealing itemHealing) {
             AbstractPartHealer healer = itemHealing.createNewHealer(stack);
@@ -176,6 +186,7 @@ public final class ClientEventHandler {
       resetGiveUpHoldState();
       resetInteractionPromptState();
       HealingSoundController.clear();
+      HEARTBEAT_SOUND_CONTROLLER.clear();
       SUPPRESSION_FEEDBACK_CONTROLLER.clear();
       PROJECTILE_NEAR_MISS_DETECTOR.clear();
    }

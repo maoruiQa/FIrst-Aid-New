@@ -32,7 +32,6 @@ public final class MessageUpdatePartHandler {
 
             AbstractDamageablePart damageablePart = damageModel.getFromEnum(EnumPlayerPart.VALUES[message.partId()]);
             damageablePart.setMaxHealth(message.maxHealth());
-            damageablePart.setAbsorption(message.absorption());
             damageablePart.currentHealth = message.currentHealth();
         });
     }

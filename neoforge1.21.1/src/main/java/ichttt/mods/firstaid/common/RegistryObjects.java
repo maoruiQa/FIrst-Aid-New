@@ -22,6 +22,7 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.common.damagesystem.PartHealer;
+import ichttt.mods.firstaid.common.items.ItemAdrenalineInjector;
 import ichttt.mods.firstaid.common.items.ItemMorphine;
 import ichttt.mods.firstaid.common.items.ItemPainkillers;
 import ichttt.mods.firstaid.common.potion.FirstAidPotion;
@@ -49,12 +50,15 @@ public class RegistryObjects {
     public static final DeferredItem<ItemHealing> BANDAGE;
     public static final DeferredItem<ItemHealing> PLASTER;
     public static final DeferredItem<Item> DEFIBRILLATOR;
+    public static final DeferredItem<ItemAdrenalineInjector> ADRENALINE_INJECTOR;
     public static final DeferredItem<ItemMorphine> MORPHINE;
     public static final DeferredItem<ItemPainkillers> PAINKILLERS;
 
     public static final Holder<SoundEvent> HEARTBEAT;
+    public static final Holder<SoundEvent> TINNITUS;
     public static final Holder<SoundEvent> BANDAGE_USE;
     public static final Holder<SoundEvent> DEFIBRILLATOR_USE;
+    public static final Holder<SoundEvent> ADRENALINE_INJECTOR_USE;
     public static final Holder<SoundEvent> PILLS_USE;
 
     public static final Holder<MobEffect> MORPHINE_EFFECT;
@@ -70,17 +74,24 @@ public class RegistryObjects {
         BANDAGE = ITEM_REGISTER.registerItem("bandage", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack), stack -> server.bandage.applyTime.get()));
         PLASTER = ITEM_REGISTER.registerItem("plaster", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack), stack -> server.plaster.applyTime.get()));
         DEFIBRILLATOR = ITEM_REGISTER.registerItem("defibrillator", properties -> new Item(properties.durability(3)));
+        ADRENALINE_INJECTOR = ITEM_REGISTER.registerItem("adrenaline_injector", ItemAdrenalineInjector::new);
         MORPHINE = ITEM_REGISTER.registerItem("morphine", ItemMorphine::new);
         PAINKILLERS = ITEM_REGISTER.registerItem("painkillers", ItemPainkillers::new);
 
         // SOUNDS
         ResourceLocation soundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.heartbeat");
         HEARTBEAT = SOUND_EVENT_REGISTER.register(soundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(soundLocation));
+        ResourceLocation tinnitusSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.tinnitus");
+        TINNITUS = SOUND_EVENT_REGISTER.register(tinnitusSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(tinnitusSoundLocation));
         ResourceLocation bandageSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.use_bandage");
         BANDAGE_USE = SOUND_EVENT_REGISTER.register(bandageSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(bandageSoundLocation));
         ResourceLocation defibrillatorSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.defibrillator_use");
         DEFIBRILLATOR_USE = SOUND_EVENT_REGISTER.register(
                 defibrillatorSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(defibrillatorSoundLocation)
+        );
+        ResourceLocation adrenalineInjectorSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.adrenaline_injector_use");
+        ADRENALINE_INJECTOR_USE = SOUND_EVENT_REGISTER.register(
+                adrenalineInjectorSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(adrenalineInjectorSoundLocation)
         );
         ResourceLocation pillsSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.take_pills");
         PILLS_USE = SOUND_EVENT_REGISTER.register(pillsSoundLocation.getPath(), key -> SoundEvent.createVariableRangeEvent(pillsSoundLocation));

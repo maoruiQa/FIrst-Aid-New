@@ -18,6 +18,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin<T extends LivingEntity, S extends LivingEntityRenderState, M extends EntityModel<? super S>>
    extends EntityRenderer<T, S> {
+   private static final double UNCONSCIOUS_VERTICAL_OFFSET = -0.16D;
+
    protected LivingEntityRendererMixin(Context context) {
       super(context);
    }
@@ -29,7 +31,7 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, S extend
          poseStack.mulPose(Axis.YP.rotationDegrees(Mth.lerp(collapseProgress, 180.0F - bodyRot, 90.0F - bodyRot)));
          poseStack.mulPose(Axis.ZP.rotationDegrees(90.0F * collapseProgress));
          poseStack.mulPose(Axis.YP.rotationDegrees(270.0F * collapseProgress));
-         poseStack.translate(0.0, -0.9 * collapseProgress, -0.1 * collapseProgress);
+         poseStack.translate(0.0D, -0.9D * collapseProgress, UNCONSCIOUS_VERTICAL_OFFSET * collapseProgress);
          ci.cancel();
       }
    }

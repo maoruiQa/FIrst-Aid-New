@@ -83,10 +83,6 @@ public abstract class AbstractPlayerDamageModel implements Iterable<AbstractDama
 
    public abstract boolean isDead(@Nullable Player var1);
 
-   public abstract Float getAbsorption();
-
-   public abstract void setAbsorption(float var1);
-
    public abstract int getCurrentMaxHealth();
 
    public abstract int getMaxRenderSize();

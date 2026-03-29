@@ -59,12 +59,6 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
     @Override
     @Nonnull
     public <T> T get(@Nonnull EntityDataAccessor<T> key) {
-        if (key == Player.DATA_PLAYER_ABSORPTION_ID && player.isAlive()) {
-            AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-            if (damageModel != null) {
-                parent.set(key, (T) damageModel.getAbsorption());
-            }
-        }
         return parent.get(key);
     }
 
@@ -80,18 +74,7 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
             return;
         }
 
-        if (key == Player.DATA_PLAYER_ABSORPTION_ID) {
-            float floatValue = (Float) value;
-            if (player instanceof ServerPlayer) { //may be EntityOtherPlayerMP as well
-                ServerPlayer playerMP = (ServerPlayer) player;
-                if (playerMP.connection != null) //also fired when connecting, ignore(otherwise the net handler would crash)
-                    CommonUtils.syncDamageModel(playerMP);
-            }
-            AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-            if (damageModel != null) {
-                damageModel.setAbsorption(floatValue);
-            }
-        } else if (key == LivingEntity.DATA_HEALTH_ID) {
+        if (key == LivingEntity.DATA_HEALTH_ID) {
             // AVERT YOUR EYES - this code is barely readable and very hacky
             if (value instanceof Float && !player.level().isClientSide) {
                 float aFloat = (Float) value;

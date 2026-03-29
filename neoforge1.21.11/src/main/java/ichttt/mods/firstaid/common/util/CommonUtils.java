@@ -26,6 +26,7 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.common.compat.playerrevive.IPRCompatHandler;
 import ichttt.mods.firstaid.common.compat.playerrevive.PRCompatManager;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import ichttt.mods.firstaid.common.init.FirstAidDataAttachments;
 import ichttt.mods.firstaid.common.network.MessageSyncDamageModel;
@@ -59,6 +60,7 @@ public class CommonUtils {
     private static final Map<EquipmentSlot, List<EnumPlayerPart>> SLOT_TO_PARTS;
     private static final ThreadLocal<Integer> SET_HEALTH_INTERCEPTION_SUPPRESSION = ThreadLocal.withInitial(() -> 0);
     private static final ThreadLocal<Deque<DamageSource>> ACTIVE_DAMAGE_SOURCES = ThreadLocal.withInitial(ArrayDeque::new);
+    private static final ThreadLocal<Boolean> SUPPRESS_VANILLA_ABSORPTION = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     static {
         ARMOR_SLOTS = new EquipmentSlot[4];
@@ -91,10 +93,16 @@ public class CommonUtils {
             }
         }
         IPRCompatHandler handler = PRCompatManager.getHandler();
-        if (!handler.isBleeding(player)) {
-            if (!handler.tryKnockOutPlayer(player, source)) {
-                killPlayerDirectly(player, source);
+        if (handler.isBleeding(player)) {
+            if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+                playerDamageModel.markExternalRevivePending(player);
             }
+        } else if (handler.tryKnockOutPlayer(player, source)) {
+            if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+                playerDamageModel.markExternalRevivePending(player);
+            }
+        } else {
+            killPlayerDirectly(player, source);
         }
     }
 
@@ -280,6 +288,14 @@ public class CommonUtils {
     public static DamageSource getActiveDamageSource() {
         Deque<DamageSource> damageSources = ACTIVE_DAMAGE_SOURCES.get();
         return damageSources.isEmpty() ? null : damageSources.peek();
+    }
+
+    public static void setSuppressVanillaAbsorption(boolean suppress) {
+        SUPPRESS_VANILLA_ABSORPTION.set(suppress);
+    }
+
+    public static boolean isVanillaAbsorptionSuppressed() {
+        return SUPPRESS_VANILLA_ABSORPTION.get();
     }
 
     public static boolean isSetHealthInterceptionSuppressed() {

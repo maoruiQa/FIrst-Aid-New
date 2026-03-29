@@ -36,10 +36,6 @@ public abstract class AbstractDamageablePart implements INBTSerializable<Compoun
 
    public abstract void tick(Level var1, Player var2, boolean var3, boolean var4);
 
-   public abstract void setAbsorption(float var1);
-
-   public abstract float getAbsorption();
-
    public abstract void setMaxHealth(int var1);
 
    public abstract int getMaxHealth();

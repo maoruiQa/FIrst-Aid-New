@@ -50,7 +50,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -246,7 +249,7 @@ public final class EventHandler {
                if (damageModel instanceof PlayerDamageModel playerDamageModel) {
                   float nearMissStrength = getNearbyProjectileStrength(player);
                   if (nearMissStrength > 0.0F) {
-                     playerDamageModel.registerAdrenalineNearMiss(nearMissStrength);
+                     playerDamageModel.registerAdrenalineNearMiss(player, nearMissStrength);
                   }
 
                   if (playerDamageModel.isUnconscious()) {
@@ -528,16 +531,57 @@ public final class EventHandler {
 
    private static void sendOpCommandTip(ServerPlayer player) {
       if (player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
+         player.displayClientMessage(Component.translatable("firstaid.tip.commands.header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
+         player.displayClientMessage(Component.translatable("firstaid.tip.commands.subheader").withStyle(ChatFormatting.GRAY), false);
          player.displayClientMessage(
-            Component.translatable("firstaid.tip.commands.header").withStyle(new ChatFormatting[]{ChatFormatting.GOLD, ChatFormatting.BOLD}), false
+            buildCommandTipLine(
+               "firstaid.tip.commands.group.core",
+               buildCommandTipChip("firstaid.tip.commands.pain.label", "firstaid.tip.commands.pain.detail", "/firstaid pain dynamic", ChatFormatting.AQUA),
+               buildCommandTipChip("firstaid.tip.commands.suppression.label", "firstaid.tip.commands.suppression.detail", "/firstaid suppression dynamic", ChatFormatting.AQUA),
+               buildCommandTipChip("firstaid.tip.commands.medicineeffect.label", "firstaid.tip.commands.medicineeffect.detail", "/firstaid medicineeffect assisted", ChatFormatting.YELLOW)
+            ),
+            false
          );
-         player.displayClientMessage(Component.translatable("firstaid.tip.commands.pain").withStyle(ChatFormatting.YELLOW), false);
-         player.displayClientMessage(Component.translatable("firstaid.tip.commands.suppression").withStyle(ChatFormatting.YELLOW), false);
-         player.displayClientMessage(Component.translatable("firstaid.tip.commands.medicineeffect").withStyle(ChatFormatting.YELLOW), false);
-         player.displayClientMessage(Component.translatable("firstaid.tip.commands.injurydebuff").withStyle(ChatFormatting.YELLOW), false);
-         player.displayClientMessage(Component.translatable("firstaid.tip.commands.revivewakeup").withStyle(ChatFormatting.YELLOW), false);
-         player.displayClientMessage(Component.translatable("firstaid.tip.commands.damagepart").withStyle(ChatFormatting.YELLOW), false);
+         player.displayClientMessage(
+            buildCommandTipLine(
+               "firstaid.tip.commands.group.rescue",
+               buildCommandTipChip("firstaid.tip.commands.revivewakeup.label", "firstaid.tip.commands.revivewakeup.detail", "/firstaid revivewakeup on 15", ChatFormatting.GREEN)
+            ),
+            false
+         );
+         player.displayClientMessage(
+            buildCommandTipLine(
+               "firstaid.tip.commands.group.advanced",
+               buildCommandTipChip("firstaid.tip.commands.injurydebuff.label", "firstaid.tip.commands.injurydebuff.detail", "/firstaid injurydebuff normal", ChatFormatting.GOLD),
+               buildCommandTipChip("firstaid.tip.commands.damagepart.label", "firstaid.tip.commands.damagepart.detail", "/damagePart HEAD 4", ChatFormatting.RED)
+            ),
+            false
+         );
       }
+   }
+
+   private static Component buildCommandTipLine(String sectionKey, MutableComponent... commandChips) {
+      MutableComponent line = Component.translatable(sectionKey).withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.BOLD);
+
+      for (MutableComponent commandChip : commandChips) {
+         line.append(Component.literal(" "));
+         line.append(commandChip);
+      }
+
+      return line;
+   }
+
+   private static MutableComponent buildCommandTipChip(String labelKey, String detailKey, String suggestion, ChatFormatting color) {
+      MutableComponent chip = Component.literal("[").withStyle(ChatFormatting.DARK_GRAY);
+      chip.append(
+         Component.translatable(labelKey).withStyle(style -> style
+            .withColor(color)
+            .withBold(true)
+            .withClickEvent(new ClickEvent.SuggestCommand(suggestion))
+            .withHoverEvent(new HoverEvent.ShowText(Component.translatable(detailKey))))
+      );
+      chip.append(Component.literal("]").withStyle(ChatFormatting.DARK_GRAY));
+      return chip;
    }
 
    private static void tickRescueProgress(ServerPlayer rescuer) {

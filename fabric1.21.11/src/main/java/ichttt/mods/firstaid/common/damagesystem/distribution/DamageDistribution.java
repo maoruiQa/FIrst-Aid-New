@@ -28,7 +28,6 @@ import net.minecraft.world.entity.player.Player;
 import org.apache.commons.lang3.tuple.Pair;
 
 public abstract class DamageDistribution implements IDamageDistributionAlgorithm {
-   private static final float UNCONSCIOUS_DAMAGE_MULTIPLIER = 0.2F;
 
    public static float handleDamageTaken(
       IDamageDistributionAlgorithm damageDistribution,
@@ -55,10 +54,6 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
       CompoundTag beforeCache = damageModel.serializeNBT();
       if (!damageDistribution.skipGlobalPotionModifiers()) {
          damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
-      }
-
-      if (damageModel instanceof PlayerDamageModel playerDamageModel && playerDamageModel.isUnconscious()) {
-         damage *= UNCONSCIOUS_DAMAGE_MULTIPLIER;
       }
 
       if (damage != 0.0F) {
@@ -111,6 +106,18 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
       return 0.0F;
    }
 
+   static float getIncomingPartDamageMultiplier(AbstractPlayerDamageModel damageModel, AbstractDamageablePart part) {
+      if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+         return playerDamageModel.getIncomingPartDamageMultiplier(part);
+      } else {
+         return 1.0F;
+      }
+   }
+
+   static float restoreOriginalDamageScale(float scaledDamage, float damageMultiplier) {
+      return damageMultiplier <= 0.0F ? 0.0F : scaledDamage / damageMultiplier;
+   }
+
    protected float distributeDamageOnParts(
       float damage, @Nonnull AbstractPlayerDamageModel damageModel, @Nonnull EnumPlayerPart[] enumParts, @Nonnull Player player, boolean addStat
    ) {
@@ -124,22 +131,21 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
 
       for (AbstractDamageablePart part : damageableParts) {
          float minHealth = this.minHealth(player, part);
-         float dmgDone = damage - part.damage(damage, player, !player.hasEffect(RegistryObjects.MORPHINE_EFFECT), minHealth);
+         float damageMultiplier = getIncomingPartDamageMultiplier(damageModel, part);
+         float scaledDamage = damage * damageMultiplier;
+         float scaledLeft = part.damage(scaledDamage, player, !player.hasEffect(RegistryObjects.MORPHINE_EFFECT), minHealth);
+         float scaledDamageDone = scaledDamage - scaledLeft;
+         float dmgConsumed = Math.min(damage, restoreOriginalDamageScale(scaledDamageDone, damageMultiplier));
          if (player instanceof ServerPlayer serverPlayer) {
             FirstAidNetworking.sendPartUpdate(serverPlayer, new MessageUpdatePart(player.getId(), part));
          }
 
          if (addStat) {
-            player.awardStat(Stats.DAMAGE_TAKEN, Math.round(dmgDone * 10.0F));
+            player.awardStat(Stats.DAMAGE_TAKEN, Math.round(scaledDamageDone * 10.0F));
          }
 
-         damage -= dmgDone;
+         damage = Math.max(0.0F, damage - dmgConsumed);
          if (damage == 0.0F) {
-            break;
-         }
-
-         if (damage < 0.0F) {
-            FirstAid.LOGGER.error(LoggingMarkers.DAMAGE_DISTRIBUTION, "Got negative damage {} left? Logic error? ", damage);
             break;
          }
       }

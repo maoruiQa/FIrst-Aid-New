@@ -33,11 +33,14 @@ public abstract class GuiMixin {
       VanillaHealthbarMode mode = (VanillaHealthbarMode)FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
       if (mode != VanillaHealthbarMode.NORMAL) {
          ci.cancel();
-         if (mode == VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
-            && FirstAidConfig.SERVER.vanillaHealthCalculation.get() == VanillaHealthCalculationMode.AVERAGE_ALL) {
-            Minecraft mc = Minecraft.getInstance();
-            Gui gui = (Gui)(Object)this;
-            if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.options.hideGui) {
+
+         Minecraft mc = Minecraft.getInstance();
+         Gui gui = (Gui)(Object)this;
+         if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.options.hideGui) {
+            if (mode == VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
+               && FirstAidConfig.SERVER.vanillaHealthCalculation.get() == VanillaHealthCalculationMode.AVERAGE_ALL) {
+               FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), guiGraphics);
+            } else if (mode == VanillaHealthbarMode.HIDE) {
                FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), guiGraphics);
             }
          }

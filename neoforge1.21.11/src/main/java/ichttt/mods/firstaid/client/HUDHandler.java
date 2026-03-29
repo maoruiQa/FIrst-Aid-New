@@ -88,8 +88,8 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
         }
 
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(minecraft.player);
-        if (damageModel == null) {
-            if (!loggedMissingDamageModel) {
+        if (damageModel == null || !FirstAid.isSynced) {
+            if (damageModel == null && !loggedMissingDamageModel) {
                 FirstAid.LOGGER.warn("HUDHandler.render could not obtain a damage model. isSynced={}", FirstAid.isSynced);
                 loggedMissingDamageModel = true;
             }
@@ -141,6 +141,9 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
                 FirstAid.LOGGER.info("HUDHandler.render skipped because chat screen overlaps the bottom-left overlay");
                 loggedSkippedByChat = true;
             }
+            return;
+        }
+        if (minecraft.getDebugOverlay().showDebugScreen() && FirstAidConfig.CLIENT.pos.get() == FirstAidConfig.Client.Position.TOP_LEFT) {
             return;
         }
         int xOffset = FirstAidConfig.CLIENT.xOffset.get();

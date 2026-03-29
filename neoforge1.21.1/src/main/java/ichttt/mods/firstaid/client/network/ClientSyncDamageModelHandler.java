@@ -5,6 +5,7 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.HUDHandler;
 import ichttt.mods.firstaid.common.CapProvider;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
+import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.network.MessageSyncDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.Minecraft;
@@ -18,16 +19,25 @@ public final class ClientSyncDamageModelHandler {
     public static void handle(MessageSyncDamageModel message) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null || minecraft.player == null) {
+            FirstAid.isSynced = false;
             return;
         }
 
         Player targetPlayer = resolveTargetPlayer(minecraft, message.entityId());
         if (targetPlayer == null) {
+            if (message.entityId() == minecraft.player.getId()) {
+                FirstAid.isSynced = false;
+                FirstAid.NETWORKING.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
+            }
             return;
         }
 
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(targetPlayer);
         if (damageModel == null) {
+            if (targetPlayer == minecraft.player) {
+                FirstAid.isSynced = false;
+                FirstAid.NETWORKING.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
+            }
             return;
         }
 

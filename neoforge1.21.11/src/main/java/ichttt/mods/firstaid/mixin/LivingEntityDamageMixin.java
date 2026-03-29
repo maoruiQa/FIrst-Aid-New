@@ -16,6 +16,7 @@ public abstract class LivingEntityDamageMixin {
 
     @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
     private void firstaid$hurtServer(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        CommonUtils.setSuppressVanillaAbsorption(true);
         CommonUtils.pushActiveDamageSource(source);
         Player player = (Player) (Object) this;
         Boolean result = EventHandler.preHandleCustomPlayerDamage(player, source, amount);
@@ -27,6 +28,7 @@ public abstract class LivingEntityDamageMixin {
     @Inject(method = "hurtServer", at = @At("RETURN"))
     private void firstaid$hurtServerReturn(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
         CommonUtils.popActiveDamageSource();
+        CommonUtils.setSuppressVanillaAbsorption(false);
     }
 
     @Inject(method = "actuallyHurt", at = @At("HEAD"), cancellable = true)

@@ -3,6 +3,7 @@ package ichttt.mods.firstaid.common.damagesystem.distribution;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.distribution.IDamageDistributionAlgorithm;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
@@ -31,7 +32,15 @@ public class DirectDamageDistributionAlgorithm implements IDamageDistributionAlg
    @Override
    public float distributeDamage(float damage, @Nonnull Player player, @Nonnull DamageSource source, boolean addStat) {
       AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-      return damageModel == null ? 0.0F : damageModel.getFromEnum(this.part).damage(damage, player, this.debuff);
+      if (damageModel == null) {
+         return 0.0F;
+      } else {
+         AbstractDamageablePart targetPart = damageModel.getFromEnum(this.part);
+         float damageMultiplier = DamageDistribution.getIncomingPartDamageMultiplier(damageModel, targetPart);
+         float scaledDamage = damage * damageMultiplier;
+         float scaledLeft = targetPart.damage(scaledDamage, player, this.debuff);
+         return Math.min(damage, DamageDistribution.restoreOriginalDamageScale(scaledLeft, damageMultiplier));
+      }
    }
 
    @Override

@@ -21,15 +21,16 @@ public abstract class GuiMixin {
         }
 
         ci.cancel();
-        if (mode != FirstAidConfig.Client.VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
-                || FirstAidConfig.SERVER.vanillaHealthCalculation.get() != FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL) {
-            return;
-        }
 
         Minecraft mc = Minecraft.getInstance();
         Gui gui = (Gui) (Object) this;
         if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.options.hideGui) {
-            FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), guiGraphics);
+            if (mode == FirstAidConfig.Client.VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
+                    && FirstAidConfig.SERVER.vanillaHealthCalculation.get() == FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL) {
+                FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), guiGraphics);
+            } else if (mode == FirstAidConfig.Client.VanillaHealthbarMode.HIDE) {
+                FirstaidIngameGui.renderHealth(gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), guiGraphics);
+            }
         }
     }
 }

@@ -48,10 +48,6 @@ public final class HealthRenderUtils {
     private static final ResourceLocation HEART_FULL_BLINKING_SPRITE = ResourceLocation.withDefaultNamespace("hud/heart/full_blinking");
     private static final ResourceLocation HEART_HALF_SPRITE = ResourceLocation.withDefaultNamespace("hud/heart/half");
     private static final ResourceLocation HEART_HALF_BLINKING_SPRITE = ResourceLocation.withDefaultNamespace("hud/heart/half_blinking");
-    private static final ResourceLocation HEART_ABSORBING_FULL_SPRITE = ResourceLocation.withDefaultNamespace("hud/heart/absorbing_full");
-    private static final ResourceLocation HEART_ABSORBING_FULL_BLINKING_SPRITE = ResourceLocation.withDefaultNamespace("hud/heart/absorbing_full_blinking");
-    private static final ResourceLocation HEART_ABSORBING_HALF_SPRITE = ResourceLocation.withDefaultNamespace("hud/heart/absorbing_half");
-    private static final ResourceLocation HEART_ABSORBING_HALF_BLINKING_SPRITE = ResourceLocation.withDefaultNamespace("hud/heart/absorbing_half_blinking");
 
     private static final Object2IntOpenHashMap<EnumPlayerPart> PREV_HEALTH = new Object2IntOpenHashMap<>();
     private static final EnumMap<EnumPlayerPart, FlashStateManager> FLASH_STATES = new EnumMap<>(EnumPlayerPart.class);
@@ -80,18 +76,8 @@ public final class HealthRenderUtils {
     }
 
     public static void drawHealthString(GuiGraphics guiGraphics, Font font, AbstractDamageablePart damageablePart, int xTranslation, int yTranslation, boolean allowSecondLine) {
-        float absorption = damageablePart.getAbsorption();
         int healthColor = getHealthColor(damageablePart);
         String text = TEXT_FORMAT.format(CommonUtils.getVisualHealth(damageablePart)) + "/" + damageablePart.getMaxHealth();
-        if (absorption > 0F) {
-            String line2 = "+ " + TEXT_FORMAT.format(absorption);
-            if (allowSecondLine) {
-                guiGraphics.drawString(font, line2, xTranslation, yTranslation + 5, 0xFFFFFF);
-                yTranslation -= 5;
-            } else {
-                text += " " + line2;
-            }
-        }
         guiGraphics.drawString(font, text, xTranslation, yTranslation, healthColor);
     }
 
@@ -121,16 +107,18 @@ public final class HealthRenderUtils {
     }
 
     public static boolean drawAsString(AbstractDamageablePart damageablePart, boolean allowSecondLine) {
-        int maxHealth = getMaxHearts(damageablePart.getMaxHealth());
-        int maxExtraHealth = getMaxHearts(damageablePart.getAbsorption());
-        return (maxHealth + maxExtraHealth > 8 && allowSecondLine) || (maxHealth + maxExtraHealth > 12);
+        int totalHearts = getRenderedHeartSlots(damageablePart);
+        return (allowSecondLine && totalHearts > 8) || (totalHearts > 12);
+    }
+
+    public static int getHeartRenderWidth(AbstractDamageablePart damageablePart, boolean allowSecondLine) {
+        int totalHearts = getRenderedHeartSlots(damageablePart);
+        return getHeartsPerRow(totalHearts, allowSecondLine) * 9;
     }
 
     public static void drawHealth(GuiGraphics guiGraphics, Font font, AbstractDamageablePart damageablePart, int xTranslation, int yTranslation, boolean allowSecondLine) {
         int maxHealth = getMaxHearts(damageablePart.getMaxHealth());
-        int maxExtraHealth = getMaxHearts(damageablePart.getAbsorption());
         int current = (int) Math.ceil(CommonUtils.getVisualHealth(damageablePart));
-        int absorption = (int) Math.ceil(damageablePart.getAbsorption());
         if (drawAsString(damageablePart, allowSecondLine)) {
             drawHealthString(guiGraphics, font, damageablePart, xTranslation, yTranslation, allowSecondLine);
             return;
@@ -138,64 +126,49 @@ public final class HealthRenderUtils {
 
         FlashStateManager activeFlashState = Objects.requireNonNull(FLASH_STATES.get(damageablePart.part));
         boolean highlight = activeFlashState.update(Util.getMillis());
-        boolean low = current + absorption < 1.25F;
+        boolean low = current < 1.25F;
         Minecraft minecraft = Minecraft.getInstance();
         int regen = -1;
         if (minecraft.player != null && FirstAidConfig.SERVER.allowOtherHealingItems.get() && minecraft.player.hasEffect(MobEffects.REGENERATION)) {
             regen = (minecraft.gui.getGuiTicks() / 2) % 15;
         }
 
-        PoseStack stack = guiGraphics.pose();
-        stack.pushPose();
-        stack.translate(xTranslation, yTranslation, 0.0F);
-
-        boolean drawSecondLine = allowSecondLine && (maxHealth + maxExtraHealth > 4);
-        if (drawSecondLine) {
-            int maxHealth2 = Math.max(0, maxHealth - 4);
-            int maxExtraHealth2 = Math.max(0, maxExtraHealth - (4 - Math.min(4, maxHealth)));
-            int current2 = Math.max(0, current - 8);
-            int absorption2 = Math.max(0, absorption - maxExtraHealth * 2);
-
-            maxHealth = Math.min(4, maxHealth);
-            maxExtraHealth -= maxExtraHealth2;
-            current = Math.min(8, current);
-            absorption -= absorption2;
-
-            stack.pushPose();
-            stack.translate(0F, 5F, 0.0F);
-            renderLine(stack, regen, low, maxHealth2, maxExtraHealth2, current2, absorption2, guiGraphics, highlight);
-            stack.popPose();
-        }
-
-        renderLine(stack, regen, low, maxHealth, maxExtraHealth, current, absorption, guiGraphics, highlight);
-        stack.popPose();
-    }
-
-    private static void renderLine(PoseStack stack, int regen, boolean low, int maxHealth, int maxExtraHearts, int current, int absorption, GuiGraphics guiGraphics, boolean highlight) {
-        int[] lowOffsets = new int[maxHealth + maxExtraHearts];
+        int currentHearts = getFilledHeartSlots(current);
+        int totalHearts = Math.max(maxHealth, currentHearts);
+        int heartsPerRow = getHeartsPerRow(totalHearts, allowSecondLine);
+        int[] lowOffsets = new int[totalHearts];
         if (low) {
             for (int i = 0; i < lowOffsets.length; i++) {
                 lowOffsets[i] = EventHandler.RAND.nextInt(2);
             }
         }
 
+        PoseStack stack = guiGraphics.pose();
         stack.pushPose();
-        renderMax(regen, lowOffsets, maxHealth, guiGraphics, highlight);
-        if (maxExtraHearts > 0) {
-            if (maxHealth != 0) {
-                stack.translate(2 + 9 * maxHealth, 0, 0.0F);
-            }
-            renderMax(regen - maxHealth, lowOffsets, maxExtraHearts, guiGraphics, false);
+        stack.translate(xTranslation, yTranslation, 0.0F);
+        renderMax(regen, lowOffsets, 0, maxHealth, heartsPerRow, guiGraphics, highlight);
+        if (totalHearts > maxHealth) {
+            renderMax(regen, lowOffsets, maxHealth, totalHearts - maxHealth, heartsPerRow, guiGraphics, false);
         }
+        renderCurrentHealth(regen, lowOffsets, current, heartsPerRow, guiGraphics, highlight);
         stack.popPose();
+    }
 
-        renderCurrentHealth(regen, lowOffsets, current, guiGraphics, highlight);
-        if (absorption > 0) {
-            stack.pushPose();
-            stack.translate(maxHealth * 9 + (maxHealth == 0 ? 0 : 2), 0, 0.0F);
-            renderAbsorption(regen - maxHealth, lowOffsets, absorption, guiGraphics, highlight);
-            stack.popPose();
+    private static int getRenderedHeartSlots(AbstractDamageablePart damageablePart) {
+        int maxHealth = getMaxHearts(damageablePart.getMaxHealth());
+        int current = (int) Math.ceil(CommonUtils.getVisualHealth(damageablePart));
+        return Math.max(maxHealth, getFilledHeartSlots(current));
+    }
+
+    private static int getFilledHeartSlots(int health) {
+        return health / 2 + (health % 2 != 0 ? 1 : 0);
+    }
+
+    private static int getHeartsPerRow(int totalHearts, boolean allowSecondLine) {
+        if (allowSecondLine && totalHearts > 4) {
+            return 4;
         }
+        return Math.max(totalHearts, 1);
     }
 
     public static int getMaxHearts(float value) {
@@ -206,33 +179,26 @@ public final class HealthRenderUtils {
         return maxCurrentHearts >> 1;
     }
 
-    private static void renderMax(int regen, int[] lowOffsets, int max, GuiGraphics guiGraphics, boolean highlight) {
-        renderHeartSprites(regen, lowOffsets, max, false, guiGraphics, highlight ? HEART_CONTAINER_BLINKING_SPRITE : HEART_CONTAINER_SPRITE, highlight ? HEART_CONTAINER_BLINKING_SPRITE : HEART_CONTAINER_SPRITE);
+    private static void renderMax(int regen, int[] lowOffsets, int startSlot, int max, int heartsPerRow, GuiGraphics guiGraphics, boolean highlight) {
+        renderHeartSprites(regen, lowOffsets, startSlot, max, false, heartsPerRow, guiGraphics, highlight ? HEART_CONTAINER_BLINKING_SPRITE : HEART_CONTAINER_SPRITE, highlight ? HEART_CONTAINER_BLINKING_SPRITE : HEART_CONTAINER_SPRITE);
     }
 
-    private static void renderCurrentHealth(int regen, int[] lowOffsets, int current, GuiGraphics guiGraphics, boolean highlight) {
+    private static void renderCurrentHealth(int regen, int[] lowOffsets, int current, int heartsPerRow, GuiGraphics guiGraphics, boolean highlight) {
         boolean renderLastHalf = current % 2 != 0;
-        int render = current / 2 + (renderLastHalf ? 1 : 0);
-        renderHeartSprites(regen, lowOffsets, render, renderLastHalf, guiGraphics, highlight ? HEART_HALF_BLINKING_SPRITE : HEART_HALF_SPRITE, highlight ? HEART_FULL_BLINKING_SPRITE : HEART_FULL_SPRITE);
+        int render = getFilledHeartSlots(current);
+        renderHeartSprites(regen, lowOffsets, 0, render, renderLastHalf, heartsPerRow, guiGraphics, highlight ? HEART_HALF_BLINKING_SPRITE : HEART_HALF_SPRITE, highlight ? HEART_FULL_BLINKING_SPRITE : HEART_FULL_SPRITE);
     }
 
-    private static void renderAbsorption(int regen, int[] lowOffsets, int absorption, GuiGraphics guiGraphics, boolean highlight) {
-        boolean renderLastHalf = absorption % 2 != 0;
-        int render = absorption / 2 + (renderLastHalf ? 1 : 0);
-        if (render > 0) {
-            renderHeartSprites(regen, lowOffsets, render, renderLastHalf, guiGraphics,
-                    highlight ? HEART_ABSORBING_HALF_BLINKING_SPRITE : HEART_ABSORBING_HALF_SPRITE,
-                    highlight ? HEART_ABSORBING_FULL_BLINKING_SPRITE : HEART_ABSORBING_FULL_SPRITE);
-        }
-    }
-
-    private static void renderHeartSprites(int regen, int[] lowOffsets, int toDraw, boolean lastOneHalf, GuiGraphics guiGraphics, ResourceLocation halfSprite, ResourceLocation fullSprite) {
+    private static void renderHeartSprites(int regen, int[] lowOffsets, int startSlot, int toDraw, boolean lastOneHalf, int heartsPerRow, GuiGraphics guiGraphics, ResourceLocation halfSprite, ResourceLocation fullSprite) {
         if (toDraw <= 0) {
             return;
         }
         for (int i = 0; i < toDraw; i++) {
             boolean renderHalf = lastOneHalf && i + 1 == toDraw;
-            guiGraphics.blitSprite(renderHalf ? halfSprite : fullSprite, (int) (9F * i), (i == regen ? -2 : 0) - lowOffsets[i], 9, 9);
+            int slot = startSlot + i;
+            int x = 9 * (slot % heartsPerRow);
+            int y = 5 * (slot / heartsPerRow) + (slot == regen ? -2 : 0) - lowOffsets[slot];
+            guiGraphics.blitSprite(renderHalf ? halfSprite : fullSprite, x, y, 9, 9);
         }
     }
 

@@ -22,6 +22,7 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.common.damagesystem.PartHealer;
+import ichttt.mods.firstaid.common.items.ItemAdrenalineInjector;
 import ichttt.mods.firstaid.common.items.ItemMorphine;
 import ichttt.mods.firstaid.common.items.ItemPainkillers;
 import ichttt.mods.firstaid.common.potion.FirstAidPotion;
@@ -43,12 +44,15 @@ public final class RegistryObjects {
     public static final RegistryEntry<ItemHealing> BANDAGE;
     public static final RegistryEntry<ItemHealing> PLASTER;
     public static final RegistryEntry<Item> DEFIBRILLATOR;
+    public static final RegistryEntry<ItemAdrenalineInjector> ADRENALINE_INJECTOR;
     public static final RegistryEntry<ItemMorphine> MORPHINE;
     public static final RegistryEntry<ItemPainkillers> PAINKILLERS;
 
     public static final Holder<SoundEvent> HEARTBEAT;
+    public static final Holder<SoundEvent> TINNITUS;
     public static final Holder<SoundEvent> BANDAGE_USE;
     public static final Holder<SoundEvent> DEFIBRILLATOR_USE;
+    public static final Holder<SoundEvent> ADRENALINE_INJECTOR_USE;
     public static final Holder<SoundEvent> PILLS_USE;
 
     public static final Holder<MobEffect> MORPHINE_EFFECT;
@@ -71,16 +75,23 @@ public final class RegistryObjects {
                 stack -> server.plaster.applyTime.get()
         ));
         DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));
+        ADRENALINE_INJECTOR = registerItem("adrenaline_injector", new ItemAdrenalineInjector(itemProperties("adrenaline_injector").durability(2)));
         MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
         PAINKILLERS = registerItem("painkillers", new ItemPainkillers(itemProperties("painkillers")));
 
         ResourceLocation soundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.heartbeat");
         HEARTBEAT = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, soundLocation, SoundEvent.createVariableRangeEvent(soundLocation));
+        ResourceLocation tinnitusSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.tinnitus");
+        TINNITUS = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, tinnitusSoundLocation, SoundEvent.createVariableRangeEvent(tinnitusSoundLocation));
         ResourceLocation bandageSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.use_bandage");
         BANDAGE_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, bandageSoundLocation, SoundEvent.createVariableRangeEvent(bandageSoundLocation));
         ResourceLocation defibrillatorSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.defibrillator_use");
         DEFIBRILLATOR_USE = Registry.registerForHolder(
                 BuiltInRegistries.SOUND_EVENT, defibrillatorSoundLocation, SoundEvent.createVariableRangeEvent(defibrillatorSoundLocation)
+        );
+        ResourceLocation adrenalineInjectorSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.adrenaline_injector_use");
+        ADRENALINE_INJECTOR_USE = Registry.registerForHolder(
+                BuiltInRegistries.SOUND_EVENT, adrenalineInjectorSoundLocation, SoundEvent.createVariableRangeEvent(adrenalineInjectorSoundLocation)
         );
         ResourceLocation pillsSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.take_pills");
         PILLS_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, pillsSoundLocation, SoundEvent.createVariableRangeEvent(pillsSoundLocation));
@@ -96,6 +107,7 @@ public final class RegistryObjects {
                     entries.accept(BANDAGE.get());
                     entries.accept(PLASTER.get());
                     entries.accept(DEFIBRILLATOR.get());
+                    entries.accept(ADRENALINE_INJECTOR.get());
                     entries.accept(MORPHINE.get());
                     entries.accept(PAINKILLERS.get());
                 })

@@ -18,27 +18,23 @@ public final class MessageUpdatePart implements CustomPacketPayload {
       ByteBufCodecs.VAR_INT,
       MessageUpdatePart::maxHealth,
       ByteBufCodecs.FLOAT,
-      MessageUpdatePart::absorption,
-      ByteBufCodecs.FLOAT,
       MessageUpdatePart::currentHealth,
       MessageUpdatePart::new
    );
    private final int entityId;
    private final byte partId;
    private final int maxHealth;
-   private final float absorption;
    private final float currentHealth;
 
-   private MessageUpdatePart(int entityId, byte partId, int maxHealth, float absorption, float currentHealth) {
+   private MessageUpdatePart(int entityId, byte partId, int maxHealth, float currentHealth) {
       this.entityId = entityId;
       this.partId = partId;
       this.maxHealth = maxHealth;
-      this.absorption = absorption;
       this.currentHealth = currentHealth;
    }
 
    public MessageUpdatePart(int entityId, AbstractDamageablePart part) {
-      this(entityId, (byte)part.part.ordinal(), part.getMaxHealth(), part.getAbsorption(), part.currentHealth);
+      this(entityId, (byte)part.part.ordinal(), part.getMaxHealth(), part.currentHealth);
    }
 
    public int entityId() {
@@ -51,10 +47,6 @@ public final class MessageUpdatePart implements CustomPacketPayload {
 
    public int maxHealth() {
       return this.maxHealth;
-   }
-
-   public float absorption() {
-      return this.absorption;
    }
 
    public float currentHealth() {

@@ -57,16 +57,24 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    private static final int MAX_ADRENALINE_LEVEL = 3;
    private static final int MAX_ADRENALINE_TICKS = 200;
    private static final float MAX_SUPPRESSION_INTENSITY = 1.0F;
+   private static final float ADRENALINE_ABSORPTION_AMOUNT = 8.0F;
+   private static final int ADRENALINE_ABSORPTION_AMPLIFIER = 1;
+   private static final int ADRENALINE_HASTE_AMPLIFIER = 0;
+   private static final int ADRENALINE_STRENGTH_AMPLIFIER = 0;
+   private static final int ADRENALINE_SPEED_AMPLIFIER = 0;
+   private static final float ADRENALINE_INJECTION_SUPPRESSION_STRENGTH = 0.35F;
    private static final float SUPPRESSION_GAIN_MULTIPLIER = 0.48F;
    private static final int SUPPRESSION_HOLD_TICKS = 80;
    private static final float SUPPRESSION_DECAY_STEP = 0.03F;
    private static final int SUPPRESSION_DECAY_INTERVAL = 4;
+   private static final int ADRENALINE_DURATION_TICKS = 700;
    private static final int PAINKILLER_ACTIVATION_DELAY_TICKS = 600;
    private static final int MORPHINE_ACTIVATION_DELAY_TICKS = 200;
    private static final int CRITICAL_UNCONSCIOUS_TICKS = 3000;
    private static final int RESCUE_DURATION_TICKS = 160;
    private static final int DEFIBRILLATOR_RESCUE_DURATION_TICKS = 60;
    private static final int EXECUTION_DURATION_TICKS = 100;
+   private static final float CRITICAL_DOWNED_CRITICAL_PART_DAMAGE_MULTIPLIER = 0.1F;
    private static final double RESCUE_RANGE = 3.0;
    private static final int COLLAPSE_ANIMATION_TICKS = 12;
    private static final int COLLAPSE_SEARCH_RADIUS = 2;
@@ -91,6 +99,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    private int painLevel = 0;
    private int adrenalineLevel = 0;
    private int adrenalineTicks = 0;
+   private int adrenalineHeartbeatTriggerId = 0;
    private float suppressionIntensity = 0.0F;
    private int suppressionHoldTicks = 0;
    private int suppressionDecayTicker = 0;
@@ -101,6 +110,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    private String unconsciousReasonKey = "";
    private int collapseAnimationTicks = 0;
    private boolean collapsePlacementPending = false;
+   private boolean externalRevivePending = false;
 
    public PlayerDamageModel() {
       super(
@@ -134,6 +144,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       tagCompound.putInt("painLevel", this.painLevel);
       tagCompound.putInt("adrenalineLevel", this.adrenalineLevel);
       tagCompound.putInt("adrenalineTicks", this.adrenalineTicks);
+      tagCompound.putInt("adrenalineHeartbeatTriggerId", this.adrenalineHeartbeatTriggerId);
       tagCompound.putFloat("suppressionIntensity", this.suppressionIntensity);
       tagCompound.putInt("suppressionHoldTicks", this.suppressionHoldTicks);
       tagCompound.putInt("suppressionDecayTicker", this.suppressionDecayTicker);
@@ -141,6 +152,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       tagCompound.putBoolean("criticalConditionActive", this.criticalConditionActive);
       tagCompound.putBoolean("unconsciousAllowsGiveUp", this.unconsciousAllowsGiveUp);
       tagCompound.putBoolean("unconsciousCausesDeath", this.unconsciousCausesDeath);
+      tagCompound.putBoolean("externalRevivePending", this.externalRevivePending);
       tagCompound.putInt("collapseAnimationTicks", this.collapseAnimationTicks);
       if (!this.unconsciousReasonKey.isEmpty()) {
          tagCompound.putString("unconsciousReasonKey", this.unconsciousReasonKey);
@@ -173,6 +185,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       this.painLevel = nbt.getIntOr("painLevel", 0);
       this.adrenalineLevel = nbt.getIntOr("adrenalineLevel", 0);
       this.adrenalineTicks = nbt.getIntOr("adrenalineTicks", 0);
+      this.adrenalineHeartbeatTriggerId = nbt.getIntOr("adrenalineHeartbeatTriggerId", 0);
       this.suppressionIntensity = nbt.contains("suppressionIntensity")
          ? Mth.clamp(nbt.getFloatOr("suppressionIntensity", 0.0F), 0.0F, 1.0F)
          : Mth.clamp(this.adrenalineTicks / 200.0F, 0.0F, 1.0F);
@@ -182,6 +195,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       this.criticalConditionActive = nbt.getBooleanOr("criticalConditionActive", false);
       this.unconsciousAllowsGiveUp = nbt.getBooleanOr("unconsciousAllowsGiveUp", this.criticalConditionActive);
       this.unconsciousCausesDeath = nbt.getBooleanOr("unconsciousCausesDeath", this.criticalConditionActive);
+      this.externalRevivePending = nbt.getBooleanOr("externalRevivePending", false);
       this.unconsciousReasonKey = nbt.getStringOr("unconsciousReasonKey", this.criticalConditionActive ? "firstaid.gui.critical_condition" : "");
       this.collapseAnimationTicks = nbt.getIntOr("collapseAnimationTicks", 0);
       this.collapsePlacementPending = false;
@@ -330,6 +344,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       return 2400;
    }
 
+   public static int getAdrenalineDuration() {
+      return 1200;
+   }
+
+   public static float getAdrenalineAbsorptionAmount() {
+      return 8.0F;
+   }
+
    public static int getPainkillerActivationDelay() {
       return FirstAid.scaleMedicalTimingTicks(600);
    }
@@ -380,6 +402,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       return this.adrenalineTicks;
    }
 
+   public int getAdrenalineHeartbeatTriggerId() {
+      return this.adrenalineHeartbeatTriggerId;
+   }
+
    public int getSuppressionLevel() {
       return this.adrenalineLevel;
    }
@@ -390,6 +416,35 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
 
    public int getSuppressionHoldTicks() {
       return this.suppressionHoldTicks;
+   }
+
+   public void applyAdrenalineInjection(Player player) {
+      MobEffectInstance activePainkiller = player.getEffect(RegistryObjects.PAINKILLER_EFFECT);
+      MobEffectInstance activeAbsorption = player.getEffect(MobEffects.ABSORPTION);
+      MobEffectInstance activeHaste = player.getEffect(MobEffects.HASTE);
+      MobEffectInstance activeStrength = player.getEffect(MobEffects.STRENGTH);
+      MobEffectInstance activeSpeed = player.getEffect(MobEffects.SPEED);
+      int duration = Math.max(getAdrenalineDuration(), activePainkiller == null ? 0 : activePainkiller.getDuration());
+      int absorptionDuration = Math.max(getAdrenalineDuration(), activeAbsorption == null ? 0 : activeAbsorption.getDuration());
+      int absorptionAmplifier = Math.max(ADRENALINE_ABSORPTION_AMPLIFIER, activeAbsorption == null ? 0 : activeAbsorption.getAmplifier());
+      int hasteDuration = Math.max(getAdrenalineDuration(), activeHaste == null ? 0 : activeHaste.getDuration());
+      int hasteAmplifier = Math.max(ADRENALINE_HASTE_AMPLIFIER, activeHaste == null ? 0 : activeHaste.getAmplifier());
+      int strengthDuration = Math.max(getAdrenalineDuration(), activeStrength == null ? 0 : activeStrength.getDuration());
+      int strengthAmplifier = Math.max(ADRENALINE_STRENGTH_AMPLIFIER, activeStrength == null ? 0 : activeStrength.getAmplifier());
+      int speedDuration = Math.max(getAdrenalineDuration(), activeSpeed == null ? 0 : activeSpeed.getDuration());
+      int speedAmplifier = Math.max(ADRENALINE_SPEED_AMPLIFIER, activeSpeed == null ? 0 : activeSpeed.getAmplifier());
+      player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, duration, 0, false, false));
+      player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, absorptionDuration, absorptionAmplifier, false, false));
+      player.addEffect(new MobEffectInstance(MobEffects.HASTE, hasteDuration, hasteAmplifier, false, false));
+      player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, strengthDuration, strengthAmplifier, false, false));
+      player.addEffect(new MobEffectInstance(MobEffects.SPEED, speedDuration, speedAmplifier, false, false));
+      player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 140, 0, false, false));
+      this.registerAdrenalineNearMiss(player, ADRENALINE_INJECTION_SUPPRESSION_STRENGTH, getAdrenalineDuration());
+      this.adrenalineHeartbeatTriggerId++;
+      this.scheduleResync();
+      if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+         FirstAidNetworking.sendDamageModelSync(serverPlayer, this, FirstAidConfig.SERVER.scaleMaxHealth.get());
+      }
    }
 
    @Override
@@ -404,6 +459,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
 
    public boolean isUnconscious() {
       return this.unconsciousTicks > 0;
+   }
+
+   public boolean isCriticalDowned() {
+      return this.criticalConditionActive && this.unconsciousTicks > 0;
+   }
+
+   public float getIncomingPartDamageMultiplier(AbstractDamageablePart part) {
+      return this.isCriticalDowned() && part.canCauseDeath ? CRITICAL_DOWNED_CRITICAL_PART_DAMAGE_MULTIPLIER : 1.0F;
    }
 
    public boolean canGiveUp() {
@@ -479,7 +542,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       }
    }
 
-   public void registerAdrenalineNearMiss(float strength) {
+   public void registerAdrenalineNearMiss(Player player, float strength) {
+      this.registerAdrenalineNearMiss(player, strength, 80);
+   }
+
+   public void registerAdrenalineNearMiss(Player player, float strength, int holdTicks) {
       float clampedStrength = Mth.clamp(strength, 0.35F, 1.45F);
       float previousIntensity = this.suppressionIntensity;
       int previousHoldTicks = this.suppressionHoldTicks;
@@ -487,8 +554,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       float baseIntensity = 0.28F + clampedStrength * 0.24F;
       float addedIntensity = Mth.clamp(baseIntensity * 0.48F, 0.1728F, 0.2976F);
       this.suppressionIntensity = Mth.clamp(this.suppressionIntensity + addedIntensity, 0.0F, 1.0F);
-      this.suppressionHoldTicks = Math.max(this.suppressionHoldTicks, 80);
+      this.suppressionHoldTicks = Math.max(this.suppressionHoldTicks, holdTicks);
       this.suppressionDecayTicker = 0;
+      MobEffectInstance activePainkiller = player.getEffect(RegistryObjects.PAINKILLER_EFFECT);
+      int painkillerDuration = Math.max(holdTicks, activePainkiller == null ? 0 : activePainkiller.getDuration());
+      player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, painkillerDuration, 0, false, false));
       this.refreshSuppressionSnapshot();
       if (previousIntensity != this.suppressionIntensity || previousHoldTicks != this.suppressionHoldTicks || previousAdrenalineTicks != this.adrenalineTicks) {
          this.scheduleResync();
@@ -511,10 +581,22 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       this.unconsciousAllowsGiveUp = false;
       this.unconsciousCausesDeath = false;
       this.unconsciousReasonKey = "";
+      this.externalRevivePending = false;
+   }
+
+   public void markExternalRevivePending(Player player) {
+      this.externalRevivePending = true;
+      this.criticalConditionActive = false;
+      this.clearUnconsciousState();
+      this.resetRecoveredPlayerState(player);
+      this.scheduleResync();
+      if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+         FirstAidNetworking.sendDamageModelSync(serverPlayer, this, FirstAidConfig.SERVER.scaleMaxHealth.get());
+      }
    }
 
    public void handlePostDamage(Player player) {
-      if (this.hasNoRemainingBodyHealth()) {
+      if (this.hasNoRemainingBodyHealth() || this.hasAllCriticalPartsCollapsed()) {
          this.criticalConditionActive = false;
          this.clearUnconsciousState();
          this.resetRecoveredPlayerState(player);
@@ -541,7 +623,12 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    }
 
    public boolean defibrillatorRescueFromCriticalState(Player player, boolean keepWakeUpDelay) {
-      return this.performCriticalRescue(player, null, keepWakeUpDelay, 2.0F, 0.4F);
+      boolean rescued = this.performCriticalRescue(player, null, keepWakeUpDelay, 2.0F, 0.4F);
+      if (rescued) {
+         player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 400, 0, false, false));
+      }
+
+      return rescued;
    }
 
    private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth, float wakeUpDelayMultiplier) {
@@ -695,7 +782,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
          }
          default -> throw new RuntimeException("Unknown constant " + mode);
       } * player.getMaxHealth();
-      return this.criticalConditionActive && this.unconsciousTicks > 0 && this.hasCriticalPartCollapsed() ? Math.max(1.0F, scaledHealth) : scaledHealth;
+      return this.isCriticalDowned() && this.hasCriticalPartCollapsed() && !this.hasAllCriticalPartsCollapsed() ? Math.max(1.0F, scaledHealth) : scaledHealth;
    }
 
    @Override
@@ -707,7 +794,9 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
          return true;
       } else if (this.hasNoRemainingBodyHealth()) {
          return true;
-      } else if (this.criticalConditionActive && this.unconsciousTicks > 0) {
+      } else if (this.hasAllCriticalPartsCollapsed()) {
+         return true;
+      } else if (this.isCriticalDowned()) {
          return false;
       } else if (!this.noCritical) {
          for (AbstractDamageablePart part : this) {
@@ -732,23 +821,6 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    }
 
    @Override
-   public Float getAbsorption() {
-      float value = 0.0F;
-
-      for (AbstractDamageablePart part : this) {
-         value += part.getAbsorption();
-      }
-
-      return value;
-   }
-
-   @Override
-   public void setAbsorption(float absorption) {
-      float newAbsorption = absorption / 8.0F;
-      this.forEach(damageablePart -> damageablePart.setAbsorption(newAbsorption));
-   }
-
-   @Override
    public int getMaxRenderSize() {
       int max = 0;
 
@@ -757,7 +829,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
          if (FirstAidConfig.CLIENT.overlayMode.get() == FirstAidConfig.Client.OverlayMode.NUMBERS) {
             newMax = ClientAccess.getTextWidth(TEXT_FORMAT.format(part.currentHealth) + "/" + part.getMaxHealth()) + 1;
          } else {
-            newMax = (int)(((int)(part.getMaxHealth() + part.getAbsorption() + 0.9999F) + 1) / 2.0F * 9.0F);
+            newMax = (int)(((int)(part.getMaxHealth() + 0.9999F) + 1) / 2.0F * 9.0F);
          }
 
          max = Math.max(max, newMax);
@@ -793,6 +865,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       }
 
       this.clearStatusEffects();
+      this.externalRevivePending = false;
 
       for (AbstractDamageablePart part : this) {
          if ((part.canCauseDeath || this.noCritical) && part.currentHealth <= 0.0F) {
@@ -953,6 +1026,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       boolean previousGiveUpState = this.unconsciousAllowsGiveUp;
       boolean previousDeathState = this.unconsciousCausesDeath;
       String previousUnconsciousReasonKey = this.unconsciousReasonKey;
+      if (this.resolveExternalReviveState(player)) {
+         return;
+      }
+
       this.painLevel = this.calculatePainLevel();
       this.tickSuppressionState();
       if (this.criticalConditionActive && !this.hasCriticalPartCollapsed()) {
@@ -973,33 +1050,35 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       if (this.criticalConditionActive && this.unconsciousTicks <= 0 && this.unconsciousCausesDeath) {
          this.resetRecoveredPlayerState(player);
          CommonUtils.killPlayerDirectly(player, null);
-      } else {
-         if (this.unconsciousTicks <= 0) {
-            this.clearUnconsciousState();
-         }
+         return;
+      }
 
-         if (previousPainLevel != this.painLevel
-            || previousAdrenalineLevel != this.adrenalineLevel
-            || previousAdrenalineTicks != this.adrenalineTicks
-            || Float.compare(previousSuppressionIntensity, this.suppressionIntensity) != 0
-            || previousSuppressionHoldTicks != this.suppressionHoldTicks
-            || previousUnconsciousTicks != this.unconsciousTicks
-            || previousCriticalCondition != this.criticalConditionActive
-            || previousGiveUpState != this.unconsciousAllowsGiveUp
-            || previousDeathState != this.unconsciousCausesDeath
-            || !Objects.equals(previousUnconsciousReasonKey, this.unconsciousReasonKey)) {
-            this.scheduleResync();
-         }
+      if (this.unconsciousTicks <= 0) {
+         this.clearUnconsciousState();
+      }
 
-         if (this.painLevel == 0 && this.adrenalineTicks == 0 && this.unconsciousTicks == 0 && !this.isPainSuppressed(player)) {
-            this.unconsciousAllowsGiveUp = false;
-            this.unconsciousCausesDeath = false;
-            this.unconsciousReasonKey = "";
-         }
+      if (previousPainLevel != this.painLevel
+         || previousAdrenalineLevel != this.adrenalineLevel
+         || previousAdrenalineTicks != this.adrenalineTicks
+         || Float.compare(previousSuppressionIntensity, this.suppressionIntensity) != 0
+         || previousSuppressionHoldTicks != this.suppressionHoldTicks
+         || previousUnconsciousTicks != this.unconsciousTicks
+         || previousCriticalCondition != this.criticalConditionActive
+         || previousGiveUpState != this.unconsciousAllowsGiveUp
+         || previousDeathState != this.unconsciousCausesDeath
+         || !Objects.equals(previousUnconsciousReasonKey, this.unconsciousReasonKey)) {
+         this.scheduleResync();
+      }
 
-         if (this.collapseAnimationTicks > 0) {
-            this.collapseAnimationTicks--;
-         }
+      if (this.painLevel == 0 && this.adrenalineTicks == 0 && this.unconsciousTicks == 0 && !this.isPainSuppressed(player)) {
+         this.unconsciousAllowsGiveUp = false;
+         this.unconsciousCausesDeath = false;
+         this.unconsciousReasonKey = "";
+      }
+
+      if (this.collapseAnimationTicks > 0) {
+         this.collapseAnimationTicks--;
+      }
 
       if (previousUnconsciousState != this.isUnconscious()) {
          if (this.isUnconscious()) {
@@ -1013,6 +1092,24 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
          }
       }
    }
+
+   private boolean resolveExternalReviveState(Player player) {
+      if (!this.externalRevivePending || PRCompatManager.getHandler().isBleeding(player)) {
+         return false;
+      }
+
+      this.externalRevivePending = false;
+      if (player.isAlive() && player.getHealth() > 0.0F) {
+         this.revivePlayer(player);
+      } else {
+         this.clearStatusEffects();
+         this.resetRecoveredPlayerState(player);
+         this.scheduleResync();
+         if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
+            FirstAidNetworking.sendDamageModelSync(serverPlayer, this, FirstAidConfig.SERVER.scaleMaxHealth.get());
+         }
+      }
+      return true;
    }
 
    private int calculatePainLevel() {
@@ -1154,6 +1251,21 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       }
 
       return false;
+   }
+
+   private boolean hasAllCriticalPartsCollapsed() {
+      boolean hasCriticalPart = false;
+
+      for (AbstractDamageablePart part : this) {
+         if (part.canCauseDeath) {
+            hasCriticalPart = true;
+            if (part.currentHealth > 0.0F) {
+               return false;
+            }
+         }
+      }
+
+      return hasCriticalPart;
    }
 
    private boolean hasNoRemainingBodyHealth() {

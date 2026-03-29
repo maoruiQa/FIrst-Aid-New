@@ -2,11 +2,19 @@
   "debuff.heartbeat": {
     "sounds": [
       {
-        "name": "firstaid:tinnitus",
+        "name": "firstaid:heartbeat",
         "preload": "true"
       }
     ],
     "subtitle": "subtitles.debuff.heartbeat"
+  },
+  "debuff.tinnitus": {
+    "sounds": [
+      {
+        "name": "firstaid:tinnitus",
+        "preload": "true"
+      }
+    ]
   },
   "item.use_bandage": {
     "sounds": [
@@ -19,6 +27,13 @@
     "sounds": [
       {
         "name": "firstaid:defibrillator_use"
+      }
+    ]
+  },
+  "item.adrenaline_injector_use": {
+    "sounds": [
+      {
+        "name": "firstaid:injection"
       }
     ]
   },
