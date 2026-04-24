@@ -1,0 +1,8 @@
+{
+    "pack": {
+        "description": "firstaid resources",
+        "pack_format": 84,
+        "forge:resource_pack_format": 84,
+        "forge:data_pack_format": 101
+    }
+}

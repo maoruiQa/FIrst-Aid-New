@@ -3,6 +3,7 @@ package ichttt.mods.firstaid.client;
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPartHealer;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
@@ -10,6 +11,7 @@ import ichttt.mods.firstaid.client.util.EventCalendar;
 import ichttt.mods.firstaid.client.util.PlayerModelRenderer;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
+import ichttt.mods.firstaid.common.network.MessageApplyHealingItem;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.network.MessageClientRequest.RequestType;
 import ichttt.mods.firstaid.common.util.CommonUtils;
@@ -26,13 +28,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.util.Mth;
 import net.minecraft.util.StringUtil;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.Item.TooltipContext;
+import net.minecraft.world.item.TooltipFlag;
 
 public final class ClientEventHandler {
    private static final int GIVE_UP_HOLD_TICKS = 60;
@@ -53,6 +56,8 @@ public final class ClientEventHandler {
    private static boolean interactionTriggered;
    private static boolean interactionSoundTriggered;
    private static ClientEventHandler.InteractionPrompt interactionPrompt;
+   private static ClientEventHandler.PendingHealingSelection pendingHealingSelection;
+   private static boolean requireUseReleaseBeforeHealingSelection;
 
    private ClientEventHandler() {
    }
@@ -68,7 +73,13 @@ public final class ClientEventHandler {
    private static void clientTick(Minecraft mc) {
       if (mc.level == null || mc.player == null || mc.player.connection == null) {
          resetGiveUpHoldState();
+         clearPendingHealingSelection();
+         requireUseReleaseBeforeHealingSelection = false;
       } else if (!mc.isPaused()) {
+         if (!mc.options.keyUse.isDown()) {
+            requireUseReleaseBeforeHealingSelection = false;
+         }
+
          retryDamageModelSync(mc);
          SUPPRESSION_FEEDBACK_CONTROLLER.tick(mc);
          HEARTBEAT_SOUND_CONTROLLER.tick(mc);
@@ -95,6 +106,7 @@ public final class ClientEventHandler {
          AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
          if (damageModel instanceof PlayerDamageModel playerDamageModel) {
             updateGiveUpHoldState(mc, playerDamageModel);
+            updatePendingHealingState(mc, damageModel);
             updateInteractionPromptState(mc);
             boolean shouldShowCriticalPrompt = playerDamageModel.canGiveUp();
             if (shouldShowCriticalPrompt && !showedCriticalPrompt) {
@@ -112,6 +124,7 @@ public final class ClientEventHandler {
             showedCriticalPrompt = false;
             resetGiveUpHoldState();
             resetInteractionPromptState();
+            clearPendingHealingSelection();
          }
 
          if (damageModel != null && damageModel.getUnconsciousTicks() > 0 && mc.screen instanceof GuiHealthScreen) {
@@ -141,39 +154,15 @@ public final class ClientEventHandler {
    }
 
    private static void tooltipItems(ItemStack stack, TooltipContext context, TooltipFlag flag, List<Component> lines) {
-      if (stack.is((Item)RegistryObjects.MORPHINE.get())) {
-         lines.add(
-            Component.translatable(
-                  "firstaid.tooltip.morphine", new Object[]{StringUtil.formatTickDuration(PlayerDamageModel.getMorphineActivationDelay(), 20.0F), "3:30-4:30"}
+      if (stack.getItem() instanceof ItemHealing itemHealing) {
+         AbstractPartHealer healer = itemHealing.createNewHealer(stack);
+         if (healer != null) {
+            lines.add(
+               Component.translatable(
+                  "firstaid.tooltip.healer",
+                  new Object[]{healer.maxHeal.getAsInt() / 2, StringUtil.formatTickDuration(healer.ticksPerHeal.getAsInt(), 20.0F)}
                )
-               .withStyle(ChatFormatting.GRAY)
-         );
-      } else if (stack.is((Item)RegistryObjects.PAINKILLERS.get())) {
-         lines.add(
-            Component.translatable(
-                  "firstaid.tooltip.painkillers", new Object[]{StringUtil.formatTickDuration(PlayerDamageModel.getPainkillerActivationDelay(), 20.0F), "2:00"}
-               )
-               .withStyle(ChatFormatting.GRAY)
-         );
-      } else if (stack.is((Item)RegistryObjects.ADRENALINE_INJECTOR.get())) {
-         lines.add(
-            Component.translatable(
-                  "firstaid.tooltip.adrenaline_injector",
-                  new Object[]{StringUtil.formatTickDuration(40, 20.0F), StringUtil.formatTickDuration(PlayerDamageModel.getAdrenalineDuration(), 20.0F)}
-               )
-               .withStyle(ChatFormatting.GRAY)
-         );
-      } else {
-         if (stack.getItem() instanceof ItemHealing itemHealing) {
-            AbstractPartHealer healer = itemHealing.createNewHealer(stack);
-            if (healer != null) {
-               lines.add(
-                  Component.translatable(
-                     "firstaid.tooltip.healer",
-                     new Object[]{healer.maxHeal.getAsInt() / 2, StringUtil.formatTickDuration(healer.ticksPerHeal.getAsInt(), 20.0F)}
-                  )
-               );
-            }
+            );
          }
       }
    }
@@ -185,6 +174,7 @@ public final class ClientEventHandler {
       showedCriticalPrompt = false;
       resetGiveUpHoldState();
       resetInteractionPromptState();
+      clearPendingHealingSelection();
       HealingSoundController.clear();
       HEARTBEAT_SOUND_CONTROLLER.clear();
       SUPPRESSION_FEEDBACK_CONTROLLER.clear();
@@ -196,6 +186,7 @@ public final class ClientEventHandler {
       syncRetryTicks = 20;
       resetGiveUpHoldState();
       resetInteractionPromptState();
+      clearPendingHealingSelection();
       if (mc.player != null) {
          FirstAidClientNetworking.sendToServer(new MessageClientRequest(RequestType.REQUEST_REFRESH));
          MutableComponent message = Component.empty()
@@ -235,11 +226,77 @@ public final class ClientEventHandler {
       return interactionPrompt != null;
    }
 
+   public static boolean selectPendingHealing(EnumPlayerPart part, InteractionHand hand) {
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.player == null) {
+         return false;
+      } else {
+         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
+         if (damageModel == null) {
+            return false;
+         } else {
+            ItemStack stack = mc.player.getItemInHand(hand);
+            if (!(stack.getItem() instanceof ItemHealing itemHealing)) {
+               return false;
+            } else {
+               var damageablePart = damageModel.getFromEnum(part);
+               if (damageablePart.activeHealer != null || CommonUtils.isPartVisuallyFull(damageablePart)) {
+                  return false;
+               } else {
+                  pendingHealingSelection = new ClientEventHandler.PendingHealingSelection(
+                     part, hand, stack.copyWithCount(1), getHealingHoldDurationTicks(itemHealing, stack), 0, false
+                  );
+                  return true;
+               }
+            }
+         }
+      }
+   }
+
+   public static boolean hasValidPendingHealingSelection(InteractionHand hand) {
+      Minecraft mc = Minecraft.getInstance();
+      if (pendingHealingSelection == null || mc.player == null || pendingHealingSelection.hand() != hand) {
+         return false;
+      } else {
+         ItemStack currentStack = mc.player.getItemInHand(hand);
+         return !currentStack.isEmpty()
+            && currentStack.getItem() instanceof ItemHealing
+            && ItemStack.isSameItemSameComponents(currentStack, pendingHealingSelection.selectedStack());
+      }
+   }
+
+   public static boolean canOpenHealingScreen(InteractionHand hand) {
+      Minecraft mc = Minecraft.getInstance();
+      if (requireUseReleaseBeforeHealingSelection || mc.player == null || isUnconscious(mc.player)) {
+         return false;
+      } else {
+         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
+         if (damageModel == null) {
+            return false;
+         } else {
+            ItemStack stack = mc.player.getItemInHand(hand);
+            if (!(stack.getItem() instanceof ItemHealing)) {
+               return false;
+            } else {
+               for (EnumPlayerPart part : EnumPlayerPart.VALUES) {
+                  var damageablePart = damageModel.getFromEnum(part);
+                  if (damageablePart.activeHealer == null && !CommonUtils.isPartVisuallyFull(damageablePart)) {
+                     return true;
+                  }
+               }
+
+               return false;
+            }
+         }
+      }
+   }
+
    public static Component getInteractionPromptTitle() {
       if (interactionPrompt == null) {
          return Component.empty();
       } else {
          return switch (interactionPrompt.type()) {
+            case HEAL_SELF -> Component.translatable("firstaid.gui.healing_prompt_title").withStyle(ChatFormatting.AQUA);
             case RESCUE -> Component.translatable("firstaid.gui.rescue_prompt_title", new Object[]{interactionPrompt.targetName()}).withStyle(ChatFormatting.GREEN);
             case EXECUTE -> Component.translatable("firstaid.gui.execute_prompt_title", new Object[]{interactionPrompt.targetName()}).withStyle(ChatFormatting.RED);
             default -> Component.translatable(
@@ -255,6 +312,14 @@ public final class ClientEventHandler {
          return Component.empty();
       } else {
          return switch (interactionPrompt.type()) {
+            case HEAL_SELF -> Component.translatable(
+               "firstaid.gui.healing_prompt_detail",
+               new Object[]{
+                  Component.translatable("key.use").withStyle(ChatFormatting.GOLD),
+                  Component.translatable("firstaid.gui." + pendingHealingSelection.part().toString().toLowerCase(Locale.ROOT)),
+                  formatSingleDecimal(getInteractionHoldDurationSeconds())
+               }
+            ).withStyle(ChatFormatting.AQUA);
             case RESCUE -> Component.translatable("firstaid.gui.rescue_prompt_crouch", new Object[]{formatSingleDecimal(getInteractionHoldDurationSeconds())})
                .withStyle(ChatFormatting.GREEN);
             case EXECUTE -> Component.translatable("firstaid.gui.execute_prompt_crouch", new Object[]{formatSingleDecimal(getInteractionHoldDurationSeconds())})
@@ -274,6 +339,10 @@ public final class ClientEventHandler {
          return Component.empty();
       } else {
          return switch (interactionPrompt.type()) {
+            case HEAL_SELF -> Component.translatable(
+               "firstaid.gui.healing_progress",
+               new Object[]{formatSingleDecimal(getInteractionHoldSeconds(partialTick)), formatSingleDecimal(getInteractionHoldDurationSeconds())}
+            ).withStyle(ChatFormatting.AQUA);
             case RESCUE -> Component.translatable(
                "firstaid.gui.rescue_progress", new Object[]{formatSingleDecimal(getInteractionHoldSeconds(partialTick)), formatSingleDecimal(getInteractionHoldDurationSeconds())}
             ).withStyle(ChatFormatting.GREEN);
@@ -291,6 +360,10 @@ public final class ClientEventHandler {
 
    public static boolean isExecutionInteractionPrompt() {
       return interactionPrompt != null && interactionPrompt.type() == ClientEventHandler.InteractionType.EXECUTE;
+   }
+
+   public static boolean isHealingInteractionPrompt() {
+      return interactionPrompt != null && interactionPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF;
    }
 
    public static float getInteractionHoldSeconds(float partialTick) {
@@ -343,15 +416,19 @@ public final class ClientEventHandler {
 
    private static void updateInteractionPromptState(Minecraft mc) {
       ClientEventHandler.InteractionPrompt nextPrompt = findInteractionPrompt(mc);
+      if (nextPrompt != null && nextPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF) {
+         resetInteractionPromptHoldState();
+         interactionPrompt = nextPrompt;
+         return;
+      }
+
       if (interactionPrompt == null
          || nextPrompt == null
          || interactionPrompt.targetId() != nextPrompt.targetId()
          || interactionPrompt.type() != nextPrompt.type()
          || interactionPrompt.hand() != nextPrompt.hand()
          || interactionPrompt.holdDurationTicks() != nextPrompt.holdDurationTicks()) {
-         interactionHoldTicks = 0;
-         interactionTriggered = false;
-         interactionSoundTriggered = false;
+         resetInteractionPromptHoldState();
       }
 
       interactionPrompt = nextPrompt;
@@ -365,6 +442,7 @@ public final class ClientEventHandler {
             HealingSoundController.playRescueInteractionSound(mc.player.getItemInHand(interactionPrompt.hand()));
             interactionSoundTriggered = true;
          }
+
          if (interactionHoldTicks >= holdDurationTicks && !interactionTriggered) {
             interactionTriggered = true;
             if (interactionPrompt.type() == ClientEventHandler.InteractionType.RESCUE) {
@@ -374,13 +452,22 @@ public final class ClientEventHandler {
             }
          }
       } else {
-         interactionHoldTicks = 0;
-         interactionTriggered = false;
-         interactionSoundTriggered = false;
+         resetInteractionPromptHoldState();
       }
    }
 
    private static ClientEventHandler.InteractionPrompt findInteractionPrompt(Minecraft mc) {
+      if (pendingHealingSelection != null && mc.player != null && mc.player.isAlive() && !isUnconscious(mc.player)) {
+         return new ClientEventHandler.InteractionPrompt(
+            mc.player.getId(),
+            mc.player.getDisplayName().copy(),
+            ClientEventHandler.InteractionType.HEAL_SELF,
+            isHealingUseHeld(mc),
+            pendingHealingSelection.hand(),
+            pendingHealingSelection.holdDurationTicks()
+         );
+      }
+
       if (mc.player != null && mc.level != null && mc.player.isAlive() && !isUnconscious(mc.player)) {
          Player closestTarget = findClosestRescueTarget(mc);
          if (closestTarget == null) {
@@ -445,6 +532,8 @@ public final class ClientEventHandler {
    private static int getCurrentInteractionHoldDurationTicks() {
       if (interactionPrompt == null) {
          return 0;
+      } else if (interactionPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF) {
+         return pendingHealingSelection == null ? 0 : pendingHealingSelection.holdDurationTicks();
       } else {
          return interactionPrompt.holdDurationTicks();
       }
@@ -459,7 +548,9 @@ public final class ClientEventHandler {
    }
 
    private static float getDisplayedInteractionHoldTicks(float partialTick) {
-      if (interactionHoldTicks <= 0) {
+      if (interactionPrompt != null && interactionPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF) {
+         return getDisplayedPendingHealingHoldTicks(partialTick);
+      } else if (interactionHoldTicks <= 0) {
          return 0.0F;
       } else {
          int holdDurationTicks = getCurrentInteractionHoldDurationTicks();
@@ -470,6 +561,83 @@ public final class ClientEventHandler {
             ? Math.max(0.0F, partialTick)
             : 0.0F;
          return Math.min((float)holdDurationTicks, interactionHoldTicks + extraTicks);
+      }
+   }
+
+   private static void updatePendingHealingState(Minecraft mc, AbstractPlayerDamageModel damageModel) {
+      if (pendingHealingSelection == null || mc.player == null) {
+         return;
+      }
+
+      if (!mc.player.isAlive() || isUnconscious(mc.player) || damageModel == null) {
+         clearPendingHealingSelection(mc.player);
+         return;
+      }
+
+      if (mc.screen != null && !(mc.screen instanceof GuiHealthScreen)) {
+         clearPendingHealingSelection(mc.player);
+         return;
+      }
+
+      ItemStack currentStack = mc.player.getItemInHand(pendingHealingSelection.hand());
+      if (!(currentStack.getItem() instanceof ItemHealing) || !ItemStack.isSameItemSameComponents(currentStack, pendingHealingSelection.selectedStack())) {
+         clearPendingHealingSelectionWithFeedback(mc);
+         return;
+      }
+
+      var damageablePart = damageModel.getFromEnum(pendingHealingSelection.part());
+      if (damageablePart.activeHealer != null || CommonUtils.isPartVisuallyFull(damageablePart)) {
+         clearPendingHealingSelection(mc.player);
+         return;
+      }
+
+      mc.player
+         .displayClientMessage(
+            Component.translatable("firstaid.gui.healing_actionbar", new Object[]{formatSingleDecimal(getPendingHealingRemainingSeconds())})
+               .withStyle(ChatFormatting.AQUA),
+            true
+         );
+      if (mc.screen instanceof GuiHealthScreen || !isHealingUseHeld(mc)) {
+         pendingHealingSelection = pendingHealingSelection.withProgress(0, false);
+         return;
+      }
+
+      int holdDurationTicks = pendingHealingSelection.holdDurationTicks();
+      int nextHoldTicks = holdDurationTicks <= 0 ? 0 : Math.min(holdDurationTicks, pendingHealingSelection.holdTicks() + 1);
+      if (!pendingHealingSelection.triggered() && (holdDurationTicks <= 0 || nextHoldTicks >= holdDurationTicks)) {
+         ItemStack completedStack = currentStack.copyWithCount(1);
+         FirstAidClientNetworking.sendToServer(new MessageApplyHealingItem(pendingHealingSelection.part(), pendingHealingSelection.hand()));
+         HealingSoundController.playHealingApplySound(completedStack);
+         requireUseReleaseBeforeHealingSelection = true;
+         clearPendingHealingSelection(mc.player);
+      } else {
+         pendingHealingSelection = pendingHealingSelection.withProgress(nextHoldTicks, false);
+      }
+   }
+
+   private static int getHealingHoldDurationTicks(ItemHealing itemHealing, ItemStack stack) {
+      return Mth.ceil(Math.max(0, itemHealing.getApplyTime(stack)) / 50.0F);
+   }
+
+   private static float getDisplayedPendingHealingHoldTicks(float partialTick) {
+      if (pendingHealingSelection == null) {
+         return 0.0F;
+      } else {
+         int holdDurationTicks = pendingHealingSelection.holdDurationTicks();
+         if (holdDurationTicks <= 0) {
+            return 0.0F;
+         } else {
+            float extraTicks = isHealingUseHeld(Minecraft.getInstance()) ? Math.max(0.0F, partialTick) : 0.0F;
+            return Math.min((float)holdDurationTicks, pendingHealingSelection.holdTicks() + extraTicks);
+         }
+      }
+   }
+
+   private static float getPendingHealingRemainingSeconds() {
+      if (pendingHealingSelection == null) {
+         return 0.0F;
+      } else {
+         return Math.max(0.0F, (pendingHealingSelection.holdDurationTicks() - pendingHealingSelection.holdTicks()) / 20.0F);
       }
    }
 
@@ -490,16 +658,47 @@ public final class ClientEventHandler {
       return mc.screen == null && ClientHooks.GIVE_UP.isDown();
    }
 
+   private static boolean isHealingUseHeld(Minecraft mc) {
+      if (pendingHealingSelection == null || mc.player == null || mc.screen != null || !mc.options.keyUse.isDown()) {
+         return false;
+      } else {
+         InteractionHand usedItemHand = mc.player.getUsedItemHand();
+         return usedItemHand == null || usedItemHand == pendingHealingSelection.hand();
+      }
+   }
+
    private static void resetGiveUpHoldState() {
       giveUpHoldTicks = 0;
       giveUpTriggered = false;
    }
 
    private static void resetInteractionPromptState() {
+      resetInteractionPromptHoldState();
+      interactionPrompt = null;
+   }
+
+   private static void resetInteractionPromptHoldState() {
       interactionHoldTicks = 0;
       interactionTriggered = false;
       interactionSoundTriggered = false;
-      interactionPrompt = null;
+   }
+
+   private static void clearPendingHealingSelection() {
+      pendingHealingSelection = null;
+   }
+
+   private static void clearPendingHealingSelection(Player player) {
+      clearPendingHealingSelection();
+      if (player != null && player.isUsingItem()) {
+         player.stopUsingItem();
+      }
+   }
+
+   private static void clearPendingHealingSelectionWithFeedback(Minecraft mc) {
+      clearPendingHealingSelection(mc.player);
+      if (mc.player != null) {
+         mc.player.displayClientMessage(Component.translatable("firstaid.gui.healing_selection_cleared").withStyle(ChatFormatting.YELLOW), true);
+      }
    }
 
    private record InteractionPrompt(
@@ -510,7 +709,16 @@ public final class ClientEventHandler {
    private record InteractionSelection(ClientEventHandler.InteractionType type, InteractionHand hand) {
    }
 
+   private record PendingHealingSelection(
+      EnumPlayerPart part, InteractionHand hand, ItemStack selectedStack, int holdDurationTicks, int holdTicks, boolean triggered
+   ) {
+      private PendingHealingSelection withProgress(int holdTicks, boolean triggered) {
+         return new PendingHealingSelection(this.part, this.hand, this.selectedStack, this.holdDurationTicks, holdTicks, triggered);
+      }
+   }
+
    private static enum InteractionType {
+      HEAL_SELF,
       RESCUE,
       EXECUTE,
       INVALID_ITEM;

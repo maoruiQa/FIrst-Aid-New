@@ -46,6 +46,8 @@ public final class FirstAidConfig {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir().resolve("firstaid");
+    private static final int LEGACY_BANDAGE_APPLY_TIME = 2500;
+    private static final int BANDAGE_APPLY_TIME = 3000;
 
     public static final Server SERVER = new Server();
     public static final General GENERAL = new General();
@@ -93,6 +95,8 @@ public final class FirstAidConfig {
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
+        FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
+        FirstAid.naturalRegenStrategy = SERVER.naturalRegenStrategy.get();
         FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
         FirstAid.injuryDebuffOverrides.clear();
@@ -104,6 +108,9 @@ public final class FirstAidConfig {
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
+        SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
+        SERVER.naturalRegenStrategy.set(FirstAid.naturalRegenStrategy);
+        SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
         SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
         SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
@@ -115,7 +122,16 @@ public final class FirstAidConfig {
         Path file = CONFIG_DIR.resolve(fileName);
         JsonObject data = readJson(file);
         section.read(data);
+        if (section == SERVER) {
+            migrateLegacyBandageApplyTime();
+        }
         writeJson(file, section.write());
+    }
+
+    private static void migrateLegacyBandageApplyTime() {
+        if (SERVER.bandage.applyTime.get() == LEGACY_BANDAGE_APPLY_TIME) {
+            SERVER.bandage.applyTime.set(BANDAGE_APPLY_TIME);
+        }
     }
 
     private static JsonObject readJson(Path file) {
@@ -197,6 +213,8 @@ public final class FirstAidConfig {
         public final ConfigValue<Double> sleepHealPercentage;
         public final ConfigValue<Double> otherRegenMultiplier;
         public final ConfigValue<Double> naturalRegenMultiplier;
+        public final ConfigValue<FirstAid.NaturalRegenMode> naturalRegenMode;
+        public final ConfigValue<FirstAid.NaturalRegenStrategy> naturalRegenStrategy;
         public final ConfigValue<Integer> resistanceReductionPercentPerLevel;
 
         public final ConfigValue<Boolean> scaleMaxHealth;
@@ -248,7 +266,7 @@ public final class FirstAidConfig {
             legsThoughnessOffset = define(doubleValue("legsThoughnessOffset", 0D, 0D, 4D));
             feetThoughnessOffset = define(doubleValue("feetThoughnessOffset", 0D, 0D, 4D));
 
-            bandage = new IEEntry(this, "bandage", 4, 18, 2500);
+            bandage = new IEEntry(this, "bandage", 4, 18, 3000);
             plaster = new IEEntry(this, "plaster", 2, 22, 3000);
 
             allowNaturalRegeneration = define(boolValue("allowNaturalRegeneration", false));
@@ -256,6 +274,8 @@ public final class FirstAidConfig {
             sleepHealPercentage = define(doubleValue("sleepHealPercentage", 0.07D, 0D, 1D));
             otherRegenMultiplier = define(doubleValue("otherRegenMultiplier", 0.75D, 0D, 20D));
             naturalRegenMultiplier = define(doubleValue("naturalRegenMultiplier", 0.5D, 0D, 20D));
+            naturalRegenMode = define(enumValue("naturalRegenMode", FirstAid.NaturalRegenMode.LIMITED, FirstAid.NaturalRegenMode.class));
+            naturalRegenStrategy = define(enumValue("naturalRegenStrategy", FirstAid.NaturalRegenStrategy.CRITICAL, FirstAid.NaturalRegenStrategy.class));
             resistanceReductionPercentPerLevel = define(intValue("resistanceReductionPercentPerLevel", 20, 1, 40));
 
             scaleMaxHealth = define(boolValue("scaleMaxHealth", true));

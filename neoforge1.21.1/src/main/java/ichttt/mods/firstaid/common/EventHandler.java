@@ -314,16 +314,20 @@ public class EventHandler {
             return;
         float amount = event.getAmount();
         //Hacky shit to reduce vanilla regen
-        if (Arrays.stream(Thread.currentThread().getStackTrace()).anyMatch(stackTraceElement -> stackTraceElement.getClassName().equals(FoodData.class.getName()))) {
-            if (FirstAidConfig.SERVER.allowNaturalRegeneration.get())
-                amount = amount * (float) (double) FirstAidConfig.SERVER.naturalRegenMultiplier.get();
+        boolean fromFood = Arrays.stream(Thread.currentThread().getStackTrace()).anyMatch(stackTraceElement -> stackTraceElement.getClassName().equals(FoodData.class.getName()));
+        if (fromFood) {
+            amount = amount * (float) (double) FirstAidConfig.SERVER.naturalRegenMultiplier.get();
         } else {
             amount = amount * (float) (double) FirstAidConfig.SERVER.otherRegenMultiplier.get();
         }
         if (FirstAidConfig.GENERAL.debug.get()) {
             CommonUtils.debugLogStacktrace("External healing: : " + amount);
         }
-        HealthDistribution.distributeHealth(amount, (Player) entity, true);
+        if (fromFood) {
+            HealthDistribution.applyNaturalRegen(amount, (Player) entity, true);
+        } else {
+            HealthDistribution.distributeHealth(amount, (Player) entity, true);
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
@@ -353,7 +357,7 @@ public class EventHandler {
         LevelAccessor world = event.getLevel();
         if (!world.isClientSide() && world instanceof net.minecraft.server.level.ServerLevel serverLevel) {
             serverLevel.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION)
-                    .set(FirstAidConfig.SERVER.allowNaturalRegeneration.get(), serverLevel.getServer());
+                    .set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF, serverLevel.getServer());
         }
     }
 
@@ -444,6 +448,8 @@ public class EventHandler {
         FirstAid.lowSuppressionEnabled = false;
         FirstAid.rescueWakeUpEnabled = false;
         FirstAid.rescueWakeUpDelaySeconds = FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
+        FirstAid.naturalRegenMode = FirstAid.NaturalRegenMode.LIMITED;
+        FirstAid.naturalRegenStrategy = FirstAid.NaturalRegenStrategy.CRITICAL;
         FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
         FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
         FirstAid.injuryDebuffOverrides.clear();
@@ -793,6 +799,7 @@ public class EventHandler {
         ), false);
         player.displayClientMessage(buildCommandTipLine(
                 "firstaid.tip.commands.group.rescue",
+                buildCommandTipChip("firstaid.tip.commands.naturalregen.label", "firstaid.tip.commands.naturalregen.detail", "/firstaid naturalregen limited critical", ChatFormatting.GREEN),
                 buildCommandTipChip("firstaid.tip.commands.revivewakeup.label", "firstaid.tip.commands.revivewakeup.detail", "/firstaid revivewakeup on 15", ChatFormatting.GREEN)
         ), false);
         player.displayClientMessage(buildCommandTipLine(

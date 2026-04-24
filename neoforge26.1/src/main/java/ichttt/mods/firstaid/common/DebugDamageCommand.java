@@ -1,0 +1,90 @@
+/*
+ * FirstAid
+ * Copyright (C) 2017-2024
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package ichttt.mods.firstaid.common;
+
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.FloatArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
+import ichttt.mods.firstaid.common.damagesystem.distribution.DamageDistribution;
+import ichttt.mods.firstaid.common.damagesystem.distribution.DirectDamageDistributionAlgorithm;
+import ichttt.mods.firstaid.common.init.FirstAidDataAttachments;
+import ichttt.mods.firstaid.common.util.CommonUtils;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.Permissions;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class DebugDamageCommand {
+    private static final SimpleCommandExceptionType TYPE = new SimpleCommandExceptionType(Component.literal("0 is invalid as damage"));
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        LiteralArgumentBuilder<CommandSourceStack> builder = Commands.literal("damagePart")
+                .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER));
+        List<EnumPlayerPart> allowedValues = new ArrayList<>(Arrays.asList(EnumPlayerPart.VALUES));
+        allowedValues.add(null);
+
+        for(EnumPlayerPart part : allowedValues) {
+            builder.then(Commands.literal(part == null ? "ALL" : part.name())
+                    .then(Commands.argument("damage", FloatArgumentType.floatArg())
+                    .executes(context -> handleCommand(part, FloatArgumentType.getFloat(context, "damage"), true, context.getSource().getPlayerOrException()))
+                    .then(Commands.literal("nodebuff")
+                    .executes(context -> handleCommand(part, FloatArgumentType.getFloat(context, "damage"), false, context.getSource().getPlayerOrException())))));
+        }
+        dispatcher.register(builder);
+    }
+
+    private static int handleCommand(EnumPlayerPart part, float damage, boolean debuff, ServerPlayer player) throws CommandSyntaxException {
+        if (damage == 0F)
+            throw TYPE.create();
+        AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
+        if (damageModel == null) return 0;
+        if (part == null) {
+            for (EnumPlayerPart aPart : EnumPlayerPart.VALUES) {
+                doDamage(aPart, damage, debuff, player, damageModel);
+            }
+        } else {
+            doDamage(part, damage, debuff, player, damageModel);
+        }
+        if (damageModel.isDead(player)) {
+            player.sendSystemMessage(Component.translatable("death.attack.generic", player.getDisplayName()));
+            CommonUtils.killPlayer(damageModel, player, null);
+        }
+
+        CommonUtils.syncDamageModel(player);
+        return 1;
+    }
+
+    private static void doDamage(EnumPlayerPart part, float damage, boolean debuff, ServerPlayer player, AbstractPlayerDamageModel damageModel) {
+        if (damage > 0F) {
+            DamageDistribution.handleDamageTaken(new DirectDamageDistributionAlgorithm(part, debuff), damageModel, damage, player, player.damageSources().fellOutOfWorld(), false, false);
+        } else {
+            damageModel.getFromEnum(part).heal(-damage, player, debuff);
+        }
+    }
+}
+

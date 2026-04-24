@@ -1,0 +1,26 @@
+# First Aid mod definition file
+modLoader="javafml"
+loaderVersion="[47,)"
+issueTrackerURL="https://github.com/ichttft/firstaid"
+displayURL="https://minecraft.curseforge.com/projects/first-aid"
+logoFile="firstaid_logo.png"
+authors="ichttt"
+license="Main Mod: GPLv3, API: LGPL v2.1"
+[[mods]]
+    modId="firstaid"
+    version="${mod_version}"
+    displayName="First Aid"
+    description="First Aid is a game changing mod focused around a new health system"
+    credits="Thanks to TechnikForLife for developing the initial idea with me, and thanks to rozarke for designing the new textures for FirstAid!"
+[[dependencies.firstaid]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="1.20.1"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.firstaid]]
+    modId="playerrevive"
+    mandatory=false
+    versionRange="[2.0.24,)"
+    ordering="NONE"
+    side="BOTH"

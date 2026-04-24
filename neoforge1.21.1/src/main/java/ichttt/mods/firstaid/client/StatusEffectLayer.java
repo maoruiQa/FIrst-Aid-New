@@ -20,6 +20,7 @@ package ichttt.mods.firstaid.client;
 
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
@@ -32,6 +33,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.StringUtil;
 
 import java.util.Locale;
+import javax.annotation.Nullable;
 
 public class StatusEffectLayer implements LayeredDraw.Layer {
     public static final StatusEffectLayer INSTANCE = new StatusEffectLayer();
@@ -161,9 +163,11 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
                 guiGraphics.drawCenteredString(minecraft.font, Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()), centerX, centerY + 28, opaque(0xFFB3B3));
                 renderGiveUpProgress(guiGraphics, minecraft, centerX, centerY + 44, partialTick);
             }
-            } else if (ClientEventHandler.hasInteractionPrompt()) {
+        } else if (ClientEventHandler.hasInteractionPrompt()) {
             renderRescuePrompt(guiGraphics, minecraft, width / 2, height / 2 + 24, deltaTracker.getGameTimeDeltaTicks());
         }
+
+        renderStatusSummary(guiGraphics, minecraft, damageModel, playerDamageModel);
     }
 
     private void tickStrengths(float targetPain, float targetSuppression) {
@@ -239,9 +243,22 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
     }
 
     private static void renderRescuePrompt(GuiGraphics guiGraphics, Minecraft minecraft, int centerX, int centerY, float partialTick) {
+        boolean healingPrompt = ClientEventHandler.isHealingInteractionPrompt();
         boolean executionPrompt = ClientEventHandler.isExecutionInteractionPrompt();
-        guiGraphics.drawCenteredString(minecraft.font, ClientEventHandler.getInteractionPromptTitle(), centerX, centerY - 26, executionPrompt ? opaque(0xFFD7CC) : opaque(0xE9F7E2));
-        guiGraphics.drawCenteredString(minecraft.font, ClientEventHandler.getInteractionPromptDetail(), centerX, centerY - 12, executionPrompt ? opaque(0xEFD2D2) : opaque(0xCFE4C5));
+        guiGraphics.drawCenteredString(
+                minecraft.font,
+                ClientEventHandler.getInteractionPromptTitle(),
+                centerX,
+                centerY - 26,
+                healingPrompt ? opaque(0x74D6CC) : (executionPrompt ? opaque(0xFFD7CC) : opaque(0xE9F7E2))
+        );
+        guiGraphics.drawCenteredString(
+                minecraft.font,
+                ClientEventHandler.getInteractionPromptDetail(),
+                centerX,
+                centerY - 12,
+                healingPrompt ? opaque(0x9E9F9E) : (executionPrompt ? opaque(0xEFD2D2) : opaque(0xCFE4C5))
+        );
         if (ClientEventHandler.getInteractionHoldDurationSeconds() <= 0.0F) {
             return;
         }
@@ -253,10 +270,22 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
         float progress = ClientEventHandler.getInteractionHoldProgress(partialTick);
         int fillWidth = Math.round((RESCUE_BAR_WIDTH - 2) * progress);
 
-        guiGraphics.fill(left, top, right, bottom, executionPrompt ? color(180, 48, 8, 8) : color(180, 10, 38, 14));
-        guiGraphics.fill(left + 1, top + 1, right - 1, bottom - 1, executionPrompt ? color(180, 82, 18, 18) : color(180, 24, 74, 28));
+        guiGraphics.fill(left, top, right, bottom, healingPrompt ? color(180, 8, 28, 36) : (executionPrompt ? color(180, 48, 8, 8) : color(180, 10, 38, 14)));
+        guiGraphics.fill(
+                left + 1,
+                top + 1,
+                right - 1,
+                bottom - 1,
+                healingPrompt ? color(180, 12, 54, 66) : (executionPrompt ? color(180, 82, 18, 18) : color(180, 24, 74, 28))
+        );
         if (fillWidth > 0) {
-            guiGraphics.fill(left + 1, top + 1, left + 1 + fillWidth, bottom - 1, executionPrompt ? color(220, 232, 70, 70) : color(220, 126, 214, 110));
+            guiGraphics.fill(
+                    left + 1,
+                    top + 1,
+                    left + 1 + fillWidth,
+                    bottom - 1,
+                    healingPrompt ? color(220, 88, 224, 210) : (executionPrompt ? color(220, 232, 70, 70) : color(220, 126, 214, 110))
+            );
         }
 
         guiGraphics.drawCenteredString(
@@ -264,7 +293,7 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
                 ClientEventHandler.getInteractionPromptProgressText(partialTick),
                 centerX,
                 top + 12,
-                executionPrompt ? opaque(0xFFB7A0) : opaque(0xD8F0D0)
+                healingPrompt ? opaque(0xAEE44C) : (executionPrompt ? opaque(0xFFB7A0) : opaque(0xD8F0D0))
         );
     }
 
@@ -283,6 +312,69 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
 
     private static int opaque(int rgb) {
         return 0xFF000000 | rgb;
+    }
+
+    private static void renderStatusSummary(
+            GuiGraphics guiGraphics, Minecraft minecraft, AbstractPlayerDamageModel damageModel, @Nullable PlayerDamageModel playerDamageModel
+    ) {
+        int lineY = 8;
+        if (damageModel.getPainLevel() > 0) {
+            boolean painSuppressed = minecraft.player.hasEffect(RegistryObjects.MORPHINE_EFFECT) || minecraft.player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
+            Component painText = painSuppressed
+                    ? Component.translatable("firstaid.gui.status.pain_suppressed")
+                    : Component.translatable("firstaid.gui.status.pain", Component.translatable(getPainSeverityKey(damageModel.getPainLevel())));
+            guiGraphics.drawString(minecraft.font, painText, 8, lineY, painSuppressed ? 9425919 : 16747146);
+            lineY += 10;
+        }
+
+        if (damageModel.getAdrenalineLevel() > 0) {
+            int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : damageModel.getAdrenalineLevel();
+            guiGraphics.drawString(
+                    minecraft.font,
+                    Component.translatable("firstaid.gui.status.suppression", Component.translatable(getSuppressionSeverityKey(suppressionLevel))),
+                    8,
+                    lineY,
+                    12637930
+            );
+            lineY += 10;
+        }
+
+        if (damageModel.getUnconsciousTicks() > 0) {
+            guiGraphics.drawString(
+                    minecraft.font,
+                    Component.translatable(
+                            playerDamageModel != null
+                                    ? playerDamageModel.getUnconsciousReasonKey()
+                                    : (damageModel.isCriticalConditionActive() ? "firstaid.gui.critical_condition" : "firstaid.gui.unconscious")
+                    ),
+                    8,
+                    lineY,
+                    16766421
+            );
+            lineY += 10;
+        }
+
+        for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(minecraft.player)) {
+            lineY = MedicineStatusClientHelper.drawStatusLine(guiGraphics, minecraft.font, display, 8, lineY);
+        }
+    }
+
+    private static String getPainSeverityKey(int painLevel) {
+        return switch (painLevel) {
+            case 1 -> "firstaid.gui.pain.mild";
+            case 2 -> "firstaid.gui.pain.moderate";
+            case 3 -> "firstaid.gui.pain.severe";
+            case 4 -> "firstaid.gui.pain.extreme";
+            default -> "firstaid.gui.pain.critical";
+        };
+    }
+
+    private static String getSuppressionSeverityKey(int suppressionLevel) {
+        return switch (suppressionLevel) {
+            case 1 -> "firstaid.gui.suppression.low";
+            case 2 -> "firstaid.gui.suppression.medium";
+            default -> "firstaid.gui.suppression.high";
+        };
     }
 
     public void resetDebugState() {

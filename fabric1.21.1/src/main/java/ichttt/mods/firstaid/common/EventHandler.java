@@ -410,7 +410,7 @@ public final class EventHandler {
     }
 
     private static void onWorldLoad(ServerLevel world) {
-        world.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(FirstAidConfig.SERVER.allowNaturalRegeneration.get(), world.getServer());
+        world.getGameRules().getRule(GameRules.RULE_NATURAL_REGENERATION).set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF, world.getServer());
     }
 
     private static void onDimensionChange(ServerPlayer player) {
@@ -453,6 +453,8 @@ public final class EventHandler {
         FirstAid.lowSuppressionEnabled = false;
         FirstAid.rescueWakeUpEnabled = false;
         FirstAid.rescueWakeUpDelaySeconds = FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
+        FirstAid.naturalRegenMode = FirstAid.NaturalRegenMode.LIMITED;
+        FirstAid.naturalRegenStrategy = FirstAid.NaturalRegenStrategy.CRITICAL;
         FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
         FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
         FirstAid.injuryDebuffOverrides.clear();
@@ -573,6 +575,7 @@ public final class EventHandler {
         ), false);
         player.displayClientMessage(buildCommandTipLine(
                 "firstaid.tip.commands.group.rescue",
+                buildCommandTipChip("firstaid.tip.commands.naturalregen.label", "firstaid.tip.commands.naturalregen.detail", "/firstaid naturalregen limited critical", ChatFormatting.GREEN),
                 buildCommandTipChip("firstaid.tip.commands.revivewakeup.label", "firstaid.tip.commands.revivewakeup.detail", "/firstaid revivewakeup on 15", ChatFormatting.GREEN)
         ), false);
         player.displayClientMessage(buildCommandTipLine(

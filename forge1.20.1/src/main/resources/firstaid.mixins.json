@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "ichttt.mods.firstaid.mixin",
+  "refmap": "firstaid.refmap.json",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "PlayerDimensionsMixin"
+  ],
+  "client": [
+    "client.LivingEntityRendererMixin",
+    "client.PlayerModelMixin",
+    "client.PlayerRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

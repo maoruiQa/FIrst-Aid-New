@@ -34,8 +34,13 @@ public final class FirstAidClient {
         FirstAidClientNetworking.registerClient();
         ClientAccess.install(new ClientAccess.ClientActions() {
             @Override
-            public void showApplyHealth(InteractionHand hand) {
-                ClientHooks.showGuiApplyHealth(hand);
+            public boolean showApplyHealth(InteractionHand hand) {
+                return ClientHooks.showGuiApplyHealth(hand);
+            }
+
+            @Override
+            public boolean beginApplyHealthUse(InteractionHand hand) {
+                return ClientHooks.beginApplyHealthUse(hand);
             }
 
             @Override

@@ -1,101 +1,92 @@
 package ichttt.mods.firstaid.common.items;
 
+import ichttt.mods.firstaid.api.medicine.ItemMedicine;
+import ichttt.mods.firstaid.api.medicine.MedicineStatusContext;
+import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
+import ichttt.mods.firstaid.api.medicine.MedicineUseContext;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
-import ichttt.mods.firstaid.common.util.CommonUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
+import java.util.List;
+import javax.annotation.Nonnull;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.util.StringUtil;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.UseAnim;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.item.Item.Properties;
+import net.minecraft.world.item.Item.TooltipContext;
+import net.minecraft.world.item.TooltipFlag;
 
-import javax.annotation.Nonnull;
+public class ItemAdrenalineInjector extends ItemMedicine {
+   private static final ResourceLocation STATUS_ID = ResourceLocation.fromNamespaceAndPath("firstaid", "adrenaline");
 
-public class ItemAdrenalineInjector extends Item {
+   public ItemAdrenalineInjector(Properties properties) {
+      super(properties.stacksTo(1));
+   }
 
-    private static boolean suppressNextSound = false;
+   @Override
+   public void applyMedicine(MedicineUseContext context) {
+      context.applyAdrenalineInjection();
+   }
 
-    public ItemAdrenalineInjector(Item.Properties properties) {
-        super(properties.stacksTo(1).durability(2));
-    }
+   @Nonnull
+   @Override
+   public UseAnim getUseAnimation(ItemStack stack) {
+      return UseAnim.NONE;
+   }
 
-    @Override
-    @Nonnull
-    public ItemStack finishUsingItem(@Nonnull ItemStack stack, @Nonnull Level world, @Nonnull LivingEntity entityLiving) {
-        if (entityLiving instanceof Player player) {
-            if (CommonUtils.getDamageModel(player) instanceof PlayerDamageModel playerDamageModel) {
-                playerDamageModel.applyAdrenalineInjection(player);
-            } else {
-                MobEffectInstance activePainkiller = player.getEffect(RegistryObjects.PAINKILLER_EFFECT);
-                int duration = Math.max(PlayerDamageModel.getAdrenalineDuration(), activePainkiller == null ? 0 : activePainkiller.getDuration());
-                MobEffectInstance activeAbsorption = player.getEffect(MobEffects.ABSORPTION);
-                int absorptionDuration = Math.max(PlayerDamageModel.getAdrenalineDuration(), activeAbsorption == null ? 0 : activeAbsorption.getDuration());
-                int absorptionAmplifier = Math.max(1, activeAbsorption == null ? 0 : activeAbsorption.getAmplifier());
-                MobEffectInstance activeHaste = player.getEffect(MobEffects.DIG_SPEED);
-                MobEffectInstance activeStrength = player.getEffect(MobEffects.DAMAGE_BOOST);
-                MobEffectInstance activeSpeed = player.getEffect(MobEffects.MOVEMENT_SPEED);
-                int hasteDuration = Math.max(PlayerDamageModel.getAdrenalineDuration(), activeHaste == null ? 0 : activeHaste.getDuration());
-                int hasteAmplifier = Math.max(0, activeHaste == null ? 0 : activeHaste.getAmplifier());
-                int strengthDuration = Math.max(PlayerDamageModel.getAdrenalineDuration(), activeStrength == null ? 0 : activeStrength.getDuration());
-                int strengthAmplifier = Math.max(0, activeStrength == null ? 0 : activeStrength.getAmplifier());
-                int speedDuration = Math.max(PlayerDamageModel.getAdrenalineDuration(), activeSpeed == null ? 0 : activeSpeed.getDuration());
-                int speedAmplifier = Math.max(0, activeSpeed == null ? 0 : activeSpeed.getAmplifier());
-                player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, duration, 0, false, false));
-                player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, absorptionDuration, absorptionAmplifier, false, false));
-                player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, hasteDuration, hasteAmplifier, false, false));
-                player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, strengthDuration, strengthAmplifier, false, false));
-                player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, speedDuration, speedAmplifier, false, false));
-                player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 140, 0, false, false));
-            }
-            if (!player.getAbilities().instabuild) {
-                EquipmentSlot slot = player.getUsedItemHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
-                stack.hurtAndBreak(1, player, slot);
-            }
-        }
-        if (world.isClientSide()) {
-            suppressNextSound = true;
-        }
-        return stack;
-    }
+   @Override
+   public SoundEvent getUseStartSound(ItemStack stack) {
+      return (SoundEvent)RegistryObjects.ADRENALINE_INJECTOR_USE.value();
+   }
 
-    @Override
-    @Nonnull
-    public UseAnim getUseAnimation(ItemStack stack) {
-        return UseAnim.NONE;
-    }
+   @Override
+   public int getUseDuration(ItemStack stack, LivingEntity entity) {
+      return 40;
+   }
 
-    @Override
-    @Nonnull
-    public InteractionResultHolder<ItemStack> use(Level world, Player player, @Nonnull InteractionHand hand) {
-        if (world.isClientSide()) {
-            if (suppressNextSound) {
-                suppressNextSound = false;
-            } else {
-                player.playSound(RegistryObjects.ADRENALINE_INJECTOR_USE.value(), 1.0F, 1.0F);
-            }
-        }
-        player.startUsingItem(hand);
-        return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), world.isClientSide());
-    }
+   @Override
+   protected void consumeAfterUse(MedicineUseContext context) {
+      if (!context.getPlayer().getAbilities().instabuild) {
+         EquipmentSlot slot = context.getPlayer().getUsedItemHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
+         context.getStack().hurtAndBreak(1, context.getPlayer(), slot);
+      }
+   }
 
-    @Override
-    public int getUseDuration(ItemStack stack, LivingEntity entity) {
-        return 40;
-    }
+   @Override
+   public MedicineStatusDisplay getActiveStatus(MedicineStatusContext context) {
+      int adrenalineLevel = context.getDamageModel() == null ? 0 : context.getDamageModel().getAdrenalineLevel();
+      return adrenalineLevel > 0
+         ? new MedicineStatusDisplay(
+            STATUS_ID,
+            Component.translatable("firstaid.gui.status.adrenaline", new Object[]{Component.translatable(getAdrenalineSeverityKey(adrenalineLevel))}),
+            null,
+            12637930
+         )
+         : null;
+   }
 
-    @Override
-    public void releaseUsing(@Nonnull ItemStack stack, @Nonnull Level world, @Nonnull LivingEntity entityLiving, int timeCharged) {
-        if (world.isClientSide()) {
-            Minecraft.getInstance().getSoundManager().stop(
-                    RegistryObjects.ADRENALINE_INJECTOR_USE.value().getLocation(), SoundSource.PLAYERS);
-        }
-    }
+   @Override
+   public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+      tooltipComponents.add(
+         Component.translatable(
+               "firstaid.tooltip.adrenaline_injector",
+               new Object[]{StringUtil.formatTickDuration(40, 20.0F), StringUtil.formatTickDuration(PlayerDamageModel.getAdrenalineDuration(), 20.0F)}
+            )
+            .withStyle(ChatFormatting.GRAY)
+      );
+   }
+
+   private static String getAdrenalineSeverityKey(int adrenalineLevel) {
+      return switch (adrenalineLevel) {
+         case 1 -> "firstaid.gui.adrenaline.low";
+         case 2 -> "firstaid.gui.adrenaline.medium";
+         default -> "firstaid.gui.adrenaline.high";
+      };
+   }
 }

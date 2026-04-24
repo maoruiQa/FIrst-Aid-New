@@ -44,6 +44,8 @@ public final class FirstAid {
     public static boolean lowSuppressionEnabled = false;
     public static boolean rescueWakeUpEnabled = false;
     public static double rescueWakeUpDelaySeconds = DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
+    public static NaturalRegenMode naturalRegenMode = NaturalRegenMode.LIMITED;
+    public static NaturalRegenStrategy naturalRegenStrategy = NaturalRegenStrategy.CRITICAL;
     public static MedicineEffectMode medicineEffectMode = MedicineEffectMode.REALISTIC;
     public static InjuryDebuffMode injuryDebuffMode = InjuryDebuffMode.NORMAL;
     public static final Map<ResourceLocation, InjuryDebuffMode> injuryDebuffOverrides = new ConcurrentHashMap<>();
@@ -68,6 +70,17 @@ public final class FirstAid {
         NORMAL,
         LOW,
         OFF
+    }
+
+    public enum NaturalRegenMode {
+        OFF,
+        LIMITED,
+        FULL
+    }
+
+    public enum NaturalRegenStrategy {
+        CRITICAL,
+        RANDOM
     }
 
     public static InjuryDebuffMode getInjuryDebuffMode(ResourceLocation effectId) {

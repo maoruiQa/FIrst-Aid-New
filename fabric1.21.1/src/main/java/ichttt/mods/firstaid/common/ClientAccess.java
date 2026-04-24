@@ -32,8 +32,12 @@ public final class ClientAccess {
         actions = Objects.requireNonNull(clientActions, "clientActions");
     }
 
-    public static void showApplyHealth(InteractionHand hand) {
-        actions.showApplyHealth(hand);
+    public static boolean showApplyHealth(InteractionHand hand) {
+        return actions.showApplyHealth(hand);
+    }
+
+    public static boolean beginApplyHealthUse(InteractionHand hand) {
+        return actions.beginApplyHealthUse(hand);
     }
 
     public static int getTextWidth(String text) {
@@ -41,14 +45,22 @@ public final class ClientAccess {
     }
 
     public interface ClientActions {
-        void showApplyHealth(InteractionHand hand);
+        boolean showApplyHealth(InteractionHand hand);
+
+        boolean beginApplyHealthUse(InteractionHand hand);
 
         int getTextWidth(String text);
     }
 
     private static final class NoopClientActions implements ClientActions {
         @Override
-        public void showApplyHealth(InteractionHand hand) {
+        public boolean showApplyHealth(InteractionHand hand) {
+            return false;
+        }
+
+        @Override
+        public boolean beginApplyHealthUse(InteractionHand hand) {
+            return false;
         }
 
         @Override

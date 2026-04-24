@@ -64,21 +64,6 @@ public final class RegistryObjects {
     static {
         FirstAidConfig.Server server = FirstAidConfig.SERVER;
 
-        BANDAGE = registerItem("bandage", ItemHealing.create(
-                itemProperties("bandage").stacksTo(16),
-                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack),
-                stack -> server.bandage.applyTime.get()
-        ));
-        PLASTER = registerItem("plaster", ItemHealing.create(
-                itemProperties("plaster").stacksTo(16),
-                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack),
-                stack -> server.plaster.applyTime.get()
-        ));
-        DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));
-        ADRENALINE_INJECTOR = registerItem("adrenaline_injector", new ItemAdrenalineInjector(itemProperties("adrenaline_injector").durability(2)));
-        MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
-        PAINKILLERS = registerItem("painkillers", new ItemPainkillers(itemProperties("painkillers")));
-
         ResourceLocation soundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.heartbeat");
         HEARTBEAT = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, soundLocation, SoundEvent.createVariableRangeEvent(soundLocation));
         ResourceLocation tinnitusSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.tinnitus");
@@ -95,6 +80,25 @@ public final class RegistryObjects {
         );
         ResourceLocation pillsSoundLocation = ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "item.take_pills");
         PILLS_USE = Registry.registerForHolder(BuiltInRegistries.SOUND_EVENT, pillsSoundLocation, SoundEvent.createVariableRangeEvent(pillsSoundLocation));
+
+        BANDAGE = registerItem("bandage", ItemHealing.create(
+                itemProperties("bandage").stacksTo(16),
+                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack),
+                stack -> server.bandage.applyTime.get(),
+                stack -> BANDAGE_USE.value(),
+                stack -> ItemHealing.ApplySoundMode.WHILE_USING
+        ));
+        PLASTER = registerItem("plaster", ItemHealing.create(
+                itemProperties("plaster").stacksTo(16),
+                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack),
+                stack -> server.plaster.applyTime.get(),
+                stack -> BANDAGE_USE.value(),
+                stack -> ItemHealing.ApplySoundMode.WHILE_USING
+        ));
+        DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));
+        ADRENALINE_INJECTOR = registerItem("adrenaline_injector", new ItemAdrenalineInjector(itemProperties("adrenaline_injector").durability(2)));
+        MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
+        PAINKILLERS = registerItem("painkillers", new ItemPainkillers(itemProperties("painkillers")));
 
         MORPHINE_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("morphine"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0xDDD));
         PAINKILLER_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("painkiller"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0x6EC5FF));

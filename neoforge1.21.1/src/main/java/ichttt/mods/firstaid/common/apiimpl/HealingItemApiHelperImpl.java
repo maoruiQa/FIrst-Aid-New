@@ -18,9 +18,12 @@
 
 package ichttt.mods.firstaid.common.apiimpl;
 
+import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.HealingItemApiHelper;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.client.ClientHooks;
+import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -40,9 +43,28 @@ public class HealingItemApiHelperImpl extends HealingItemApiHelper {
     @Override
     public InteractionResultHolder<ItemStack> onItemRightClick(ItemHealing itemHealing, Level world, Player player, InteractionHand hand) {
         if (world.isClientSide()) {
-            ClientHooks.showGuiApplyHealth(hand);
+            boolean consumed = ClientHooks.beginApplyHealthUse(hand) || ClientHooks.showGuiApplyHealth(hand);
+            return consumed ? InteractionResultHolder.success(player.getItemInHand(hand)) : InteractionResultHolder.fail(player.getItemInHand(hand));
         }
-        return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), world.isClientSide());
+        return canUseHealingItem(player)
+                ? InteractionResultHolder.success(player.getItemInHand(hand))
+                : InteractionResultHolder.fail(player.getItemInHand(hand));
+    }
+
+    private static boolean canUseHealingItem(Player player) {
+        AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
+        if (damageModel == null) {
+            return false;
+        }
+
+        for (EnumPlayerPart part : EnumPlayerPart.VALUES) {
+            var damageablePart = damageModel.getFromEnum(part);
+            if (damageablePart.activeHealer == null && !CommonUtils.isPartVisuallyFull(damageablePart)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

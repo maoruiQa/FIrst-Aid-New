@@ -40,7 +40,8 @@ public class HealingItemApiHelperImpl extends HealingItemApiHelper {
     @Override
     public InteractionResultHolder<ItemStack> onItemRightClick(ItemHealing itemHealing, Level world, Player player, InteractionHand hand) {
         if (world.isClientSide()) {
-            ClientAccess.showApplyHealth(hand);
+            boolean consumed = ClientAccess.beginApplyHealthUse(hand) || ClientAccess.showApplyHealth(hand);
+            return consumed ? InteractionResultHolder.success(player.getItemInHand(hand)) : InteractionResultHolder.fail(player.getItemInHand(hand));
         }
         return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), world.isClientSide());
     }

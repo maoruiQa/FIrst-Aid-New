@@ -79,7 +79,9 @@ public final class RegistryObjects {
          ItemHealing.create(
             itemProperties("bandage").stacksTo(16),
             stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack),
-            stack -> server.bandage.applyTime.get()
+            stack -> server.bandage.applyTime.get(),
+            stack -> RegistryObjects.BANDAGE_USE.value(),
+            stack -> ItemHealing.ApplySoundMode.WHILE_USING
          )
       );
       PLASTER = registerItem(
@@ -87,7 +89,9 @@ public final class RegistryObjects {
          ItemHealing.create(
             itemProperties("plaster").stacksTo(16),
             stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack),
-            stack -> server.plaster.applyTime.get()
+            stack -> server.plaster.applyTime.get(),
+            stack -> RegistryObjects.BANDAGE_USE.value(),
+            stack -> ItemHealing.ApplySoundMode.WHILE_USING
          )
       );
       DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));

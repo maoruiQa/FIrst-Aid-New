@@ -23,6 +23,7 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.util.EventCalendar;
+import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -56,12 +57,31 @@ public class ClientHooks {
         EventCalendar.checkDate();
     }
 
-    public static void showGuiApplyHealth(InteractionHand activeHand) {
+    public static boolean showGuiApplyHealth(InteractionHand activeHand) {
         Minecraft mc = Minecraft.getInstance();
+        if (ClientEventHandler.hasValidPendingHealingSelection(activeHand)) {
+            return false;
+        }
+        if (!ClientEventHandler.canOpenHealingScreen(activeHand)) {
+            return false;
+        }
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(mc.player);
-        if (damageModel == null) return;
+        if (damageModel == null) {
+            return false;
+        }
+        FirstAid.NETWORKING.sendToServer(new MessageClientRequest(MessageClientRequest.RequestType.REQUEST_REFRESH));
         GuiHealthScreen.INSTANCE = new GuiHealthScreen(damageModel, activeHand);
         mc.setScreen(GuiHealthScreen.INSTANCE);
+        return true;
+    }
+
+    public static boolean beginApplyHealthUse(InteractionHand hand) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || !ClientEventHandler.hasValidPendingHealingSelection(hand)) {
+            return false;
+        }
+        mc.player.startUsingItem(hand);
+        return true;
     }
 
     public static void registerKeybindEvent(RegisterKeyMappingsEvent event) {
@@ -102,4 +122,3 @@ public class ClientHooks {
         );
     }
 }
-

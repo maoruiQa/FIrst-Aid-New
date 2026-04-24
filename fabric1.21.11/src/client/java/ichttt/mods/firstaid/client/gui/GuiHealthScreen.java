@@ -4,13 +4,14 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
+import ichttt.mods.firstaid.client.ClientEventHandler;
 import ichttt.mods.firstaid.client.ClientHooks;
-import ichttt.mods.firstaid.client.HealingSoundController;
+import ichttt.mods.firstaid.client.MedicineStatusClientHelper;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
+import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
-import ichttt.mods.firstaid.common.network.MessageApplyHealingItem;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.network.MessageClientRequest.RequestType;
 import ichttt.mods.firstaid.common.util.CommonUtils;
@@ -109,21 +110,9 @@ public class GuiHealthScreen extends Screen {
 
    private void applyHealing(EnumPlayerPart part) {
       if (this.activeHand != null && this.minecraft != null && this.minecraft.player != null) {
-         FirstAidClientNetworking.sendToServer(new MessageApplyHealingItem(part, this.activeHand));
-         AbstractPlayerDamageModel localModel = this.damageModel;
-         AbstractPlayerDamageModel liveModel = CommonUtils.getDamageModel(this.minecraft.player);
-         if (liveModel != null) {
-            localModel = liveModel;
+         if (ClientEventHandler.selectPendingHealing(part, this.activeHand)) {
+            this.onClose();
          }
-
-         AbstractDamageablePart damageablePart = localModel.getFromEnum(part);
-         ItemStack itemInHand = this.minecraft.player.getItemInHand(this.activeHand);
-         if (itemInHand.getItem() instanceof ItemHealing itemHealing) {
-            damageablePart.activeHealer = itemHealing.createNewHealer(itemInHand.copyWithCount(1));
-         }
-
-         HealingSoundController.playHealingApplySound();
-         this.onClose();
       }
    }
 
@@ -206,11 +195,6 @@ public class GuiHealthScreen extends Screen {
             lineY += 10;
          }
 
-         if (player.hasEffect(RegistryObjects.PAINKILLER_EFFECT)) {
-            guiGraphics.drawString(this.font, Component.translatable("firstaid.gui.status.painkiller"), this.guiLeft + 8, lineY, 9425919);
-            lineY += 10;
-         }
-
          if (renderModel.getAdrenalineLevel() > 0) {
             int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : renderModel.getAdrenalineLevel();
             guiGraphics.drawString(
@@ -260,7 +244,12 @@ public class GuiHealthScreen extends Screen {
                   lineY,
                   16757683
                );
+               lineY += 10;
             }
+         }
+
+         for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(player)) {
+            lineY = MedicineStatusClientHelper.drawStatusLine(guiGraphics, this.font, display, this.guiLeft + 8, lineY);
          }
       }
    }

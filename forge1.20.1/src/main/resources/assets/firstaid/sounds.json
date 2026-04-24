@@ -1,0 +1,47 @@
+{
+  "debuff.heartbeat": {
+    "sounds": [
+      {
+        "name": "firstaid:heartbeat",
+        "preload": "true"
+      }
+    ],
+    "subtitle": "subtitles.debuff.heartbeat"
+  },
+  "debuff.tinnitus": {
+    "sounds": [
+      {
+        "name": "firstaid:tinnitus",
+        "preload": "true"
+      }
+    ]
+  },
+  "item.bandage_use": {
+    "sounds": [
+      {
+        "name": "firstaid:use_bandage"
+      }
+    ]
+  },
+  "item.defibrillator_use": {
+    "sounds": [
+      {
+        "name": "firstaid:defibrillator_use"
+      }
+    ]
+  },
+  "item.adrenaline_injector_use": {
+    "sounds": [
+      {
+        "name": "firstaid:injection"
+      }
+    ]
+  },
+  "item.pills_use": {
+    "sounds": [
+      {
+        "name": "firstaid:take_pills"
+      }
+    ]
+  }
+}

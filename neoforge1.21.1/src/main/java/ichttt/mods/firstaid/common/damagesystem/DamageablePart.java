@@ -22,9 +22,12 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPartHealer;
+import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.debuff.IDebuff;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
+import ichttt.mods.firstaid.api.healing.PartHealingContext;
+import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -117,11 +120,22 @@ public class DamageablePart extends AbstractDamageablePart {
     @Override
     public void tick(Level world, Player player, boolean tickDebuffs, boolean pauseHealing) {
         if (!pauseHealing && activeHealer != null) {
-            if (activeHealer.tick()) {
+            AbstractPartHealer healer = activeHealer;
+            ItemHealing healingItem = healer.stack.getItem() instanceof ItemHealing itemHealing ? itemHealing : null;
+            PartHealingContext context = createHealingContext(player, world, healer);
+            if (healer.tick()) {
+                float previousHealth = currentHealth;
                 heal(1F, player, !world.isClientSide());
+                if (healingItem != null && context != null && currentHealth > previousHealth) {
+                    healingItem.onHealPulse(context);
+                }
             }
-            if (activeHealer.hasFinished())
+            if (healer.hasFinished()) {
+                if (healingItem != null && context != null) {
+                    healingItem.onTreatmentCompleted(context);
+                }
                 activeHealer = null;
+            }
         }
         if (!world.isClientSide() && tickDebuffs && debuffs != null && FirstAid.injuryDebuffMode != FirstAid.InjuryDebuffMode.OFF) {
             float debuffHealthFraction = currentHealth / maxHealth;
@@ -225,6 +239,12 @@ public class DamageablePart extends AbstractDamageablePart {
     @Override
     public int getMaxHealth() {
         return maxHealth;
+    }
+
+    @Nullable
+    private PartHealingContext createHealingContext(Player player, Level world, AbstractPartHealer healer) {
+        AbstractPlayerDamageModel damageModel = player == null ? null : CommonUtils.getDamageModel(player);
+        return damageModel == null ? null : new PartHealingContext(player, world, healer.stack, damageModel, this, healer);
     }
 
     private static float getAbsorptionCap() {

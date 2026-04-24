@@ -23,11 +23,12 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
+import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
+import ichttt.mods.firstaid.client.ClientEventHandler;
 import ichttt.mods.firstaid.client.ClientHooks;
-import ichttt.mods.firstaid.client.HealingSoundController;
+import ichttt.mods.firstaid.client.MedicineStatusClientHelper;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
-import ichttt.mods.firstaid.common.network.MessageApplyHealingItem;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.gui.GuiGraphics;
@@ -135,20 +136,9 @@ public class GuiHealthScreen extends Screen {
         if (activeHand == null || minecraft == null || minecraft.player == null) {
             return;
         }
-        FirstAid.NETWORKING.sendToServer(new MessageApplyHealingItem(part, activeHand));
-
-        AbstractPlayerDamageModel localModel = damageModel;
-        AbstractPlayerDamageModel liveModel = CommonUtils.getDamageModel(minecraft.player);
-        if (liveModel != null) {
-            localModel = liveModel;
+        if (ClientEventHandler.selectPendingHealing(part, activeHand)) {
+            onClose();
         }
-        AbstractDamageablePart damageablePart = localModel.getFromEnum(part);
-        ItemStack itemInHand = minecraft.player.getItemInHand(activeHand);
-        if (itemInHand.getItem() instanceof ItemHealing itemHealing) {
-            damageablePart.activeHealer = itemHealing.createNewHealer(itemInHand.copyWithCount(1));
-        }
-        HealingSoundController.playHealingApplySound();
-        onClose();
     }
 
     @Override
@@ -274,6 +264,10 @@ public class GuiHealthScreen extends Screen {
                         lineY,
                         0xFFB3B3);
             }
+        }
+
+        for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(player)) {
+            lineY = MedicineStatusClientHelper.drawStatusLine(guiGraphics, font, display, guiLeft + 8, lineY);
         }
     }
 

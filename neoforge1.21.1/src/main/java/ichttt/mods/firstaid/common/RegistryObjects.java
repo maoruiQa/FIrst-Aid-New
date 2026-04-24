@@ -71,8 +71,20 @@ public class RegistryObjects {
         FirstAidConfig.Server server = FirstAidConfig.SERVER;
 
         // ITEMS
-        BANDAGE = ITEM_REGISTER.registerItem("bandage", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack), stack -> server.bandage.applyTime.get()));
-        PLASTER = ITEM_REGISTER.registerItem("plaster", properties -> ItemHealing.create(properties.stacksTo(16), stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack), stack -> server.plaster.applyTime.get()));
+        BANDAGE = ITEM_REGISTER.registerItem("bandage", properties -> ItemHealing.create(
+                properties.stacksTo(16),
+                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack),
+                stack -> server.bandage.applyTime.get(),
+                stack -> getBandageUseSound(),
+                stack -> ItemHealing.ApplySoundMode.WHILE_USING
+        ));
+        PLASTER = ITEM_REGISTER.registerItem("plaster", properties -> ItemHealing.create(
+                properties.stacksTo(16),
+                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack),
+                stack -> server.plaster.applyTime.get(),
+                stack -> getBandageUseSound(),
+                stack -> ItemHealing.ApplySoundMode.WHILE_USING
+        ));
         DEFIBRILLATOR = ITEM_REGISTER.registerItem("defibrillator", properties -> new Item(properties.durability(3)));
         ADRENALINE_INJECTOR = ITEM_REGISTER.registerItem("adrenaline_injector", ItemAdrenalineInjector::new);
         MORPHINE = ITEM_REGISTER.registerItem("morphine", ItemMorphine::new);
@@ -114,6 +126,10 @@ public class RegistryObjects {
         SOUND_EVENT_REGISTER.register(bus);
         MOB_EFFECT_REGISTER.register(bus);
         CREATIVE_MODE_TAB_REGISTER.register(bus);
+    }
+
+    private static SoundEvent getBandageUseSound() {
+        return BANDAGE_USE.value();
     }
 }
 

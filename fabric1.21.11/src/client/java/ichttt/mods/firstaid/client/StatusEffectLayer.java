@@ -2,10 +2,12 @@ package ichttt.mods.firstaid.client;
 
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
+import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import java.util.Locale;
+import javax.annotation.Nullable;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -126,6 +128,8 @@ public class StatusEffectLayer implements HudRenderCallback {
                } else if (ClientEventHandler.hasInteractionPrompt()) {
                   renderRescuePrompt(guiGraphics, minecraft, width / 2, height / 2 + 24, deltaTracker.getGameTimeDeltaTicks());
                }
+
+               renderStatusSummary(guiGraphics, minecraft, damageModel, playerDamageModel);
             }
          }
       }
@@ -203,12 +207,21 @@ public class StatusEffectLayer implements HudRenderCallback {
    }
 
    private static void renderRescuePrompt(GuiGraphics guiGraphics, Minecraft minecraft, int centerX, int centerY, float partialTick) {
+      boolean healingPrompt = ClientEventHandler.isHealingInteractionPrompt();
       boolean executionPrompt = ClientEventHandler.isExecutionInteractionPrompt();
       guiGraphics.drawCenteredString(
-         minecraft.font, ClientEventHandler.getInteractionPromptTitle(), centerX, centerY - 26, executionPrompt ? opaque(16767436) : opaque(15333346)
+         minecraft.font,
+         ClientEventHandler.getInteractionPromptTitle(),
+         centerX,
+         centerY - 26,
+         healingPrompt ? opaque(7657471) : (executionPrompt ? opaque(16767436) : opaque(15333346))
       );
       guiGraphics.drawCenteredString(
-         minecraft.font, ClientEventHandler.getInteractionPromptDetail(), centerX, centerY - 12, executionPrompt ? opaque(15717458) : opaque(13624517)
+         minecraft.font,
+         ClientEventHandler.getInteractionPromptDetail(),
+         centerX,
+         centerY - 12,
+         healingPrompt ? opaque(10395294) : (executionPrompt ? opaque(15717458) : opaque(13624517))
       );
       if (ClientEventHandler.getInteractionHoldDurationSeconds() <= 0.0F) {
          return;
@@ -220,10 +233,22 @@ public class StatusEffectLayer implements HudRenderCallback {
       int bottom = top + 8;
       float progress = ClientEventHandler.getInteractionHoldProgress(partialTick);
       int fillWidth = Math.round(142.0F * progress);
-      guiGraphics.fill(left, top, right, bottom, executionPrompt ? color(180, 48, 8, 8) : color(180, 10, 38, 14));
-      guiGraphics.fill(left + 1, top + 1, right - 1, bottom - 1, executionPrompt ? color(180, 82, 18, 18) : color(180, 24, 74, 28));
+      guiGraphics.fill(left, top, right, bottom, healingPrompt ? color(180, 8, 28, 36) : (executionPrompt ? color(180, 48, 8, 8) : color(180, 10, 38, 14)));
+      guiGraphics.fill(
+         left + 1,
+         top + 1,
+         right - 1,
+         bottom - 1,
+         healingPrompt ? color(180, 12, 54, 66) : (executionPrompt ? color(180, 82, 18, 18) : color(180, 24, 74, 28))
+      );
       if (fillWidth > 0) {
-         guiGraphics.fill(left + 1, top + 1, left + 1 + fillWidth, bottom - 1, executionPrompt ? color(220, 232, 70, 70) : color(220, 126, 214, 110));
+         guiGraphics.fill(
+            left + 1,
+            top + 1,
+            left + 1 + fillWidth,
+            bottom - 1,
+            healingPrompt ? color(220, 88, 224, 210) : (executionPrompt ? color(220, 232, 70, 70) : color(220, 126, 214, 110))
+         );
       }
 
       guiGraphics.drawCenteredString(
@@ -231,7 +256,7 @@ public class StatusEffectLayer implements HudRenderCallback {
          ClientEventHandler.getInteractionPromptProgressText(partialTick),
          centerX,
          top + 12,
-         executionPrompt ? opaque(16760992) : opaque(14217424)
+         healingPrompt ? opaque(11460492) : (executionPrompt ? opaque(16760992) : opaque(14217424))
       );
    }
 
@@ -250,5 +275,68 @@ public class StatusEffectLayer implements HudRenderCallback {
 
    private static int opaque(int rgb) {
       return 0xFF000000 | rgb;
+   }
+
+   private static void renderStatusSummary(
+      GuiGraphics guiGraphics, Minecraft minecraft, AbstractPlayerDamageModel damageModel, @Nullable PlayerDamageModel playerDamageModel
+   ) {
+      int lineY = 8;
+      if (damageModel.getPainLevel() > 0) {
+         boolean painSuppressed = minecraft.player.hasEffect(RegistryObjects.MORPHINE_EFFECT) || minecraft.player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
+         Component painText = painSuppressed
+            ? Component.translatable("firstaid.gui.status.pain_suppressed")
+            : Component.translatable("firstaid.gui.status.pain", new Object[]{Component.translatable(getPainSeverityKey(damageModel.getPainLevel()))});
+         guiGraphics.drawString(minecraft.font, painText, 8, lineY, painSuppressed ? 9425919 : 16747146);
+         lineY += 10;
+      }
+
+      if (damageModel.getAdrenalineLevel() > 0) {
+         int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : damageModel.getAdrenalineLevel();
+         guiGraphics.drawString(
+            minecraft.font,
+            Component.translatable("firstaid.gui.status.suppression", new Object[]{Component.translatable(getSuppressionSeverityKey(suppressionLevel))}),
+            8,
+            lineY,
+            12637930
+         );
+         lineY += 10;
+      }
+
+      if (damageModel.getUnconsciousTicks() > 0) {
+         guiGraphics.drawString(
+            minecraft.font,
+            Component.translatable(
+               playerDamageModel != null
+                  ? playerDamageModel.getUnconsciousReasonKey()
+                  : (damageModel.isCriticalConditionActive() ? "firstaid.gui.critical_condition" : "firstaid.gui.unconscious")
+            ),
+            8,
+            lineY,
+            16766421
+         );
+         lineY += 10;
+      }
+
+      for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(minecraft.player)) {
+         lineY = MedicineStatusClientHelper.drawStatusLine(guiGraphics, minecraft.font, display, 8, lineY);
+      }
+   }
+
+   private static String getPainSeverityKey(int painLevel) {
+      return switch (painLevel) {
+         case 1 -> "firstaid.gui.pain.mild";
+         case 2 -> "firstaid.gui.pain.moderate";
+         case 3 -> "firstaid.gui.pain.severe";
+         case 4 -> "firstaid.gui.pain.extreme";
+         default -> "firstaid.gui.pain.critical";
+      };
+   }
+
+   private static String getSuppressionSeverityKey(int suppressionLevel) {
+      return switch (suppressionLevel) {
+         case 1 -> "firstaid.gui.suppression.low";
+         case 2 -> "firstaid.gui.suppression.medium";
+         default -> "firstaid.gui.suppression.high";
+      };
    }
 }

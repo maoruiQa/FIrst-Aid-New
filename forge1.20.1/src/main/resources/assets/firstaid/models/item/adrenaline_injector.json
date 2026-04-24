@@ -1,0 +1,18 @@
+{
+  "parent": "item/generated",
+  "display": {
+    "firstperson_righthand": {
+      "rotation": [0, 0, -50],
+      "translation": [1, 2, 0],
+      "scale": [0.9, 0.9, 0.9]
+    },
+    "firstperson_lefthand": {
+      "rotation": [0, 0, -50],
+      "translation": [1, 2, 0],
+      "scale": [0.9, 0.9, 0.9]
+    }
+  },
+  "textures": {
+    "layer0": "firstaid:item/adrenaline_injector"
+  }
+}

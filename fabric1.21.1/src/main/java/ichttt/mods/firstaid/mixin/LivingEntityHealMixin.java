@@ -33,9 +33,6 @@ public abstract class LivingEntityHealMixin {
         boolean fromFood = Arrays.stream(Thread.currentThread().getStackTrace())
                 .anyMatch(stackTraceElement -> stackTraceElement.getClassName().equals(FoodData.class.getName()));
         if (fromFood) {
-            if (!FirstAidConfig.SERVER.allowNaturalRegeneration.get()) {
-                return;
-            }
             adjusted = adjusted * (float) (double) FirstAidConfig.SERVER.naturalRegenMultiplier.get();
         } else {
             adjusted = adjusted * (float) (double) FirstAidConfig.SERVER.otherRegenMultiplier.get();
@@ -43,6 +40,10 @@ public abstract class LivingEntityHealMixin {
         if (FirstAidConfig.GENERAL.debug.get()) {
             CommonUtils.debugLogStacktrace("External healing: : " + adjusted);
         }
-        HealthDistribution.distributeHealth(adjusted, player, true);
+        if (fromFood) {
+            HealthDistribution.applyNaturalRegen(adjusted, player, true);
+        } else {
+            HealthDistribution.distributeHealth(adjusted, player, true);
+        }
     }
 }

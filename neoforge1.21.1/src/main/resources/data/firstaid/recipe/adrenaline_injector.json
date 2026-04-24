@@ -6,10 +6,18 @@
     " I "
   ],
   "key": {
-    "G": "minecraft:golden_apple",
-    "I": "minecraft:iron_ingot",
-    "R": "minecraft:redstone",
-    "B": "minecraft:glass_bottle"
+    "G": {
+      "item": "minecraft:golden_apple"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "B": {
+      "item": "minecraft:glass_bottle"
+    }
   },
   "result": {
     "count": 1,

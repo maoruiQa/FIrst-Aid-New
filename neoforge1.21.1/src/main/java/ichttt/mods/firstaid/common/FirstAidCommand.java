@@ -21,11 +21,11 @@ package ichttt.mods.firstaid.common;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
-import ichttt.mods.firstaid.common.init.FirstAidDataAttachments;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -59,6 +59,11 @@ public final class FirstAidCommand {
                                         .executes(context -> setRescueWakeUpDelay(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))
                         .then(Commands.literal("off")
                                 .executes(context -> setRescueWakeUp(context.getSource(), false))))
+                .then(Commands.literal("naturalregen")
+                        .then(Commands.literal("off")
+                                .executes(context -> setNaturalRegenMode(context.getSource(), FirstAid.NaturalRegenMode.OFF)))
+                        .then(buildNaturalRegenBranch("limited", FirstAid.NaturalRegenMode.LIMITED))
+                        .then(buildNaturalRegenBranch("full", FirstAid.NaturalRegenMode.FULL)))
                 .then(Commands.literal("medicineeffect")
                         .then(Commands.literal("realistic")
                                 .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.REALISTIC)))
@@ -80,6 +85,15 @@ public final class FirstAidCommand {
                                         .executes(context -> setInjuryDebuffModeForEffect(context.getSource(), StringArgumentType.getString(context, "effect"), FirstAid.InjuryDebuffMode.LOW)))
                                 .then(Commands.literal("off")
                                         .executes(context -> setInjuryDebuffModeForEffect(context.getSource(), StringArgumentType.getString(context, "effect"), FirstAid.InjuryDebuffMode.OFF))))));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> buildNaturalRegenBranch(String literal, FirstAid.NaturalRegenMode mode) {
+        return Commands.literal(literal)
+                .executes(context -> setNaturalRegenMode(context.getSource(), mode))
+                .then(Commands.literal("critical")
+                        .executes(context -> setNaturalRegenModeAndStrategy(context.getSource(), mode, FirstAid.NaturalRegenStrategy.CRITICAL)))
+                .then(Commands.literal("random")
+                        .executes(context -> setNaturalRegenModeAndStrategy(context.getSource(), mode, FirstAid.NaturalRegenStrategy.RANDOM)));
     }
 
     private static int setDynamicPain(CommandSourceStack source, boolean enabled) {
@@ -128,6 +142,26 @@ public final class FirstAidCommand {
         return 1;
     }
 
+    private static int setNaturalRegenMode(CommandSourceStack source, FirstAid.NaturalRegenMode mode) {
+        FirstAid.naturalRegenMode = mode;
+        FirstAidConfig.persistCommandSettings();
+        refreshNaturalRegenState(source);
+        source.sendSuccess(() -> Component.translatable("firstaid.command.naturalregen.mode", Component.translatable(getNaturalRegenModeKey(mode))), true);
+        return 1;
+    }
+
+    private static int setNaturalRegenModeAndStrategy(CommandSourceStack source, FirstAid.NaturalRegenMode mode, FirstAid.NaturalRegenStrategy strategy) {
+        FirstAid.naturalRegenMode = mode;
+        FirstAid.naturalRegenStrategy = strategy;
+        FirstAidConfig.persistCommandSettings();
+        refreshNaturalRegenState(source);
+        source.sendSuccess(() -> Component.translatable(
+                "firstaid.command.naturalregen.mode_strategy",
+                Component.translatable(getNaturalRegenModeKey(mode)),
+                Component.translatable(getNaturalRegenStrategyKey(strategy))), true);
+        return 1;
+    }
+
     private static void refreshRescueWakeUpState(CommandSourceStack source) {
         if (source.getServer() == null) {
             return;
@@ -138,6 +172,30 @@ public final class FirstAidCommand {
                 CommonUtils.syncDamageModel(player);
             }
         }
+    }
+
+    private static void refreshNaturalRegenState(CommandSourceStack source) {
+        if (source.getServer() == null) {
+            return;
+        }
+        boolean enabled = FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF;
+        source.getServer().getAllLevels().forEach(level ->
+                level.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_NATURAL_REGENERATION).set(enabled, source.getServer()));
+    }
+
+    private static String getNaturalRegenModeKey(FirstAid.NaturalRegenMode mode) {
+        return switch (mode) {
+            case OFF -> "firstaid.command.naturalregen.mode_value.off";
+            case FULL -> "firstaid.command.naturalregen.mode_value.full";
+            case LIMITED -> "firstaid.command.naturalregen.mode_value.limited";
+        };
+    }
+
+    private static String getNaturalRegenStrategyKey(FirstAid.NaturalRegenStrategy strategy) {
+        return switch (strategy) {
+            case RANDOM -> "firstaid.command.naturalregen.strategy_value.random";
+            case CRITICAL -> "firstaid.command.naturalregen.strategy_value.critical";
+        };
     }
 
     private static int setMedicineEffectMode(CommandSourceStack source, FirstAid.MedicineEffectMode mode) {

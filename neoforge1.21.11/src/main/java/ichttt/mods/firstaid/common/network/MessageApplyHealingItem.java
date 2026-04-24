@@ -24,7 +24,7 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractPartHealer;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
-import ichttt.mods.firstaid.common.init.FirstAidDataAttachments;
+import ichttt.mods.firstaid.api.healing.PartHealingContext;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import ichttt.mods.firstaid.common.util.LoggingMarkers;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -67,26 +67,35 @@ public class MessageApplyHealingItem implements CustomPacketPayload {
             ServerPlayer player = (ServerPlayer) context.player();
             context.enqueueWork(() -> {
                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-                if (damageModel == null) return;
-                ItemStack stack = player.getItemInHand(message.hand);
-                ItemStack healerStack = stack.copyWithCount(1);
-                AbstractPartHealer healer = null;
-                if (healerStack.getItem() instanceof ItemHealing itemHealing) {
-                    healer = itemHealing.createNewHealer(healerStack);
+                if (damageModel == null) {
+                    return;
                 }
+                ItemStack stack = player.getItemInHand(message.hand);
+                if (stack.isEmpty() || stack.getCount() < 1) {
+                    return;
+                }
+                ItemStack healerStack = stack.copyWithCount(1);
+                ItemHealing itemHealing = healerStack.getItem() instanceof ItemHealing healingItem ? healingItem : null;
+                AbstractPartHealer healer = itemHealing == null ? null : itemHealing.createNewHealer(healerStack);
                 if (healer == null) {
-                    FirstAid.LOGGER.warn(LoggingMarkers.NETWORK, "Player {} has invalid item in hand {} while it should be an healing item", player.getName(), BuiltInRegistries.ITEM.getKey(stack.getItem()));
+                    FirstAid.LOGGER.warn(
+                            LoggingMarkers.NETWORK,
+                            "Player {} has invalid item in hand {} while it should be an healing item",
+                            player.getName(),
+                            BuiltInRegistries.ITEM.getKey(stack.getItem())
+                    );
                     player.sendSystemMessage(Component.literal("Unable to apply healing item!"));
                     return;
                 }
                 AbstractDamageablePart damageablePart = damageModel.getFromEnum(message.part);
-                if (damageablePart.activeHealer != null || CommonUtils.isPartVisuallyFull(damageablePart)) {
+                if (damageablePart.activeHealer != null || CommonUtils.isPartVisuallyFull(damageablePart) || stack.getCount() < 1) {
                     return;
                 }
                 if (!player.getAbilities().instabuild) {
                     stack.shrink(1);
                 }
                 damageablePart.activeHealer = healer;
+                itemHealing.onTreatmentStarted(new PartHealingContext(player, player.level(), healerStack, damageModel, damageablePart, healer));
                 damageModel.scheduleResync();
                 CommonUtils.syncDamageModel(player);
             });

@@ -30,6 +30,8 @@ import java.util.Locale;
 import java.util.Map;
 
 public class FirstAidConfig {
+    private static final int LEGACY_BANDAGE_APPLY_TIME = 2500;
+    private static final int BANDAGE_APPLY_TIME = 3000;
 
     static final ModConfigSpec serverSpec;
     static final ModConfigSpec generalSpec;
@@ -57,10 +59,13 @@ public class FirstAidConfig {
     }
 
     public static void applyCommandSettings() {
+        migrateLegacyBandageApplyTime();
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
+        FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
+        FirstAid.naturalRegenStrategy = SERVER.naturalRegenStrategy.get();
         FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
         FirstAid.injuryDebuffOverrides.clear();
@@ -72,10 +77,20 @@ public class FirstAidConfig {
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
+        SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
+        SERVER.naturalRegenStrategy.set(FirstAid.naturalRegenStrategy);
+        SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
         SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
         SERVER.injuryDebuffOverrides.set(serializeInjuryDebuffOverrides(FirstAid.injuryDebuffOverrides));
         serverSpec.save();
+    }
+
+    private static void migrateLegacyBandageApplyTime() {
+        if (SERVER.bandage.applyTime.get() == LEGACY_BANDAGE_APPLY_TIME) {
+            SERVER.bandage.applyTime.set(BANDAGE_APPLY_TIME);
+            serverSpec.save();
+        }
     }
 
     private static Map<ResourceLocation, FirstAid.InjuryDebuffMode> parseInjuryDebuffOverrides(List<? extends String> entries) {
@@ -184,7 +199,7 @@ public class FirstAidConfig {
 
             builder.pop(2).push("Internal Healing");
 
-            bandage = new IEEntry(builder, "bandage", 4, 18, 2500);
+            bandage = new IEEntry(builder, "bandage", 4, 18, 3000);
             plaster = new IEEntry(builder, "plaster", 2, 22, 3000);
 
             builder.pop().push("External Healing");
@@ -212,6 +227,12 @@ public class FirstAidConfig {
                     .comment("The value vanilla's natural regeneration will be multiplied with. Has no effect if \"allowNaturalRegeneration\" is disabled")
                     .translation("firstaid.config.naturalregenmultiplier")
                     .defineInRange("naturalRegenMultiplier", 0.5D, 0D, 20D);
+            naturalRegenMode = builder
+                    .comment("Persistent mode for /firstaid naturalregen")
+                    .defineEnum("naturalRegenMode", FirstAid.NaturalRegenMode.LIMITED);
+            naturalRegenStrategy = builder
+                    .comment("Persistent strategy for /firstaid naturalregen")
+                    .defineEnum("naturalRegenStrategy", FirstAid.NaturalRegenStrategy.CRITICAL);
             resistanceReductionPercentPerLevel = builder
                     .comment("Specifies how the vanilla resistance potion effect should reduce damage.", "By default, one level of resistance reduces 20% of damage. Changing this value to e.g. 10 will reduce the reduction to 10% damage reduction per level")
                     .translation("firstaid.config.resistancereductionpercentperlevel")
@@ -345,6 +366,8 @@ public class FirstAidConfig {
         public final ModConfigSpec.DoubleValue sleepHealPercentage;
         public final ModConfigSpec.DoubleValue otherRegenMultiplier;
         public final ModConfigSpec.DoubleValue naturalRegenMultiplier;
+        public final ModConfigSpec.EnumValue<FirstAid.NaturalRegenMode> naturalRegenMode;
+        public final ModConfigSpec.EnumValue<FirstAid.NaturalRegenStrategy> naturalRegenStrategy;
         public final ModConfigSpec.IntValue resistanceReductionPercentPerLevel;
 
         public final ModConfigSpec.BooleanValue scaleMaxHealth;

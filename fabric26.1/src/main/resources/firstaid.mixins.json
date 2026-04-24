@@ -1,0 +1,29 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "ichttt.mods.firstaid.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "LivingEntityHealthMixin",
+    "LivingEntityHealMixin",
+    "MobTargetMixin",
+    "PlayerDimensionsMixin",
+    "RecipeManagerMixin",
+    "PlayerEntityMixin",
+    "ProjectileMixin"
+  ],
+  "client": [
+    "client.CameraMixin",
+    "client.GuiMixin",
+    "client.GameRendererMixin",
+    "client.AvatarRendererMixin",
+    "client.LivingEntityRendererMixin",
+    "client.LivingEntityRendererStateMixin",
+    "client.MouseHandlerMixin",
+    "client.PlayerModelMixin",
+    "client.SoundManagerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

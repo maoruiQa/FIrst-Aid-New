@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " GI",
+    "RBI",
+    " I "
+  ],
+  "key": {
+    "G": "minecraft:golden_apple",
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "B": "minecraft:glass_bottle"
+  },
+  "result": {
+    "count": 1,
+    "id": "firstaid:adrenaline_injector"
+  }
+}
