@@ -5,6 +5,7 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractPartHealer;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
+import ichttt.mods.firstaid.api.medicine.ItemMedicine;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
 import ichttt.mods.firstaid.client.util.EventCalendar;
@@ -75,9 +76,17 @@ public final class ClientEventHandler {
          resetGiveUpHoldState();
          clearPendingHealingSelection();
          requireUseReleaseBeforeHealingSelection = false;
+         ItemMedicine.clearAllClientReuseBlocks();
       } else if (!mc.isPaused()) {
          if (!mc.options.keyUse.isDown()) {
             requireUseReleaseBeforeHealingSelection = false;
+            ItemMedicine.clearClientReuseBlock(mc.player);
+         }
+         if (shouldBlockMedicineReuse(mc)) {
+            mc.options.keyUse.setDown(false);
+            if (mc.player.isUsingItem()) {
+               mc.player.stopUsingItem();
+            }
          }
 
          retryDamageModelSync(mc);
@@ -108,6 +117,7 @@ public final class ClientEventHandler {
             updateGiveUpHoldState(mc, playerDamageModel);
             updatePendingHealingState(mc, damageModel);
             updateInteractionPromptState(mc);
+            updateMedicineUseFeedback(mc);
             boolean shouldShowCriticalPrompt = playerDamageModel.canGiveUp();
             if (shouldShowCriticalPrompt && !showedCriticalPrompt) {
                mc.player.sendSystemMessage(Component.translatable("firstaid.gui.waiting_for_rescue").withStyle(ChatFormatting.RED));
@@ -174,6 +184,7 @@ public final class ClientEventHandler {
       resetGiveUpHoldState();
       resetInteractionPromptState();
       clearPendingHealingSelection();
+      ItemMedicine.clearAllClientReuseBlocks();
       HealingSoundController.clear();
       HEARTBEAT_SOUND_CONTROLLER.clear();
       SUPPRESSION_FEEDBACK_CONTROLLER.clear();
@@ -186,6 +197,7 @@ public final class ClientEventHandler {
       resetGiveUpHoldState();
       resetInteractionPromptState();
       clearPendingHealingSelection();
+      ItemMedicine.clearAllClientReuseBlocks();
       if (mc.player != null) {
          FirstAidClientNetworking.sendToServer(new MessageClientRequest(RequestType.REQUEST_REFRESH));
          MutableComponent message = Component.empty()
@@ -296,6 +308,7 @@ public final class ClientEventHandler {
       } else {
          return switch (interactionPrompt.type()) {
             case HEAL_SELF -> Component.translatable("firstaid.gui.healing_prompt_title").withStyle(ChatFormatting.AQUA);
+            case USE_MEDICINE_SELF -> Component.translatable("firstaid.gui.medicine_prompt_title").withStyle(ChatFormatting.AQUA);
             case RESCUE -> Component.translatable("firstaid.gui.rescue_prompt_title", new Object[]{interactionPrompt.targetName()}).withStyle(ChatFormatting.GREEN);
             case EXECUTE -> Component.translatable("firstaid.gui.execute_prompt_title", new Object[]{interactionPrompt.targetName()}).withStyle(ChatFormatting.RED);
             default -> Component.translatable(
@@ -316,6 +329,14 @@ public final class ClientEventHandler {
                new Object[]{
                   Component.translatable("key.use").withStyle(ChatFormatting.GOLD),
                   Component.translatable("firstaid.gui." + pendingHealingSelection.part().toString().toLowerCase(Locale.ROOT)),
+                  formatSingleDecimal(getInteractionHoldDurationSeconds())
+               }
+            ).withStyle(ChatFormatting.AQUA);
+            case USE_MEDICINE_SELF -> Component.translatable(
+               "firstaid.gui.medicine_prompt_detail",
+               new Object[]{
+                  Component.translatable("key.use").withStyle(ChatFormatting.GOLD),
+                  interactionPrompt.targetName(),
                   formatSingleDecimal(getInteractionHoldDurationSeconds())
                }
             ).withStyle(ChatFormatting.AQUA);
@@ -342,6 +363,14 @@ public final class ClientEventHandler {
                "firstaid.gui.healing_progress",
                new Object[]{formatSingleDecimal(getInteractionHoldSeconds(partialTick)), formatSingleDecimal(getInteractionHoldDurationSeconds())}
             ).withStyle(ChatFormatting.AQUA);
+            case USE_MEDICINE_SELF -> Component.translatable(
+               "firstaid.gui.medicine_progress",
+               new Object[]{
+                  interactionPrompt.targetName(),
+                  formatSingleDecimal(getInteractionHoldSeconds(partialTick)),
+                  formatSingleDecimal(getInteractionHoldDurationSeconds())
+               }
+            ).withStyle(ChatFormatting.AQUA);
             case RESCUE -> Component.translatable(
                "firstaid.gui.rescue_progress", new Object[]{formatSingleDecimal(getInteractionHoldSeconds(partialTick)), formatSingleDecimal(getInteractionHoldDurationSeconds())}
             ).withStyle(ChatFormatting.GREEN);
@@ -362,7 +391,9 @@ public final class ClientEventHandler {
    }
 
    public static boolean isHealingInteractionPrompt() {
-      return interactionPrompt != null && interactionPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF;
+      return interactionPrompt != null
+         && (interactionPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF
+            || interactionPrompt.type() == ClientEventHandler.InteractionType.USE_MEDICINE_SELF);
    }
 
    public static float getInteractionHoldSeconds(float partialTick) {
@@ -415,7 +446,9 @@ public final class ClientEventHandler {
 
    private static void updateInteractionPromptState(Minecraft mc) {
       ClientEventHandler.InteractionPrompt nextPrompt = findInteractionPrompt(mc);
-      if (nextPrompt != null && nextPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF) {
+      if (nextPrompt != null
+         && (nextPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF
+            || nextPrompt.type() == ClientEventHandler.InteractionType.USE_MEDICINE_SELF)) {
          resetInteractionPromptHoldState();
          interactionPrompt = nextPrompt;
          return;
@@ -464,6 +497,17 @@ public final class ClientEventHandler {
             isHealingUseHeld(mc),
             pendingHealingSelection.hand(),
             pendingHealingSelection.holdDurationTicks()
+         );
+      }
+
+      if (isMedicineUseActive(mc)) {
+         return new ClientEventHandler.InteractionPrompt(
+            mc.player.getId(),
+            mc.player.getUseItem().getHoverName().copy(),
+            ClientEventHandler.InteractionType.USE_MEDICINE_SELF,
+            true,
+            getMedicineUseHand(mc.player),
+            getMedicineUseDurationTicks(mc.player)
          );
       }
 
@@ -533,6 +577,9 @@ public final class ClientEventHandler {
          return 0;
       } else if (interactionPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF) {
          return pendingHealingSelection == null ? 0 : pendingHealingSelection.holdDurationTicks();
+      } else if (interactionPrompt.type() == ClientEventHandler.InteractionType.USE_MEDICINE_SELF) {
+         Minecraft minecraft = Minecraft.getInstance();
+         return minecraft.player == null ? 0 : getMedicineUseDurationTicks(minecraft.player);
       } else {
          return interactionPrompt.holdDurationTicks();
       }
@@ -549,6 +596,8 @@ public final class ClientEventHandler {
    private static float getDisplayedInteractionHoldTicks(float partialTick) {
       if (interactionPrompt != null && interactionPrompt.type() == ClientEventHandler.InteractionType.HEAL_SELF) {
          return getDisplayedPendingHealingHoldTicks(partialTick);
+      } else if (interactionPrompt != null && interactionPrompt.type() == ClientEventHandler.InteractionType.USE_MEDICINE_SELF) {
+         return getDisplayedMedicineUseTicks(Minecraft.getInstance(), partialTick);
       } else if (interactionHoldTicks <= 0) {
          return 0.0F;
       } else {
@@ -611,6 +660,18 @@ public final class ClientEventHandler {
       }
    }
 
+   private static void updateMedicineUseFeedback(Minecraft mc) {
+      if (isMedicineUseActive(mc)) {
+         mc.player.sendOverlayMessage(
+            Component.translatable(
+                  "firstaid.gui.medicine_actionbar",
+                  new Object[]{mc.player.getUseItem().getHoverName(), formatSingleDecimal(getMedicineRemainingSeconds(mc.player))}
+               )
+               .withStyle(ChatFormatting.AQUA)
+         );
+      }
+   }
+
    private static int getHealingHoldDurationTicks(ItemHealing itemHealing, ItemStack stack) {
       return Mth.ceil(Math.max(0, itemHealing.getApplyTime(stack)) / 50.0F);
    }
@@ -637,6 +698,43 @@ public final class ClientEventHandler {
       }
    }
 
+   private static boolean isMedicineUseActive(Minecraft mc) {
+      return mc.player != null
+         && mc.player.isAlive()
+         && !isUnconscious(mc.player)
+         && mc.screen == null
+         && mc.player.isUsingItem()
+         && mc.player.getUseItem().getItem() instanceof ItemMedicine;
+   }
+
+   private static InteractionHand getMedicineUseHand(Player player) {
+      InteractionHand usedHand = player.getUsedItemHand();
+      return usedHand == null ? InteractionHand.MAIN_HAND : usedHand;
+   }
+
+   private static int getMedicineUseDurationTicks(Player player) {
+      ItemStack stack = player.getUseItem();
+      return stack.getItem() instanceof ItemMedicine itemMedicine ? itemMedicine.getUseDuration(stack, player) : 0;
+   }
+
+   private static float getDisplayedMedicineUseTicks(Minecraft mc, float partialTick) {
+      if (!isMedicineUseActive(mc)) {
+         return 0.0F;
+      } else {
+         int holdDurationTicks = getMedicineUseDurationTicks(mc.player);
+         if (holdDurationTicks <= 0) {
+            return 0.0F;
+         } else {
+            int usedTicks = Math.max(0, holdDurationTicks - mc.player.getUseItemRemainingTicks());
+            return Math.min((float)holdDurationTicks, usedTicks + Math.max(0.0F, partialTick));
+         }
+      }
+   }
+
+   private static float getMedicineRemainingSeconds(Player player) {
+      return Math.max(0.0F, player.getUseItemRemainingTicks() / 20.0F);
+   }
+
    private static String formatSingleDecimal(float value) {
       return String.format(Locale.ROOT, "%.1f", value);
    }
@@ -661,6 +759,10 @@ public final class ClientEventHandler {
          InteractionHand usedItemHand = mc.player.getUsedItemHand();
          return usedItemHand == null || usedItemHand == pendingHealingSelection.hand();
       }
+   }
+
+   private static boolean shouldBlockMedicineReuse(Minecraft mc) {
+      return mc.player != null && ItemMedicine.isClientReuseBlocked(mc.player);
    }
 
    private static void resetGiveUpHoldState() {
@@ -715,6 +817,7 @@ public final class ClientEventHandler {
 
    private static enum InteractionType {
       HEAL_SELF,
+      USE_MEDICINE_SELF,
       RESCUE,
       EXECUTE,
       INVALID_ITEM;

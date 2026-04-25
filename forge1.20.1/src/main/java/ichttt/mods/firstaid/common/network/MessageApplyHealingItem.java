@@ -86,7 +86,16 @@ public class MessageApplyHealingItem {
                 }
 
                 if (!player.getAbilities().instabuild) {
-                    stack.shrink(1);
+                    if (stack.isDamageableItem()) {
+                        int nextDamage = stack.getDamageValue() + 1;
+                        if (nextDamage >= stack.getMaxDamage()) {
+                            stack.shrink(1);
+                        } else {
+                            stack.setDamageValue(nextDamage);
+                        }
+                    } else {
+                        stack.shrink(1);
+                    }
                 }
                 damageablePart.activeHealer = healer;
                 damageModel.scheduleResync();

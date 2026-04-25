@@ -284,6 +284,10 @@ public class GuiHealthScreen extends Screen {
       return false;
    }
 
+   @Override
+   public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+   }
+
    public void onClose() {
       isOpen = false;
       super.onClose();

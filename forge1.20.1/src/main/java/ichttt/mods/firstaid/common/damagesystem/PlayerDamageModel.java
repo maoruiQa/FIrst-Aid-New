@@ -340,7 +340,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public static int getRandMorphineDuration() { //Tweak tooltip event when changing as well
-        return ((EventHandler.RAND.nextInt(5) * 20 * 15) + 20 * 210);
+        return ((EventHandler.RAND.nextInt(5) * 20 * 15) + 20 * 330);
     }
 
     public static int getMorphineActivationDelay() {
@@ -348,7 +348,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public static int getPainkillerDuration() {
-        return PAINKILLER_DURATION_TICKS;
+        return PAINKILLER_DURATION_TICKS * 2;
     }
 
     public static int getPainkillerActivationDelay() {

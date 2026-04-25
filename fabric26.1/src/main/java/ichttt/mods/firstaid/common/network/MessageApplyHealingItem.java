@@ -74,7 +74,16 @@ public class MessageApplyHealingItem implements CustomPacketPayload {
                      AbstractDamageablePart damageablePart = damageModel.getFromEnum(message.part);
                      if (damageablePart.activeHealer == null && !CommonUtils.isPartVisuallyFull(damageablePart)) {
                         if (!player.getAbilities().instabuild) {
-                           stack.shrink(1);
+                           if (stack.isDamageableItem()) {
+                              int nextDamage = stack.getDamageValue() + 1;
+                              if (nextDamage >= stack.getMaxDamage()) {
+                                 stack.shrink(1);
+                              } else {
+                                 stack.setDamageValue(nextDamage);
+                              }
+                           } else {
+                              stack.shrink(1);
+                           }
                         }
 
                         damageablePart.activeHealer = healer;

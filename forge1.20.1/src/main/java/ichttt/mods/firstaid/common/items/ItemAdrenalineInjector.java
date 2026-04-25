@@ -32,8 +32,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.StringUtil;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.UseAnim;
@@ -66,14 +64,6 @@ public class ItemAdrenalineInjector extends ItemMedicine {
     @Override
     public int getUseDuration(ItemStack stack) {
         return 40;
-    }
-
-    @Override
-    protected void consumeAfterUse(MedicineUseContext context) {
-        if (!context.getPlayer().getAbilities().instabuild) {
-            EquipmentSlot slot = context.getPlayer().getUsedItemHand() == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
-            context.getStack().hurtAndBreak(1, context.getPlayer(), living -> living.broadcastBreakEvent(slot));
-        }
     }
 
     @Override

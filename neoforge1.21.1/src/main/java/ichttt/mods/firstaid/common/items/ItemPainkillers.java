@@ -51,7 +51,7 @@ public class ItemPainkillers extends ItemMedicine {
    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
       tooltipComponents.add(
          Component.translatable(
-               "firstaid.tooltip.painkillers", new Object[]{StringUtil.formatTickDuration(PlayerDamageModel.getPainkillerActivationDelay(), 20.0F), "2:00"}
+               "firstaid.tooltip.painkillers", new Object[]{StringUtil.formatTickDuration(PlayerDamageModel.getPainkillerActivationDelay(), 20.0F), "4:00"}
             )
             .withStyle(ChatFormatting.GRAY)
       );
