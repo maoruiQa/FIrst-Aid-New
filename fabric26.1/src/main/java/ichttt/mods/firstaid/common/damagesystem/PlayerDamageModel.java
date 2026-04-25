@@ -333,7 +333,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    }
 
    public static int getRandMorphineDuration() {
-      return EventHandler.RAND.nextInt(5) * 20 * 15 + 6600;
+      return EventHandler.RAND.nextInt(5) * 20 * 15 + 9000;
    }
 
    public static int getMorphineActivationDelay() {

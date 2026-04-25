@@ -74,7 +74,7 @@ public class ItemMorphine extends ItemMedicine {
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
         tooltipComponents.add(
-                Component.translatable("firstaid.tooltip.morphine", StringUtil.formatTickDuration(PlayerDamageModel.getMorphineActivationDelay()), "5:30-6:30")
+                Component.translatable("firstaid.tooltip.morphine", StringUtil.formatTickDuration(PlayerDamageModel.getMorphineActivationDelay()), "7:30-8:30")
                         .withStyle(ChatFormatting.GRAY)
         );
     }

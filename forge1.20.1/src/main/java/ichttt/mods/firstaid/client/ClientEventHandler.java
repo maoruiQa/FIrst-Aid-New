@@ -330,7 +330,7 @@ public class ClientEventHandler {
         if (item == RegistryObjects.MORPHINE.get()) {
             event.getToolTip().add(Component.translatable("firstaid.tooltip.morphine",
                     StringUtil.formatTickDuration(PlayerDamageModel.getMorphineActivationDelay()),
-                    "5:30-6:30").withStyle(ChatFormatting.GRAY));
+                    "7:30-8:30").withStyle(ChatFormatting.GRAY));
             return;
         }
         if (item == RegistryObjects.PAINKILLERS.get()) {

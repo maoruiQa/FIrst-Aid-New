@@ -307,7 +307,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public static int getRandMorphineDuration() { //Tweak tooltip event when changing as well
-        return ((EventHandler.RAND.nextInt(5) * 20 * 15) + 20 * 330);
+        return ((EventHandler.RAND.nextInt(5) * 20 * 15) + 20 * 450);
     }
 
     public void syncVanillaHealth(Player player) {
