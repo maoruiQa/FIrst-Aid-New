@@ -18,6 +18,15 @@ Original project: https://www.curseforge.com/minecraft/mc-mods/first-aid
 - NeoForge
 - Fabric
 
+## Extension API
+
+Third-party mods can add custom First Aid treatment items and direct-use medicines through the public extension API.
+
+- Common API overview: [docs/firstaid-extension-api.md](./docs/firstaid-extension-api.md)
+- Fabric setup: [docs/firstaid-extension-fabric.md](./docs/firstaid-extension-fabric.md)
+- NeoForge setup: [docs/firstaid-extension-neoforge.md](./docs/firstaid-extension-neoforge.md)
+- Forge 1.20.1 setup: [docs/firstaid-extension-forge1.20.1.md](./docs/firstaid-extension-forge1.20.1.md)
+
 ## Command Setup Guide
 
 Players with OP or sufficient command permissions now receive a compact First Aid command tip when they join the game.
