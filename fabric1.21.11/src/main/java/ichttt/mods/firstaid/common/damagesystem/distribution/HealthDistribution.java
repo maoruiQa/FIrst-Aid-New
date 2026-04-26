@@ -18,7 +18,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 
 public class HealthDistribution {
-   private static final float GREEN_THRESHOLD = 0.85F;
    private static final List<EnumPlayerPart> parts;
 
    public static void manageHealth(float health, AbstractPlayerDamageModel damageModel, Player player, boolean sendChanges, boolean distribute) {
@@ -118,6 +117,10 @@ public class HealthDistribution {
       }
    }
 
+   public static boolean canApplyNaturalRegen(AbstractPlayerDamageModel damageModel) {
+      return FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF && selectNaturalRegenTarget(damageModel) != null;
+   }
+
    private static AbstractDamageablePart selectNaturalRegenTarget(AbstractPlayerDamageModel damageModel) {
       List<AbstractDamageablePart> eligibleParts = getEligibleNaturalRegenParts(damageModel);
       if (eligibleParts.isEmpty()) {
@@ -145,7 +148,7 @@ public class HealthDistribution {
    }
 
    private static void addCriticalCandidate(List<AbstractDamageablePart> criticalCandidates, AbstractDamageablePart part) {
-      if (part != null && isNaturalRegenEligible(part) && CommonUtils.getVisibleHealthRatio(part) <= GREEN_THRESHOLD) {
+      if (part != null && isNaturalRegenEligible(part) && CommonUtils.getVisibleHealthRatio(part) <= FirstAid.naturalRegenCriticalPriorityRatio) {
          criticalCandidates.add(part);
       }
    }
@@ -164,13 +167,17 @@ public class HealthDistribution {
    }
 
    private static boolean isNaturalRegenEligible(AbstractDamageablePart part) {
-      return part != null && getNaturalRegenLimit(part) - part.currentHealth > 1.0E-4F;
+      if (part == null || FirstAid.naturalRegenMode == FirstAid.NaturalRegenMode.LIMITED2 && part.currentHealth <= 0.0F) {
+         return false;
+      }
+
+      return getNaturalRegenLimit(part) - part.currentHealth > 1.0E-4F;
    }
 
    private static float getNaturalRegenLimit(AbstractDamageablePart part) {
       return switch (FirstAid.naturalRegenMode) {
          case FULL -> part.getMaxHealth();
-         case LIMITED -> getLimitedNaturalRegenCap(part);
+         case LIMITED, LIMITED2 -> getLimitedNaturalRegenCap(part);
          case OFF -> 0.0F;
       };
    }
@@ -180,9 +187,9 @@ public class HealthDistribution {
       if (maxHealth <= 0.0F) {
          return 0.0F;
       } else if (drawsHealthAsText(part)) {
-         return Math.min(maxHealth, (float)Math.floor(maxHealth * GREEN_THRESHOLD * 10.0F) / 10.0F);
+         return Math.min(maxHealth, (float)Math.floor(maxHealth * FirstAid.naturalRegenLimitRatio * 10.0F) / 10.0F);
       } else {
-         return Math.min(maxHealth, (float)Math.floor(maxHealth * GREEN_THRESHOLD));
+         return Math.min(maxHealth, (float)Math.floor(maxHealth * FirstAid.naturalRegenLimitRatio));
       }
    }
 

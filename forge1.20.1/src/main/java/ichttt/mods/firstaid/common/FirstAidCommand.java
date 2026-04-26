@@ -52,6 +52,7 @@ public final class FirstAidCommand {
                         .then(Commands.literal("off")
                                 .executes(context -> setNaturalRegenMode(context.getSource(), FirstAid.NaturalRegenMode.OFF)))
                         .then(buildNaturalRegenBranch("limited", FirstAid.NaturalRegenMode.LIMITED))
+                        .then(buildNaturalRegenBranch("limited2", FirstAid.NaturalRegenMode.LIMITED2))
                         .then(buildNaturalRegenBranch("full", FirstAid.NaturalRegenMode.FULL)))
                 .then(Commands.literal("revivewakeup")
                         .then(Commands.literal("on")
@@ -154,6 +155,7 @@ public final class FirstAidCommand {
             case OFF -> "firstaid.command.naturalregen.mode_value.off";
             case FULL -> "firstaid.command.naturalregen.mode_value.full";
             case LIMITED -> "firstaid.command.naturalregen.mode_value.limited";
+            case LIMITED2 -> "firstaid.command.naturalregen.mode_value.limited2";
         };
     }
 

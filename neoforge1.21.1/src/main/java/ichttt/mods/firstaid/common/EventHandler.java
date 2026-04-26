@@ -445,13 +445,21 @@ public class EventHandler {
     public static void onServerStop(ServerStoppedEvent event) {
         FirstAid.LOGGER.debug("Cleaning up");
         FirstAid.dynamicPainEnabled = true;
+        FirstAid.mildPainLevel = 1;
         FirstAid.lowSuppressionEnabled = false;
+        FirstAid.lowSuppressionMultiplier = 0.4F;
         FirstAid.rescueWakeUpEnabled = false;
         FirstAid.rescueWakeUpDelaySeconds = FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
         FirstAid.naturalRegenMode = FirstAid.NaturalRegenMode.LIMITED;
         FirstAid.naturalRegenStrategy = FirstAid.NaturalRegenStrategy.CRITICAL;
+        FirstAid.naturalRegenLimitRatio = 0.85F;
+        FirstAid.naturalRegenCriticalPriorityRatio = 0.85F;
         FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
+        FirstAid.medicineTimingMultiplier = 1.0F;
         FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
+        FirstAid.lowInjuryDebuffDamageScale = 0.4F;
+        FirstAid.lowInjuryDebuffAmplifierScale = 0.5F;
+        FirstAid.lowInjuryDebuffDurationScale = 0.5F;
         FirstAid.injuryDebuffOverrides.clear();
         CapProvider.tutorialDone.clear();
         EventHandler.hitList.clear();
@@ -863,6 +871,5 @@ public class EventHandler {
         EXECUTE
     }
 }
-
 
 

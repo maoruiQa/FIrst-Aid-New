@@ -43,7 +43,6 @@ import javax.annotation.Nullable;
 import java.util.Objects;
 
 public class DamageablePart extends AbstractDamageablePart {
-    private static final float LOW_DEBUFF_DAMAGE_SCALE = 0.4F;
     private static final float CAPPED_MAX_ABSORPTION = 4.0F;
     private static final float UNCAPPED_MAX_ABSORPTION = 16.0F;
     private int maxHealth;
@@ -79,7 +78,7 @@ public class DamageablePart extends AbstractDamageablePart {
             float debuffHealing = amount - finalNotFitting;
             float debuffHealthFraction = currentHealth / maxHealth;
             if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
-                debuffHealing *= LOW_DEBUFF_DAMAGE_SCALE;
+                debuffHealing *= FirstAid.lowInjuryDebuffDamageScale;
                 debuffHealthFraction = softenDebuffHealthFraction(debuffHealthFraction);
             }
             for (IDebuff debuff : debuffs) {
@@ -107,7 +106,7 @@ public class DamageablePart extends AbstractDamageablePart {
             float debuffDamage = amount - notFitting;
             float debuffHealthFraction = currentHealth / maxHealth;
             if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
-                debuffDamage *= LOW_DEBUFF_DAMAGE_SCALE;
+                debuffDamage *= FirstAid.lowInjuryDebuffDamageScale;
                 debuffHealthFraction = softenDebuffHealthFraction(debuffHealthFraction);
             }
             for (IDebuff debuff : debuffs) {

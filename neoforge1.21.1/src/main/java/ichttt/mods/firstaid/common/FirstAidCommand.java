@@ -63,6 +63,7 @@ public final class FirstAidCommand {
                         .then(Commands.literal("off")
                                 .executes(context -> setNaturalRegenMode(context.getSource(), FirstAid.NaturalRegenMode.OFF)))
                         .then(buildNaturalRegenBranch("limited", FirstAid.NaturalRegenMode.LIMITED))
+                        .then(buildNaturalRegenBranch("limited2", FirstAid.NaturalRegenMode.LIMITED2))
                         .then(buildNaturalRegenBranch("full", FirstAid.NaturalRegenMode.FULL)))
                 .then(Commands.literal("medicineeffect")
                         .then(Commands.literal("realistic")
@@ -188,6 +189,7 @@ public final class FirstAidCommand {
             case OFF -> "firstaid.command.naturalregen.mode_value.off";
             case FULL -> "firstaid.command.naturalregen.mode_value.full";
             case LIMITED -> "firstaid.command.naturalregen.mode_value.limited";
+            case LIMITED2 -> "firstaid.command.naturalregen.mode_value.limited2";
         };
     }
 
@@ -200,6 +202,7 @@ public final class FirstAidCommand {
 
     private static int setMedicineEffectMode(CommandSourceStack source, FirstAid.MedicineEffectMode mode) {
         FirstAid.medicineEffectMode = mode;
+        FirstAid.medicineTimingMultiplier = mode.getTimingMultiplier();
         String key = switch (mode) {
             case ASSISTED -> "firstaid.command.medicineeffect.assisted";
             case CASUAL -> "firstaid.command.medicineeffect.casual";

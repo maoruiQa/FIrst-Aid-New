@@ -18,6 +18,7 @@
 
 package ichttt.mods.firstaid.client.gui;
 
+import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
@@ -78,7 +79,7 @@ public final class FirstaidIngameGui {
             criticalHalfHearts = Mth.ceil(criticalHealth);
         }
 
-        int health = Mth.ceil(player.getHealth());
+        int health = Mth.ceil(getModelDisplayHealth(player, damageModel));
         AttributeInstance attrMaxHealth = player.getAttribute(Attributes.MAX_HEALTH);
         float healthMax = Math.max((float) attrMaxHealth.getValue(), health);
         int absorption = Mth.ceil(player.getAbsorptionAmount());
@@ -145,6 +146,77 @@ public final class FirstaidIngameGui {
 
     private static int getRowHeight(Player player) {
         return Math.max(10 - (getHealthRows(player) - 2), 3);
+    }
+
+    private static float getModelDisplayHealth(Player player, AbstractPlayerDamageModel damageModel) {
+        if (damageModel == null) {
+            return player.getHealth();
+        }
+
+        float currentHealth = 0.0F;
+        FirstAidConfig.Server.VanillaHealthCalculationMode mode = FirstAidConfig.SERVER.vanillaHealthCalculation.get();
+        if (damageModel.hasNoCritical()) {
+            mode = FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL;
+        }
+
+        float ratio = switch (mode) {
+            case AVERAGE_CRITICAL -> {
+                int maxHealth = 0;
+
+                for (AbstractDamageablePart part : damageModel) {
+                    if (part.canCauseDeath) {
+                        currentHealth += part.currentHealth;
+                        maxHealth += part.getMaxHealth();
+                    }
+                }
+
+                yield maxHealth <= 0 ? 0.0F : currentHealth / maxHealth;
+            }
+            case MIN_CRITICAL -> {
+                AbstractDamageablePart minimal = null;
+                float lowest = Float.MAX_VALUE;
+
+                for (AbstractDamageablePart part : damageModel) {
+                    if (part.canCauseDeath && part.currentHealth < lowest) {
+                        minimal = part;
+                        lowest = part.currentHealth;
+                    }
+                }
+
+                yield minimal == null || minimal.getMaxHealth() <= 0 ? 0.0F : minimal.currentHealth / minimal.getMaxHealth();
+            }
+            case AVERAGE_ALL -> {
+                for (AbstractDamageablePart part : damageModel) {
+                    currentHealth += part.currentHealth;
+                }
+
+                int maxHealth = damageModel.getCurrentMaxHealth();
+                yield maxHealth <= 0 ? 0.0F : currentHealth / maxHealth;
+            }
+            case CRITICAL_50_PERCENT_OTHER_50_PERCENT -> {
+                float currentNormal = 0.0F;
+                int maxNormal = 0;
+                float currentCritical = 0.0F;
+                int maxCritical = 0;
+
+                for (AbstractDamageablePart part : damageModel) {
+                    if (part.canCauseDeath) {
+                        currentCritical += part.currentHealth;
+                        maxCritical += part.getMaxHealth();
+                    } else {
+                        currentNormal += part.currentHealth;
+                        maxNormal += part.getMaxHealth();
+                    }
+                }
+
+                float avgNormal = maxNormal <= 0 ? 0.0F : currentNormal / maxNormal;
+                float avgCritical = maxCritical <= 0 ? 0.0F : currentCritical / maxCritical;
+                yield (avgCritical + avgNormal) / 2.0F;
+            }
+        };
+
+        float displayHealth = ratio * player.getMaxHealth();
+        return displayHealth <= 0.0F && player.isAlive() && !damageModel.isDead(player) ? 1.0F : displayHealth;
     }
 
     private static Identifier getHeartSprite(boolean poisoned, boolean withered, boolean halfHeart, boolean blinking) {

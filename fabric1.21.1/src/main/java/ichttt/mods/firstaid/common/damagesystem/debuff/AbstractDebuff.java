@@ -29,8 +29,6 @@ import javax.annotation.Nonnull;
 import java.util.Objects;
 
 public abstract class AbstractDebuff implements IDebuff {
-    protected static final float LOW_DEBUFF_AMPLIFIER_SCALE = 0.5F;
-    protected static final float LOW_DEBUFF_DURATION_SCALE = 0.5F;
 
     @Nonnull
     public final Holder<MobEffect> effect;
@@ -50,14 +48,14 @@ public abstract class AbstractDebuff implements IDebuff {
         if (amplifier <= 0) {
             return amplifier;
         }
-        return Math.max(0, Math.round(amplifier * LOW_DEBUFF_AMPLIFIER_SCALE));
+        return Math.max(0, Math.round(amplifier * FirstAid.lowInjuryDebuffAmplifierScale));
     }
 
     protected final int scaleDurationForMode(int duration) {
         if (duration <= 1) {
             return duration;
         }
-        return Math.max(1, Math.round(duration * LOW_DEBUFF_DURATION_SCALE));
+        return Math.max(1, Math.round(duration * FirstAid.lowInjuryDebuffDurationScale));
     }
 }
 

@@ -79,7 +79,7 @@ public class StatusEffectLayer implements IGuiOverlay {
         float dangerPain = deathDanger <= 0.0F ? 0.0F : Mth.clamp(0.18F + deathDanger * 0.82F, 0.0F, 1.0F);
         float targetPain = Math.max(basePain, dangerPain);
         SuppressionFeedbackController suppressionFeedbackController = ClientEventHandler.getSuppressionFeedbackController();
-        float suppressionScale = FirstAid.lowSuppressionEnabled ? 0.4F : 1.0F;
+        float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
         float targetSuppression = Math.max(damageModel.getSuppressionIntensity(), suppressionFeedbackController.getVisualStrength()) * suppressionScale;
 
         tickStrengths(targetPain, targetSuppression);

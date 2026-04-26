@@ -69,27 +69,43 @@ public final class FirstAidConfig {
 
    public static void applyCommandSettings() {
       FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
+      FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
       FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
+      FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
       FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
       FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
       FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
       FirstAid.naturalRegenStrategy = SERVER.naturalRegenStrategy.get();
+      FirstAid.naturalRegenLimitRatio = SERVER.naturalRegenLimitRatio.get().floatValue();
+      FirstAid.naturalRegenCriticalPriorityRatio = SERVER.naturalRegenCriticalPriorityRatio.get().floatValue();
       FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
+      FirstAid.medicineTimingMultiplier = SERVER.medicineTimingMultiplier.get().floatValue();
       FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+      FirstAid.lowInjuryDebuffDamageScale = SERVER.lowInjuryDebuffDamageScale.get().floatValue();
+      FirstAid.lowInjuryDebuffAmplifierScale = SERVER.lowInjuryDebuffAmplifierScale.get().floatValue();
+      FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
       FirstAid.injuryDebuffOverrides.clear();
       FirstAid.injuryDebuffOverrides.putAll(SERVER.injuryDebuffOverrides.get());
    }
 
    public static void persistCommandSettings() {
       SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
+      SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
       SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
+      SERVER.lowSuppressionMultiplier.set((double)FirstAid.lowSuppressionMultiplier);
       SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
       SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
       SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
       SERVER.naturalRegenStrategy.set(FirstAid.naturalRegenStrategy);
+      SERVER.naturalRegenLimitRatio.set((double)FirstAid.naturalRegenLimitRatio);
+      SERVER.naturalRegenCriticalPriorityRatio.set((double)FirstAid.naturalRegenCriticalPriorityRatio);
       SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
       SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
+      SERVER.medicineTimingMultiplier.set((double)FirstAid.medicineTimingMultiplier);
       SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+      SERVER.lowInjuryDebuffDamageScale.set((double)FirstAid.lowInjuryDebuffDamageScale);
+      SERVER.lowInjuryDebuffAmplifierScale.set((double)FirstAid.lowInjuryDebuffAmplifierScale);
+      SERVER.lowInjuryDebuffDurationScale.set((double)FirstAid.lowInjuryDebuffDurationScale);
       SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
       saveServer();
    }
@@ -454,11 +470,19 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<List<String>> enchMulOverrideIdentifiers;
       public final FirstAidConfig.ConfigValue<List<Integer>> enchMulOverrideMultiplier;
       public final FirstAidConfig.ConfigValue<Boolean> dynamicPainEnabled;
+      public final FirstAidConfig.ConfigValue<Integer> mildPainLevel;
       public final FirstAidConfig.ConfigValue<Boolean> lowSuppressionEnabled;
+      public final FirstAidConfig.ConfigValue<Double> lowSuppressionMultiplier;
       public final FirstAidConfig.ConfigValue<Boolean> rescueWakeUpEnabled;
       public final FirstAidConfig.ConfigValue<Double> rescueWakeUpDelaySeconds;
+      public final FirstAidConfig.ConfigValue<Double> naturalRegenLimitRatio;
+      public final FirstAidConfig.ConfigValue<Double> naturalRegenCriticalPriorityRatio;
       public final FirstAidConfig.ConfigValue<FirstAid.MedicineEffectMode> medicineEffectMode;
+      public final FirstAidConfig.ConfigValue<Double> medicineTimingMultiplier;
       public final FirstAidConfig.ConfigValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
+      public final FirstAidConfig.ConfigValue<Double> lowInjuryDebuffDamageScale;
+      public final FirstAidConfig.ConfigValue<Double> lowInjuryDebuffAmplifierScale;
+      public final FirstAidConfig.ConfigValue<Double> lowInjuryDebuffDurationScale;
       public final FirstAidConfig.ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
 
       public Server() {
@@ -513,15 +537,23 @@ public final class FirstAidConfig {
             FirstAidConfig.intList("enchantmentOverrideMultiplier", Collections.singletonList(2), value -> value >= 1 && value <= 4)
          );
          this.dynamicPainEnabled = this.define(FirstAidConfig.boolValue("dynamicPainEnabled", true));
+         this.mildPainLevel = this.define(FirstAidConfig.intValue("mildPainLevel", 1, 1, 5));
          this.lowSuppressionEnabled = this.define(FirstAidConfig.boolValue("lowSuppressionEnabled", false));
+         this.lowSuppressionMultiplier = this.define(FirstAidConfig.doubleValue("lowSuppressionMultiplier", 0.4, 0.0, 1.0));
          this.rescueWakeUpEnabled = this.define(FirstAidConfig.boolValue("rescueWakeUpEnabled", false));
          this.rescueWakeUpDelaySeconds = this.define(
             FirstAidConfig.doubleValue("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0.0, 3600.0)
          );
+         this.naturalRegenLimitRatio = this.define(FirstAidConfig.doubleValue("naturalRegenLimitRatio", 0.85, 0.0, 1.0));
+         this.naturalRegenCriticalPriorityRatio = this.define(FirstAidConfig.doubleValue("naturalRegenCriticalPriorityRatio", 0.85, 0.0, 1.0));
          this.medicineEffectMode = this.define(
             FirstAidConfig.enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class)
          );
+         this.medicineTimingMultiplier = this.define(FirstAidConfig.doubleValue("medicineTimingMultiplier", 1.0, 0.01, 20.0));
          this.injuryDebuffMode = this.define(FirstAidConfig.enumValue("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL, FirstAid.InjuryDebuffMode.class));
+         this.lowInjuryDebuffDamageScale = this.define(FirstAidConfig.doubleValue("lowInjuryDebuffDamageScale", 0.4, 0.0, 1.0));
+         this.lowInjuryDebuffAmplifierScale = this.define(FirstAidConfig.doubleValue("lowInjuryDebuffAmplifierScale", 0.5, 0.0, 1.0));
+         this.lowInjuryDebuffDurationScale = this.define(FirstAidConfig.doubleValue("lowInjuryDebuffDurationScale", 0.5, 0.0, 1.0));
          this.injuryDebuffOverrides = this.define(FirstAidConfig.injuryDebuffOverridesValue("injuryDebuffOverrides"));
       }
 

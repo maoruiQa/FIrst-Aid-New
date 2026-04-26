@@ -332,7 +332,7 @@ public class GuiHealthScreen extends Screen {
             return 0;
         }
         if (!FirstAid.dynamicPainEnabled) {
-            return 1;
+            return Math.max(1, Math.min(5, FirstAid.mildPainLevel));
         }
         float averageSeverity = totalWeight <= 0.0F ? 0.0F : weightedSeverity / totalWeight;
         float combinedSeverity = Math.min(1.0F, maxSeverity * 0.65F + averageSeverity * 0.35F);

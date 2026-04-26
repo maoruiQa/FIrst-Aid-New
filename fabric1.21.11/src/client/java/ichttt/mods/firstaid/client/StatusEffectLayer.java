@@ -55,7 +55,7 @@ public class StatusEffectLayer implements HudRenderCallback {
                float modelSuppression = playerDamageModel == null
                   ? Math.min(1.0F, damageModel.getAdrenalineTicks() / 200.0F)
                   : playerDamageModel.getSuppressionIntensity();
-               float suppressionScale = FirstAid.lowSuppressionEnabled ? 0.4F : 1.0F;
+               float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
                float targetSuppression = Math.max(modelSuppression, suppressionFeedbackController.getVisualStrength()) * suppressionScale;
                this.tickStrengths(targetPain, targetSuppression);
                float smoothPain = Mth.lerp(deltaTracker.getGameTimeDeltaTicks(), this.lastPainStrength, this.painStrength);

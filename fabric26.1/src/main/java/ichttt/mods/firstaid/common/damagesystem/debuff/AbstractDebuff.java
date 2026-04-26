@@ -10,8 +10,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffect;
 
 public abstract class AbstractDebuff implements IDebuff {
-   protected static final float LOW_DEBUFF_AMPLIFIER_SCALE = 0.5F;
-   protected static final float LOW_DEBUFF_DURATION_SCALE = 0.5F;
    @Nonnull
    public final Holder<MobEffect> effect;
    @Nonnull
@@ -27,10 +25,10 @@ public abstract class AbstractDebuff implements IDebuff {
    }
 
    protected final int scaleAmplifierForMode(int amplifier) {
-      return amplifier <= 0 ? amplifier : Math.max(0, Math.round(amplifier * 0.5F));
+      return amplifier <= 0 ? amplifier : Math.max(0, Math.round(amplifier * FirstAid.lowInjuryDebuffAmplifierScale));
    }
 
    protected final int scaleDurationForMode(int duration) {
-      return duration <= 1 ? duration : Math.max(1, Math.round(duration * 0.5F));
+      return duration <= 1 ? duration : Math.max(1, Math.round(duration * FirstAid.lowInjuryDebuffDurationScale));
    }
 }

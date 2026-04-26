@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class HealthDistribution {
-    private static final float GREEN_THRESHOLD = 0.85F;
     private static final List<EnumPlayerPart> parts;
 
     static {
@@ -136,6 +135,10 @@ public class HealthDistribution {
         }
     }
 
+    public static boolean canApplyNaturalRegen(AbstractPlayerDamageModel damageModel) {
+        return FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF && selectNaturalRegenTarget(damageModel) != null;
+    }
+
     private static AbstractDamageablePart selectNaturalRegenTarget(AbstractPlayerDamageModel damageModel) {
         List<AbstractDamageablePart> eligibleParts = getEligibleNaturalRegenParts(damageModel);
         if (eligibleParts.isEmpty()) {
@@ -164,7 +167,7 @@ public class HealthDistribution {
     }
 
     private static void addCriticalCandidate(List<AbstractDamageablePart> criticalCandidates, AbstractDamageablePart part) {
-        if (part != null && isNaturalRegenEligible(part) && CommonUtils.getVisibleHealthRatio(part) <= GREEN_THRESHOLD) {
+        if (part != null && isNaturalRegenEligible(part) && CommonUtils.getVisibleHealthRatio(part) <= FirstAid.naturalRegenCriticalPriorityRatio) {
             criticalCandidates.add(part);
         }
     }
@@ -181,13 +184,16 @@ public class HealthDistribution {
     }
 
     private static boolean isNaturalRegenEligible(AbstractDamageablePart part) {
-        return part != null && getNaturalRegenLimit(part) - part.currentHealth > 0.0001F;
+        if (part == null || (FirstAid.naturalRegenMode == FirstAid.NaturalRegenMode.LIMITED2 && part.currentHealth <= 0.0F)) {
+            return false;
+        }
+        return getNaturalRegenLimit(part) - part.currentHealth > 0.0001F;
     }
 
     private static float getNaturalRegenLimit(AbstractDamageablePart part) {
         return switch (FirstAid.naturalRegenMode) {
             case FULL -> part.getMaxHealth();
-            case LIMITED -> getLimitedNaturalRegenCap(part);
+            case LIMITED, LIMITED2 -> getLimitedNaturalRegenCap(part);
             case OFF -> 0.0F;
         };
     }
@@ -198,9 +204,9 @@ public class HealthDistribution {
             return 0.0F;
         }
         if (drawsHealthAsText(part)) {
-            return Math.min(maxHealth, (float) Math.floor(maxHealth * GREEN_THRESHOLD * 10.0F) / 10.0F);
+            return Math.min(maxHealth, (float) Math.floor(maxHealth * FirstAid.naturalRegenLimitRatio * 10.0F) / 10.0F);
         }
-        return Math.min(maxHealth, (float) Math.floor(maxHealth * GREEN_THRESHOLD));
+        return Math.min(maxHealth, (float) Math.floor(maxHealth * FirstAid.naturalRegenLimitRatio));
     }
 
     private static boolean drawsHealthAsText(AbstractDamageablePart part) {

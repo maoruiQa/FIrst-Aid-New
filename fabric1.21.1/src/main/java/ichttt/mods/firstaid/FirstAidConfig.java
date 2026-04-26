@@ -92,27 +92,43 @@ public final class FirstAidConfig {
 
     public static void applyCommandSettings() {
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
+        FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
+        FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
         FirstAid.naturalRegenStrategy = SERVER.naturalRegenStrategy.get();
+        FirstAid.naturalRegenLimitRatio = SERVER.naturalRegenLimitRatio.get().floatValue();
+        FirstAid.naturalRegenCriticalPriorityRatio = SERVER.naturalRegenCriticalPriorityRatio.get().floatValue();
         FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
+        FirstAid.medicineTimingMultiplier = SERVER.medicineTimingMultiplier.get().floatValue();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+        FirstAid.lowInjuryDebuffDamageScale = SERVER.lowInjuryDebuffDamageScale.get().floatValue();
+        FirstAid.lowInjuryDebuffAmplifierScale = SERVER.lowInjuryDebuffAmplifierScale.get().floatValue();
+        FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
         FirstAid.injuryDebuffOverrides.clear();
         FirstAid.injuryDebuffOverrides.putAll(SERVER.injuryDebuffOverrides.get());
     }
 
     public static void persistCommandSettings() {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
+        SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
+        SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
         SERVER.naturalRegenStrategy.set(FirstAid.naturalRegenStrategy);
+        SERVER.naturalRegenLimitRatio.set((double) FirstAid.naturalRegenLimitRatio);
+        SERVER.naturalRegenCriticalPriorityRatio.set((double) FirstAid.naturalRegenCriticalPriorityRatio);
         SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
         SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
+        SERVER.medicineTimingMultiplier.set((double) FirstAid.medicineTimingMultiplier);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+        SERVER.lowInjuryDebuffDamageScale.set((double) FirstAid.lowInjuryDebuffDamageScale);
+        SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
+        SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
         SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
         saveServer();
     }
@@ -227,11 +243,19 @@ public final class FirstAidConfig {
         public final ConfigValue<List<String>> enchMulOverrideIdentifiers;
         public final ConfigValue<List<Integer>> enchMulOverrideMultiplier;
         public final ConfigValue<Boolean> dynamicPainEnabled;
+        public final ConfigValue<Integer> mildPainLevel;
         public final ConfigValue<Boolean> lowSuppressionEnabled;
+        public final ConfigValue<Double> lowSuppressionMultiplier;
         public final ConfigValue<Boolean> rescueWakeUpEnabled;
         public final ConfigValue<Double> rescueWakeUpDelaySeconds;
+        public final ConfigValue<Double> naturalRegenLimitRatio;
+        public final ConfigValue<Double> naturalRegenCriticalPriorityRatio;
         public final ConfigValue<FirstAid.MedicineEffectMode> medicineEffectMode;
+        public final ConfigValue<Double> medicineTimingMultiplier;
         public final ConfigValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
+        public final ConfigValue<Double> lowInjuryDebuffDamageScale;
+        public final ConfigValue<Double> lowInjuryDebuffAmplifierScale;
+        public final ConfigValue<Double> lowInjuryDebuffDurationScale;
         public final ConfigValue<Map<ResourceLocation, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
 
         public Server() {
@@ -289,11 +313,19 @@ public final class FirstAidConfig {
             enchMulOverrideMultiplier = define(intList("enchantmentOverrideMultiplier", Collections.singletonList(2), value -> value >= 1 && value <= 4));
 
             dynamicPainEnabled = define(boolValue("dynamicPainEnabled", true));
+            mildPainLevel = define(intValue("mildPainLevel", 1, 1, 5));
             lowSuppressionEnabled = define(boolValue("lowSuppressionEnabled", false));
+            lowSuppressionMultiplier = define(doubleValue("lowSuppressionMultiplier", 0.4D, 0D, 1D));
             rescueWakeUpEnabled = define(boolValue("rescueWakeUpEnabled", false));
             rescueWakeUpDelaySeconds = define(doubleValue("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0D, 3600D));
+            naturalRegenLimitRatio = define(doubleValue("naturalRegenLimitRatio", 0.85D, 0D, 1D));
+            naturalRegenCriticalPriorityRatio = define(doubleValue("naturalRegenCriticalPriorityRatio", 0.85D, 0D, 1D));
             medicineEffectMode = define(enumValue("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC, FirstAid.MedicineEffectMode.class));
+            medicineTimingMultiplier = define(doubleValue("medicineTimingMultiplier", 1D, 0.01D, 20D));
             injuryDebuffMode = define(enumValue("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL, FirstAid.InjuryDebuffMode.class));
+            lowInjuryDebuffDamageScale = define(doubleValue("lowInjuryDebuffDamageScale", 0.4D, 0D, 1D));
+            lowInjuryDebuffAmplifierScale = define(doubleValue("lowInjuryDebuffAmplifierScale", 0.5D, 0D, 1D));
+            lowInjuryDebuffDurationScale = define(doubleValue("lowInjuryDebuffDurationScale", 0.5D, 0D, 1D));
             injuryDebuffOverrides = define(injuryDebuffOverridesValue("injuryDebuffOverrides"));
         }
 

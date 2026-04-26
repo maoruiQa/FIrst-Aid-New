@@ -173,10 +173,11 @@
   "firstaid.command.naturalregen.mode_strategy": "\u81ea\u7136\u56de\u8840\u5df2\u8bbe\u4e3a %s / %s",
   "firstaid.command.naturalregen.mode_value.off": "\u5173\u95ed",
   "firstaid.command.naturalregen.mode_value.limited": "\u9650\u5236",
+  "firstaid.command.naturalregen.mode_value.limited2": "\u9650\u52362",
   "firstaid.command.naturalregen.mode_value.full": "\u5b8c\u6574",
   "firstaid.command.naturalregen.strategy_value.critical": "\u81f4\u547d\u4f18\u5148",
   "firstaid.command.naturalregen.strategy_value.random": "\u968f\u673a",
-  "firstaid.tip.commands.naturalregen": "/firstaid naturalregen off|limited|full [critical|random] - \u914d\u7f6e\u81ea\u7136\u56de\u8840",
+  "firstaid.tip.commands.naturalregen": "/firstaid naturalregen off|limited|limited2|full [critical|random] - \u914d\u7f6e\u81ea\u7136\u56de\u8840",
   "firstaid.tip.commands.naturalregen.label": "\u81ea\u7136\u56de\u8840",
-  "firstaid.tip.commands.naturalregen.detail": "\u8bbe\u7f6e\u81ea\u7136\u56de\u8840\nfull\uff1a\u53ef\u56de\u590d\u5230\u7eff\u8272\nlimited\uff1a\u53ea\u80fd\u56de\u590d\u5230\u9ec4\u8272\noff\uff1a\u5173\u95ed\ncritical\uff1a\u5934/\u8eaf\u5e72\u9ec4\u8272\u53ca\u4ee5\u4e0b\u65f6\u4f18\u5148\nrandom\uff1a\u968f\u673a\u6062\u590d\u53ef\u6cbb\u7597\u90e8\u4f4d\n\u70b9\u51fb\u586b\u5165\uff1a/firstaid naturalregen limited critical"
+  "firstaid.tip.commands.naturalregen.detail": "\u8bbe\u7f6e\u81ea\u7136\u56de\u8840\nfull\uff1a\u53ef\u56de\u590d\u5230\u7eff\u8272\nlimited\uff1a\u53ea\u80fd\u56de\u590d\u5230\u9ec4\u8272\nlimited2\uff1a\u540c limited\uff0c\u4f46\u8df3\u8fc7\u8840\u91cf\u4e3a 0 \u7684\u90e8\u4f4d\noff\uff1a\u5173\u95ed\ncritical\uff1a\u5934/\u8eaf\u5e72\u9ec4\u8272\u53ca\u4ee5\u4e0b\u65f6\u4f18\u5148\nrandom\uff1a\u968f\u673a\u6062\u590d\u53ef\u6cbb\u7597\u90e8\u4f4d\n\u70b9\u51fb\u586b\u5165\uff1a/firstaid naturalregen limited critical"
 }

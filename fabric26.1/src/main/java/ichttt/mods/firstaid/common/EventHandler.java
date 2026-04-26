@@ -421,13 +421,21 @@ public final class EventHandler {
    private static void onServerStop() {
       FirstAid.LOGGER.debug("Cleaning up");
       FirstAid.dynamicPainEnabled = true;
+      FirstAid.mildPainLevel = 1;
       FirstAid.lowSuppressionEnabled = false;
+      FirstAid.lowSuppressionMultiplier = 0.4F;
       FirstAid.rescueWakeUpEnabled = false;
       FirstAid.rescueWakeUpDelaySeconds = FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
       FirstAid.naturalRegenMode = FirstAid.NaturalRegenMode.LIMITED;
       FirstAid.naturalRegenStrategy = FirstAid.NaturalRegenStrategy.CRITICAL;
+      FirstAid.naturalRegenLimitRatio = 0.85F;
+      FirstAid.naturalRegenCriticalPriorityRatio = 0.85F;
       FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
+      FirstAid.medicineTimingMultiplier = 1.0F;
       FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
+      FirstAid.lowInjuryDebuffDamageScale = 0.4F;
+      FirstAid.lowInjuryDebuffAmplifierScale = 0.5F;
+      FirstAid.lowInjuryDebuffDurationScale = 0.5F;
       FirstAid.injuryDebuffOverrides.clear();
       CapProvider.tutorialDone.clear();
       hitList.clear();
@@ -659,13 +667,8 @@ public final class EventHandler {
             ? playerDamageModel.defibrillatorRescueFromCriticalState(rescueTarget.target(), FirstAid.rescueWakeUpEnabled)
             : playerDamageModel.rescueFromCriticalState(rescueTarget.target(), null, FirstAid.rescueWakeUpEnabled);
          if (rescued) {
-            rescuer.sendSystemMessage(
-               Component.translatable("firstaid.gui.rescue_other", new Object[]{rescueTarget.target().getDisplayName()}).withStyle(ChatFormatting.GREEN), true
-            );
-            rescueTarget.target()
-               .sendSystemMessage(
-                  Component.translatable("firstaid.gui.rescue_received", new Object[]{rescuer.getDisplayName()}).withStyle(ChatFormatting.GREEN)
-               );
+            sendActionBarMessage(rescuer, Component.translatable("firstaid.gui.rescue_other", new Object[]{rescueTarget.target().getDisplayName()}).withStyle(ChatFormatting.GREEN));
+            sendActionBarMessage(rescueTarget.target(), Component.translatable("firstaid.gui.rescue_received", new Object[]{rescuer.getDisplayName()}).withStyle(ChatFormatting.GREEN));
          }
 
          rescueProgress.remove(rescuer.getUUID());
@@ -683,17 +686,18 @@ public final class EventHandler {
             stack.hurtAndBreak(1, executor, getEquipmentSlot(executionTarget.hand()));
          }
 
-         executor.sendSystemMessage(
-            Component.translatable("firstaid.gui.execute_other", new Object[]{executionTarget.target().getDisplayName()}).withStyle(ChatFormatting.RED), true
-         );
-         executionTarget.target()
-            .sendSystemMessage(
-               Component.translatable("firstaid.gui.execute_received", new Object[]{executor.getDisplayName()}).withStyle(ChatFormatting.RED)
-            );
+         sendActionBarMessage(executor, Component.translatable("firstaid.gui.execute_other", new Object[]{executionTarget.target().getDisplayName()}).withStyle(ChatFormatting.RED));
+         sendActionBarMessage(executionTarget.target(), Component.translatable("firstaid.gui.execute_received", new Object[]{executor.getDisplayName()}).withStyle(ChatFormatting.RED));
          playerDamageModel.giveUp(executionTarget.target());
          executionProgress.remove(executor.getUUID());
       } else {
          executionProgress.remove(executor.getUUID());
+      }
+   }
+
+   private static void sendActionBarMessage(Player player, Component message) {
+      if (player instanceof ServerPlayer serverPlayer) {
+         serverPlayer.sendSystemMessage(message, true);
       }
    }
 

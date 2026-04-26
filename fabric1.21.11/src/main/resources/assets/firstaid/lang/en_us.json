@@ -192,10 +192,11 @@
   "firstaid.command.naturalregen.mode_strategy": "Natural regeneration set to %s / %s",
   "firstaid.command.naturalregen.mode_value.off": "off",
   "firstaid.command.naturalregen.mode_value.limited": "limited",
+  "firstaid.command.naturalregen.mode_value.limited2": "limited2",
   "firstaid.command.naturalregen.mode_value.full": "full",
   "firstaid.command.naturalregen.strategy_value.critical": "critical",
   "firstaid.command.naturalregen.strategy_value.random": "random",
-  "firstaid.tip.commands.naturalregen": "/firstaid naturalregen off|limited|full [critical|random] - configure natural regeneration",
+  "firstaid.tip.commands.naturalregen": "/firstaid naturalregen off|limited|limited2|full [critical|random] - configure natural regeneration",
   "firstaid.tip.commands.naturalregen.label": "Natural Regen",
-  "firstaid.tip.commands.naturalregen.detail": "Configure natural regeneration\nfull: heal into green\nlimited: stop in yellow\noff: disable\ncritical: prioritize head/body at yellow or below\nrandom: pick a random healable part\nClick to fill: /firstaid naturalregen limited critical"
+  "firstaid.tip.commands.naturalregen.detail": "Configure natural regeneration\nfull: heal into green\nlimited: stop in yellow\nlimited2: limited, but skips parts at 0 health\noff: disable\ncritical: prioritize head/body at yellow or below\nrandom: pick a random healable part\nClick to fill: /firstaid naturalregen limited critical"
 }

@@ -56,11 +56,15 @@ public class FirstAidConfig {
 
     public static void persistCommandSettings() {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
+        SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
+        SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
         SERVER.naturalRegenStrategy.set(FirstAid.naturalRegenStrategy);
+        SERVER.naturalRegenLimitRatio.set((double) FirstAid.naturalRegenLimitRatio);
+        SERVER.naturalRegenCriticalPriorityRatio.set((double) FirstAid.naturalRegenCriticalPriorityRatio);
         SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
         serverSpec.save();
     }
@@ -68,11 +72,15 @@ public class FirstAidConfig {
     public static void applyCommandSettings() {
         migrateLegacyBandageApplyTime();
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
+        FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
+        FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
         FirstAid.naturalRegenStrategy = SERVER.naturalRegenStrategy.get();
+        FirstAid.naturalRegenLimitRatio = SERVER.naturalRegenLimitRatio.get().floatValue();
+        FirstAid.naturalRegenCriticalPriorityRatio = SERVER.naturalRegenCriticalPriorityRatio.get().floatValue();
     }
 
     private static void migrateLegacyBandageApplyTime() {
@@ -214,15 +222,27 @@ public class FirstAidConfig {
             dynamicPainEnabled = builder
                     .comment("Persistent toggle for /firstaid pain (dynamic vs mild)")
                     .define("dynamicPainEnabled", true);
+            mildPainLevel = builder
+                    .comment("Pain level used when /firstaid pain mild is active")
+                    .defineInRange("mildPainLevel", 1, 1, 5);
             lowSuppressionEnabled = builder
                     .comment("Persistent toggle for /firstaid suppression (dynamic vs mild)")
                     .define("lowSuppressionEnabled", false);
+            lowSuppressionMultiplier = builder
+                    .comment("Visual suppression intensity multiplier used when /firstaid suppression mild is active")
+                    .defineInRange("lowSuppressionMultiplier", 0.4D, 0D, 1D);
             rescueWakeUpEnabled = builder
                     .comment("Persistent toggle for /firstaid revivewakeup (on vs off)")
                     .define("rescueWakeUpEnabled", false);
             rescueWakeUpDelaySeconds = builder
                     .comment("Persistent delay in seconds for /firstaid revivewakeup on [seconds]")
                     .defineInRange("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0D, 3600D);
+            naturalRegenLimitRatio = builder
+                    .comment("Maximum health fraction natural regeneration can restore in limited modes")
+                    .defineInRange("naturalRegenLimitRatio", 0.85D, 0D, 1D);
+            naturalRegenCriticalPriorityRatio = builder
+                    .comment("Critical limb health fraction at or below which critical natural regeneration is prioritized")
+                    .defineInRange("naturalRegenCriticalPriorityRatio", 0.85D, 0D, 1D);
 
             builder.pop();
 
@@ -307,9 +327,13 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.BooleanValue useFriendlyRandomDistribution;
         public final ForgeConfigSpec.EnumValue<ArmorEnchantmentMode> armorEnchantmentMode;
         public final ForgeConfigSpec.BooleanValue dynamicPainEnabled;
+        public final ForgeConfigSpec.IntValue mildPainLevel;
         public final ForgeConfigSpec.BooleanValue lowSuppressionEnabled;
+        public final ForgeConfigSpec.DoubleValue lowSuppressionMultiplier;
         public final ForgeConfigSpec.BooleanValue rescueWakeUpEnabled;
         public final ForgeConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
+        public final ForgeConfigSpec.DoubleValue naturalRegenLimitRatio;
+        public final ForgeConfigSpec.DoubleValue naturalRegenCriticalPriorityRatio;
 
         public final ForgeConfigSpec.IntValue enchantmentMultiplier;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> enchMulOverrideResourceLocations;

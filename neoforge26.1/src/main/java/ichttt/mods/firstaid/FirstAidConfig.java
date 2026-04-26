@@ -61,27 +61,43 @@ public class FirstAidConfig {
     public static void applyCommandSettings() {
         migrateLegacyBandageApplyTime();
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
+        FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
+        FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
         FirstAid.naturalRegenStrategy = SERVER.naturalRegenStrategy.get();
+        FirstAid.naturalRegenLimitRatio = SERVER.naturalRegenLimitRatio.get().floatValue();
+        FirstAid.naturalRegenCriticalPriorityRatio = SERVER.naturalRegenCriticalPriorityRatio.get().floatValue();
         FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
+        FirstAid.medicineTimingMultiplier = SERVER.medicineTimingMultiplier.get().floatValue();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+        FirstAid.lowInjuryDebuffDamageScale = SERVER.lowInjuryDebuffDamageScale.get().floatValue();
+        FirstAid.lowInjuryDebuffAmplifierScale = SERVER.lowInjuryDebuffAmplifierScale.get().floatValue();
+        FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
         FirstAid.injuryDebuffOverrides.clear();
         FirstAid.injuryDebuffOverrides.putAll(parseInjuryDebuffOverrides(SERVER.injuryDebuffOverrides.get()));
     }
 
     public static void persistCommandSettings() {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
+        SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
+        SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
         SERVER.naturalRegenStrategy.set(FirstAid.naturalRegenStrategy);
+        SERVER.naturalRegenLimitRatio.set((double) FirstAid.naturalRegenLimitRatio);
+        SERVER.naturalRegenCriticalPriorityRatio.set((double) FirstAid.naturalRegenCriticalPriorityRatio);
         SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
         SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
+        SERVER.medicineTimingMultiplier.set((double) FirstAid.medicineTimingMultiplier);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+        SERVER.lowInjuryDebuffDamageScale.set((double) FirstAid.lowInjuryDebuffDamageScale);
+        SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
+        SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
         SERVER.injuryDebuffOverrides.set(serializeInjuryDebuffOverrides(FirstAid.injuryDebuffOverrides));
         serverSpec.save();
     }
@@ -275,21 +291,45 @@ public class FirstAidConfig {
             dynamicPainEnabled = builder
                     .comment("Persistent toggle for /firstaid pain (dynamic vs mild)")
                     .define("dynamicPainEnabled", true);
+            mildPainLevel = builder
+                    .comment("Pain level used when /firstaid pain mild is active")
+                    .defineInRange("mildPainLevel", 1, 1, 5);
             lowSuppressionEnabled = builder
                     .comment("Persistent toggle for /firstaid suppression (dynamic vs mild)")
                     .define("lowSuppressionEnabled", false);
+            lowSuppressionMultiplier = builder
+                    .comment("Visual suppression intensity multiplier used when /firstaid suppression mild is active")
+                    .defineInRange("lowSuppressionMultiplier", 0.4D, 0D, 1D);
             rescueWakeUpEnabled = builder
                     .comment("Persistent toggle for /firstaid revivewakeup (on vs off)")
                     .define("rescueWakeUpEnabled", false);
             rescueWakeUpDelaySeconds = builder
                     .comment("Persistent delay in seconds for /firstaid revivewakeup on [seconds]")
                     .defineInRange("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0D, 3600D);
+            naturalRegenLimitRatio = builder
+                    .comment("Maximum health fraction natural regeneration can restore in limited modes")
+                    .defineInRange("naturalRegenLimitRatio", 0.85D, 0D, 1D);
+            naturalRegenCriticalPriorityRatio = builder
+                    .comment("Critical limb health fraction at or below which critical natural regeneration is prioritized")
+                    .defineInRange("naturalRegenCriticalPriorityRatio", 0.85D, 0D, 1D);
             medicineEffectMode = builder
                     .comment("Persistent toggle for /firstaid medicineeffect (realistic/assisted/casual)")
                     .defineEnum("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC);
+            medicineTimingMultiplier = builder
+                    .comment("Multiplier applied to medicine timing; command presets set this to realistic=1.0, assisted=0.5, casual=0.25")
+                    .defineInRange("medicineTimingMultiplier", 1D, 0.01D, 20D);
             injuryDebuffMode = builder
                     .comment("Persistent toggle for /firstaid injurydebuff (normal/low/off)")
                     .defineEnum("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL);
+            lowInjuryDebuffDamageScale = builder
+                    .comment("Damage and healing scale used when /firstaid injurydebuff low is active")
+                    .defineInRange("lowInjuryDebuffDamageScale", 0.4D, 0D, 1D);
+            lowInjuryDebuffAmplifierScale = builder
+                    .comment("Amplifier scale used when /firstaid injurydebuff low is active")
+                    .defineInRange("lowInjuryDebuffAmplifierScale", 0.5D, 0D, 1D);
+            lowInjuryDebuffDurationScale = builder
+                    .comment("Duration scale used when /firstaid injurydebuff low is active")
+                    .defineInRange("lowInjuryDebuffDurationScale", 0.5D, 0D, 1D);
             injuryDebuffOverrides = builder
                     .comment("Per-effect overrides for /firstaid injurydebuff. Format: modid:effect=normal|low|off")
                     .defineList("injuryDebuffOverrides", Collections.emptyList(), o -> o != null && !o.toString().isBlank());
@@ -380,11 +420,19 @@ public class FirstAidConfig {
         public final ModConfigSpec.ConfigValue<List<? extends String>> enchMulOverrideResourceLocations;
         public final ModConfigSpec.ConfigValue<List<? extends Integer>> enchMulOverrideMultiplier;
         public final ModConfigSpec.BooleanValue dynamicPainEnabled;
+        public final ModConfigSpec.IntValue mildPainLevel;
         public final ModConfigSpec.BooleanValue lowSuppressionEnabled;
+        public final ModConfigSpec.DoubleValue lowSuppressionMultiplier;
         public final ModConfigSpec.BooleanValue rescueWakeUpEnabled;
         public final ModConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
+        public final ModConfigSpec.DoubleValue naturalRegenLimitRatio;
+        public final ModConfigSpec.DoubleValue naturalRegenCriticalPriorityRatio;
         public final ModConfigSpec.EnumValue<FirstAid.MedicineEffectMode> medicineEffectMode;
+        public final ModConfigSpec.DoubleValue medicineTimingMultiplier;
         public final ModConfigSpec.EnumValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
+        public final ModConfigSpec.DoubleValue lowInjuryDebuffDamageScale;
+        public final ModConfigSpec.DoubleValue lowInjuryDebuffAmplifierScale;
+        public final ModConfigSpec.DoubleValue lowInjuryDebuffDurationScale;
         public final ModConfigSpec.ConfigValue<List<? extends String>> injuryDebuffOverrides;
 
 
@@ -544,5 +592,4 @@ public class FirstAidConfig {
 //    @ExtraConfig.Advanced
     public static final boolean watchSetHealth = true; //If we need this at all, this is server as well
 }
-
 

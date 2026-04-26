@@ -31,7 +31,6 @@ public final class SuppressionFeedbackController {
    private static final float PAIN_FOV_GAIN = 0.18F;
    private static final float PAIN_FOV_DECAY = 0.04F;
    private static final float SUPPRESSION_FOV_MIN = 30.0F;
-   private static final float LOW_SUPPRESSION_MULTIPLIER = 0.4F;
    private static final int SEVERE_PAIN_LEVEL = 4;
    private static final int SEVERE_PAIN_SOUND_COOLDOWN_TICKS = 60;
    private float suppressionIntensity;
@@ -61,7 +60,7 @@ public final class SuppressionFeedbackController {
 
          PlayerDamageModel playerDamageModel = CommonUtils.getDamageModel(player) instanceof PlayerDamageModel model ? model : null;
          int painLevel = playerDamageModel == null ? 0 : playerDamageModel.getPainLevel();
-         float suppressionScale = FirstAid.lowSuppressionEnabled ? 0.4F : 1.0F;
+         float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
          this.suppressionIntensity = (playerDamageModel == null ? 0.0F : playerDamageModel.getSuppressionIntensity()) * suppressionScale;
          this.holdTicks = playerDamageModel == null ? 0 : playerDamageModel.getSuppressionHoldTicks();
          boolean painSuppressed = player.hasEffect(RegistryObjects.MORPHINE_EFFECT) || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);

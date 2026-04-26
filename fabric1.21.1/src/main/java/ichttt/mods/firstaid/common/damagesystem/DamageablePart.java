@@ -22,7 +22,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 public class DamageablePart extends AbstractDamageablePart {
-   private static final float LOW_DEBUFF_DAMAGE_SCALE = 0.4F;
    private int maxHealth;
    @Nullable
    private IDebuff[] debuffs;
@@ -56,7 +55,7 @@ public class DamageablePart extends AbstractDamageablePart {
             float debuffHealing = amount - notFitting;
             float debuffHealthFraction = this.currentHealth / this.maxHealth;
             if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
-               debuffHealing *= 0.4F;
+               debuffHealing *= FirstAid.lowInjuryDebuffDamageScale;
                debuffHealthFraction = softenDebuffHealthFraction(debuffHealthFraction);
             }
 
@@ -88,7 +87,7 @@ public class DamageablePart extends AbstractDamageablePart {
             float debuffDamage = amount - notFitting;
             float debuffHealthFraction = this.currentHealth / this.maxHealth;
             if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
-               debuffDamage *= 0.4F;
+               debuffDamage *= FirstAid.lowInjuryDebuffDamageScale;
                debuffHealthFraction = softenDebuffHealthFraction(debuffHealthFraction);
             }
 

@@ -50,13 +50,21 @@ public class FirstAid {
     public static final SimpleFirstAidChannel NETWORKING = new SimpleFirstAidChannel();
     public static boolean isSynced = false;
     public static boolean dynamicPainEnabled = true;
+    public static int mildPainLevel = 1;
     public static boolean lowSuppressionEnabled = false;
+    public static float lowSuppressionMultiplier = 0.4F;
     public static boolean rescueWakeUpEnabled = false;
     public static double rescueWakeUpDelaySeconds = DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
     public static NaturalRegenMode naturalRegenMode = NaturalRegenMode.LIMITED;
     public static NaturalRegenStrategy naturalRegenStrategy = NaturalRegenStrategy.CRITICAL;
+    public static float naturalRegenLimitRatio = 0.85F;
+    public static float naturalRegenCriticalPriorityRatio = 0.85F;
     public static MedicineEffectMode medicineEffectMode = MedicineEffectMode.REALISTIC;
+    public static float medicineTimingMultiplier = 1.0F;
     public static InjuryDebuffMode injuryDebuffMode = InjuryDebuffMode.NORMAL;
+    public static float lowInjuryDebuffDamageScale = 0.4F;
+    public static float lowInjuryDebuffAmplifierScale = 0.5F;
+    public static float lowInjuryDebuffDurationScale = 0.5F;
     public static final Map<Identifier, InjuryDebuffMode> injuryDebuffOverrides = new ConcurrentHashMap<>();
 
     public enum MedicineEffectMode {
@@ -84,6 +92,7 @@ public class FirstAid {
     public enum NaturalRegenMode {
         OFF,
         LIMITED,
+        LIMITED2,
         FULL
     }
 
@@ -102,7 +111,7 @@ public class FirstAid {
     }
 
     public static int scaleMedicalTimingTicks(int baseTicks) {
-        return Math.max(1, Math.round(baseTicks * medicineEffectMode.getTimingMultiplier()));
+        return Math.max(1, Math.round(baseTicks * medicineTimingMultiplier));
     }
 
     public static int getRescueWakeUpDelayTicks() {

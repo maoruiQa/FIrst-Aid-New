@@ -639,7 +639,7 @@ public final class ClientEventHandler {
          return;
       }
 
-      mc.player.sendSystemMessage(
+      mc.player.sendOverlayMessage(
          Component.translatable("firstaid.gui.healing_actionbar", new Object[]{formatSingleDecimal(getPendingHealingRemainingSeconds())}).withStyle(ChatFormatting.AQUA)
       );
       if (mc.screen instanceof GuiHealthScreen || !isHealingUseHeld(mc)) {
@@ -795,7 +795,7 @@ public final class ClientEventHandler {
    private static void clearPendingHealingSelectionWithFeedback(Minecraft mc) {
       clearPendingHealingSelection(mc.player);
       if (mc.player != null) {
-         mc.player.sendSystemMessage(Component.translatable("firstaid.gui.healing_selection_cleared").withStyle(ChatFormatting.YELLOW));
+         mc.player.sendOverlayMessage(Component.translatable("firstaid.gui.healing_selection_cleared").withStyle(ChatFormatting.YELLOW));
       }
    }
 

@@ -14,6 +14,7 @@ import ichttt.mods.firstaid.common.EventHandler;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.compat.playerrevive.PRCompatManager;
 import ichttt.mods.firstaid.common.damagesystem.debuff.SharedDebuff;
+import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import ichttt.mods.firstaid.common.network.FirstAidNetworking;
 import ichttt.mods.firstaid.common.registries.FirstAidRegistryLookups;
 import ichttt.mods.firstaid.common.registries.LookupReloadListener;
@@ -782,6 +783,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
          }
          default -> throw new RuntimeException("Unknown constant " + mode);
       } * player.getMaxHealth();
+      if ((FirstAid.naturalRegenMode == FirstAid.NaturalRegenMode.LIMITED || FirstAid.naturalRegenMode == FirstAid.NaturalRegenMode.LIMITED2) && !HealthDistribution.canApplyNaturalRegen(this)) {
+         return player.getMaxHealth();
+      }
+
       return this.isCriticalDowned() && this.hasCriticalPartCollapsed() && !this.hasAllCriticalPartsCollapsed() ? Math.max(1.0F, scaledHealth) : scaledHealth;
    }
 
@@ -1144,7 +1149,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
       if (!hasInjury) {
          return 0;
       } else if (!FirstAid.dynamicPainEnabled) {
-         return 1;
+         return Mth.clamp(FirstAid.mildPainLevel, 1, MAX_PAIN_LEVEL);
       } else {
          float averageSeverity = totalWeight <= 0.0F ? 0.0F : weightedSeverity / totalWeight;
          float combinedSeverity = Math.min(1.0F, maxSeverity * 0.65F + averageSeverity * 0.35F);
