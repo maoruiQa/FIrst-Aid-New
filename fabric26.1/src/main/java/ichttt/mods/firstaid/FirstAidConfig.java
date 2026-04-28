@@ -86,6 +86,7 @@ public final class FirstAidConfig {
       FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
       FirstAid.injuryDebuffOverrides.clear();
       FirstAid.injuryDebuffOverrides.putAll(SERVER.injuryDebuffOverrides.get());
+      FirstAid.setSuppressionEntityBlacklist(SERVER.suppressionEntityBlacklist.get());
    }
 
    public static void persistCommandSettings() {
@@ -107,6 +108,7 @@ public final class FirstAidConfig {
       SERVER.lowInjuryDebuffAmplifierScale.set((double)FirstAid.lowInjuryDebuffAmplifierScale);
       SERVER.lowInjuryDebuffDurationScale.set((double)FirstAid.lowInjuryDebuffDurationScale);
       SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
+      SERVER.suppressionEntityBlacklist.set(new ArrayList<>(FirstAid.suppressionEntityBlacklist));
       saveServer();
    }
 
@@ -271,6 +273,37 @@ public final class FirstAidConfig {
          }
 
          return object;
+      }, null);
+   }
+
+   private static FirstAidConfig.ConfigValue<List<Identifier>> resourceLocationListValue(String key, List<Identifier> def) {
+      return new FirstAidConfig.ConfigValue<>(key, def, element -> {
+         if (element != null && element.isJsonArray()) {
+            List<Identifier> values = new ArrayList<>();
+
+            for (JsonElement entry : element.getAsJsonArray()) {
+               if (entry.isJsonPrimitive()) {
+                  Identifier id = Identifier.tryParse(entry.getAsString());
+                  if (id == null) {
+                     FirstAid.LOGGER.warn("Invalid suppression entity blacklist entry {}", entry.getAsString());
+                  } else {
+                     values.add(id);
+                  }
+               }
+            }
+
+            return values;
+         } else {
+            return def;
+         }
+      }, value -> {
+         JsonArray array = new JsonArray();
+
+         for (Identifier entry : value) {
+            array.add(entry.toString());
+         }
+
+         return array;
       }, null);
    }
 
@@ -484,6 +517,7 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Double> lowInjuryDebuffAmplifierScale;
       public final FirstAidConfig.ConfigValue<Double> lowInjuryDebuffDurationScale;
       public final FirstAidConfig.ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
+      public final FirstAidConfig.ConfigValue<List<Identifier>> suppressionEntityBlacklist;
 
       public Server() {
          this.causeDeathHead = this.define(FirstAidConfig.boolValue("causeDeathHead", true));
@@ -555,6 +589,9 @@ public final class FirstAidConfig {
          this.lowInjuryDebuffAmplifierScale = this.define(FirstAidConfig.doubleValue("lowInjuryDebuffAmplifierScale", 0.5, 0.0, 1.0));
          this.lowInjuryDebuffDurationScale = this.define(FirstAidConfig.doubleValue("lowInjuryDebuffDurationScale", 0.5, 0.0, 1.0));
          this.injuryDebuffOverrides = this.define(FirstAidConfig.injuryDebuffOverridesValue("injuryDebuffOverrides"));
+         this.suppressionEntityBlacklist = this.define(
+            FirstAidConfig.resourceLocationListValue("suppressionEntityBlacklist", new ArrayList<>(FirstAid.getDefaultSuppressionEntityBlacklist()))
+         );
       }
 
       public static enum ArmorEnchantmentMode {

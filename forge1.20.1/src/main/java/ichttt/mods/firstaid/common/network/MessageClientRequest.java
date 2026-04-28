@@ -27,6 +27,7 @@ import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.function.Supplier;
 
@@ -71,6 +72,7 @@ public class MessageClientRequest {
                     playerDamageModel.refreshPainState(player);
                 }
                 CommonUtils.syncDamageModel(player);
+                FirstAid.NETWORKING.send(PacketDistributor.PLAYER.with(() -> player), MessageSyncCommandSettings.current());
             } else if (message.type == Type.GIVE_UP) {
                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                 if (damageModel instanceof PlayerDamageModel playerDamageModel) {

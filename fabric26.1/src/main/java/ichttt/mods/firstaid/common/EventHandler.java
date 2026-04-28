@@ -73,7 +73,6 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -437,6 +436,7 @@ public final class EventHandler {
       FirstAid.lowInjuryDebuffAmplifierScale = 0.5F;
       FirstAid.lowInjuryDebuffDurationScale = 0.5F;
       FirstAid.injuryDebuffOverrides.clear();
+      FirstAid.setSuppressionEntityBlacklist(FirstAid.getDefaultSuppressionEntityBlacklist());
       CapProvider.tutorialDone.clear();
       hitList.clear();
       rescueProgress.clear();
@@ -455,7 +455,7 @@ public final class EventHandler {
          if (!projectilex.isAlive() || projectilex.getOwner() == player) {
             return false;
          } else {
-            return projectilex instanceof AbstractThrownPotion ? false : projectilex.getDeltaMovement().lengthSqr() >= 0.02;
+            return FirstAid.isSuppressionBlacklisted(projectilex) ? false : projectilex.getDeltaMovement().lengthSqr() >= 0.02;
          }
       })) {
          Vec3 currentPosition = projectile.position();

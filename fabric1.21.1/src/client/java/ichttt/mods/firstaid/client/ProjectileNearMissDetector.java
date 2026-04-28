@@ -167,7 +167,7 @@ public final class ProjectileNearMissDetector {
     }
 
     private boolean isValidProjectile(Projectile projectile) {
-        return projectile.isAlive() && !projectile.isRemoved();
+        return projectile.isAlive() && !projectile.isRemoved() && !FirstAid.isSuppressionBlacklisted(projectile);
     }
 
     private float resolveLateralSign(Player player, Vec3 offset) {

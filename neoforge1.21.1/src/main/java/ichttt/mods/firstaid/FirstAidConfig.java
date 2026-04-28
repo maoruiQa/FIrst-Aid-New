@@ -78,6 +78,7 @@ public class FirstAidConfig {
         FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
         FirstAid.injuryDebuffOverrides.clear();
         FirstAid.injuryDebuffOverrides.putAll(parseInjuryDebuffOverrides(SERVER.injuryDebuffOverrides.get()));
+        FirstAid.setSuppressionEntityBlacklist(parseResourceLocationList(SERVER.suppressionEntityBlacklist.get()));
     }
 
     public static void persistCommandSettings() {
@@ -99,6 +100,7 @@ public class FirstAidConfig {
         SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
         SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
         SERVER.injuryDebuffOverrides.set(serializeInjuryDebuffOverrides(FirstAid.injuryDebuffOverrides));
+        SERVER.suppressionEntityBlacklist.set(serializeResourceLocationList(FirstAid.suppressionEntityBlacklist));
         serverSpec.save();
     }
 
@@ -143,6 +145,33 @@ public class FirstAidConfig {
         }
         for (Map.Entry<ResourceLocation, FirstAid.InjuryDebuffMode> entry : overrides.entrySet()) {
             values.add(entry.getKey() + "=" + entry.getValue().name().toLowerCase(Locale.ROOT));
+        }
+        return values;
+    }
+
+    private static List<ResourceLocation> parseResourceLocationList(List<? extends String> entries) {
+        List<ResourceLocation> values = new ArrayList<>();
+        if (entries == null) {
+            return values;
+        }
+        for (String entry : entries) {
+            if (entry == null || entry.trim().isEmpty()) {
+                continue;
+            }
+            ResourceLocation id = ResourceLocation.tryParse(entry.trim());
+            if (id == null) {
+                FirstAid.LOGGER.warn("Invalid suppression entity blacklist entry {}", entry);
+                continue;
+            }
+            values.add(id);
+        }
+        return values;
+    }
+
+    private static List<String> serializeResourceLocationList(Iterable<ResourceLocation> entries) {
+        List<String> values = new ArrayList<>();
+        for (ResourceLocation entry : entries) {
+            values.add(entry.toString());
         }
         return values;
     }
@@ -333,6 +362,9 @@ public class FirstAidConfig {
             injuryDebuffOverrides = builder
                     .comment("Per-effect overrides for /firstaid injurydebuff. Format: modid:effect=normal|low|off")
                     .defineList("injuryDebuffOverrides", Collections.emptyList(), o -> o != null && !o.toString().isBlank());
+            suppressionEntityBlacklist = builder
+                    .comment("Entity type ids that cannot trigger suppression near-miss effects")
+                    .defineList("suppressionEntityBlacklist", serializeResourceLocationList(FirstAid.getDefaultSuppressionEntityBlacklist()), o -> o != null && ResourceLocation.tryParse(o.toString()) != null);
             builder.pop();
 
             builder.push("Enchantment Handling");
@@ -434,6 +466,7 @@ public class FirstAidConfig {
         public final ModConfigSpec.DoubleValue lowInjuryDebuffAmplifierScale;
         public final ModConfigSpec.DoubleValue lowInjuryDebuffDurationScale;
         public final ModConfigSpec.ConfigValue<List<? extends String>> injuryDebuffOverrides;
+        public final ModConfigSpec.ConfigValue<List<? extends String>> suppressionEntityBlacklist;
 
 
         private static ModConfigSpec.IntValue healthEntry(ModConfigSpec.Builder builder, String name, int defaultVal) {
@@ -592,4 +625,3 @@ public class FirstAidConfig {
 //    @ExtraConfig.Advanced
     public static final boolean watchSetHealth = true; //If we need this at all, this is server as well
 }
-

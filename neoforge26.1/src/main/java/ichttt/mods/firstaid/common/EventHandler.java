@@ -28,6 +28,7 @@ import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.RandomDamageDistributionAlgorithm;
 import ichttt.mods.firstaid.common.damagesystem.distribution.StandardDamageDistributionAlgorithm;
 import ichttt.mods.firstaid.common.init.FirstAidDataAttachments;
+import ichttt.mods.firstaid.common.network.MessageSyncCommandSettings;
 import ichttt.mods.firstaid.common.registries.FirstAidRegistryLookups;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import ichttt.mods.firstaid.common.util.PlayerSizeHelper;
@@ -55,7 +56,6 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.food.FoodData;
@@ -342,6 +342,7 @@ public class EventHandler {
             ServerPlayer playerMP = (ServerPlayer) event.getEntity();
             awardStarterRecipes(playerMP);
             CommonUtils.syncDamageModel(playerMP);
+            FirstAid.NETWORKING.sendCommandSettingsSync(playerMP, MessageSyncCommandSettings.current());
             sendOpCommandTip(playerMP);
         }
     }
@@ -461,6 +462,7 @@ public class EventHandler {
         FirstAid.lowInjuryDebuffAmplifierScale = 0.5F;
         FirstAid.lowInjuryDebuffDurationScale = 0.5F;
         FirstAid.injuryDebuffOverrides.clear();
+        FirstAid.setSuppressionEntityBlacklist(FirstAid.getDefaultSuppressionEntityBlacklist());
         CapProvider.tutorialDone.clear();
         EventHandler.hitList.clear();
         rescueProgress.clear();
@@ -499,7 +501,7 @@ public class EventHandler {
             if (!projectile.isAlive() || projectile.getOwner() == player) {
                 return false;
             }
-            if (projectile instanceof AbstractThrownPotion) {
+            if (FirstAid.isSuppressionBlacklisted(projectile)) {
                 return false;
             }
             return projectile.getDeltaMovement().lengthSqr() >= 0.02D;
@@ -883,5 +885,3 @@ public class EventHandler {
         EXECUTE
     }
 }
-
-

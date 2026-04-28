@@ -43,11 +43,20 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.Entity;
+
 @Mod(FirstAid.MODID)
 public class FirstAid {
     public static final String MODID = "firstaid";
     public static final Logger LOGGER = LogManager.getLogger(MODID);
     public static final double DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS = 20.0D;
+    private static final ResourceLocation POTION_ENTITY_ID = new ResourceLocation("minecraft", "potion");
+    private static final ResourceLocation SPLASH_POTION_ENTITY_ID = new ResourceLocation("minecraft", "splash_potion");
+    private static final ResourceLocation LINGERING_POTION_ENTITY_ID = new ResourceLocation("minecraft", "lingering_potion");
 
     private static final String NETWORKING_MAJOR = "4.";
     private static final String NETWORKING_MINOR = "1";
@@ -69,6 +78,7 @@ public class FirstAid {
     public static NaturalRegenStrategy naturalRegenStrategy = NaturalRegenStrategy.CRITICAL;
     public static float naturalRegenLimitRatio = 0.85F;
     public static float naturalRegenCriticalPriorityRatio = 0.85F;
+    public static final Set<ResourceLocation> suppressionEntityBlacklist = ConcurrentHashMap.newKeySet();
 
     public enum NaturalRegenMode {
         OFF,
@@ -80,6 +90,26 @@ public class FirstAid {
     public enum NaturalRegenStrategy {
         CRITICAL,
         RANDOM
+    }
+
+    public static boolean isSuppressionBlacklisted(Entity entity) {
+        ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+        return id != null && (suppressionEntityBlacklist.contains(id) || isPotionAliasBlacklisted(id));
+    }
+
+    public static void setSuppressionEntityBlacklist(Iterable<ResourceLocation> entries) {
+        suppressionEntityBlacklist.clear();
+        for (ResourceLocation entry : entries) {
+            suppressionEntityBlacklist.add(entry);
+        }
+    }
+
+    public static Set<ResourceLocation> getDefaultSuppressionEntityBlacklist() {
+        return Collections.singleton(POTION_ENTITY_ID);
+    }
+
+    private static boolean isPotionAliasBlacklisted(ResourceLocation id) {
+        return (SPLASH_POTION_ENTITY_ID.equals(id) || LINGERING_POTION_ENTITY_ID.equals(id)) && suppressionEntityBlacklist.contains(POTION_ENTITY_ID);
     }
 
     public static int scaleMedicalTimingTicks(int baseTicks) {
@@ -139,6 +169,7 @@ public class FirstAid {
         NETWORKING.registerMessage(++i, MessagePlayHurtSound.class, MessagePlayHurtSound::encode, MessagePlayHurtSound::new, (message, supplier) -> MessagePlayHurtSound.Handler.onMessage(message, supplier));
         NETWORKING.registerMessage(++i, MessageClientRequest.class, MessageClientRequest::encode, MessageClientRequest::new, (message, supplier) -> MessageClientRequest.Handler.onMessage(message, supplier));
         NETWORKING.registerMessage(++i, MessageSyncDamageModel.class, MessageSyncDamageModel::encode, MessageSyncDamageModel::new, (message, supplier) -> MessageSyncDamageModel.Handler.onMessage(message, supplier));
+        NETWORKING.registerMessage(++i, MessageSyncCommandSettings.class, MessageSyncCommandSettings::encode, MessageSyncCommandSettings::new, (message, supplier) -> MessageSyncCommandSettings.Handler.onMessage(message, supplier));
 
         event.enqueueWork(() -> PRCompatManager.init());
     }

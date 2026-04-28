@@ -18,9 +18,11 @@
 
 package ichttt.mods.firstaid;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -66,6 +68,7 @@ public class FirstAidConfig {
         SERVER.naturalRegenLimitRatio.set((double) FirstAid.naturalRegenLimitRatio);
         SERVER.naturalRegenCriticalPriorityRatio.set((double) FirstAid.naturalRegenCriticalPriorityRatio);
         SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
+        SERVER.suppressionEntityBlacklist.set(serializeResourceLocationList(FirstAid.suppressionEntityBlacklist));
         serverSpec.save();
     }
 
@@ -81,6 +84,7 @@ public class FirstAidConfig {
         FirstAid.naturalRegenStrategy = SERVER.naturalRegenStrategy.get();
         FirstAid.naturalRegenLimitRatio = SERVER.naturalRegenLimitRatio.get().floatValue();
         FirstAid.naturalRegenCriticalPriorityRatio = SERVER.naturalRegenCriticalPriorityRatio.get().floatValue();
+        FirstAid.setSuppressionEntityBlacklist(parseResourceLocationList(SERVER.suppressionEntityBlacklist.get()));
     }
 
     private static void migrateLegacyBandageApplyTime() {
@@ -88,6 +92,33 @@ public class FirstAidConfig {
             SERVER.bandage.applyTime.set(BANDAGE_APPLY_TIME);
             serverSpec.save();
         }
+    }
+
+    private static List<ResourceLocation> parseResourceLocationList(List<? extends String> entries) {
+        List<ResourceLocation> values = new ArrayList<>();
+        if (entries == null) {
+            return values;
+        }
+        for (String entry : entries) {
+            if (entry == null || entry.trim().isEmpty()) {
+                continue;
+            }
+            ResourceLocation id = ResourceLocation.tryParse(entry.trim());
+            if (id == null) {
+                FirstAid.LOGGER.warn("Invalid suppression entity blacklist entry {}", entry);
+                continue;
+            }
+            values.add(id);
+        }
+        return values;
+    }
+
+    private static List<String> serializeResourceLocationList(Iterable<ResourceLocation> entries) {
+        List<String> values = new ArrayList<>();
+        for (ResourceLocation entry : entries) {
+            values.add(entry.toString());
+        }
+        return values;
     }
 
     public static class Server {
@@ -243,6 +274,9 @@ public class FirstAidConfig {
             naturalRegenCriticalPriorityRatio = builder
                     .comment("Critical limb health fraction at or below which critical natural regeneration is prioritized")
                     .defineInRange("naturalRegenCriticalPriorityRatio", 0.85D, 0D, 1D);
+            suppressionEntityBlacklist = builder
+                    .comment("Entity type ids that cannot trigger suppression near-miss effects")
+                    .defineList("suppressionEntityBlacklist", serializeResourceLocationList(FirstAid.getDefaultSuppressionEntityBlacklist()), o -> o != null && ResourceLocation.tryParse(o.toString()) != null);
 
             builder.pop();
 
@@ -334,6 +368,7 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
         public final ForgeConfigSpec.DoubleValue naturalRegenLimitRatio;
         public final ForgeConfigSpec.DoubleValue naturalRegenCriticalPriorityRatio;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> suppressionEntityBlacklist;
 
         public final ForgeConfigSpec.IntValue enchantmentMultiplier;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> enchMulOverrideResourceLocations;

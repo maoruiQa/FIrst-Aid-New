@@ -74,7 +74,6 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.projectile.ThrownPotion;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
@@ -466,6 +465,7 @@ public final class EventHandler {
         FirstAid.lowInjuryDebuffAmplifierScale = 0.5F;
         FirstAid.lowInjuryDebuffDurationScale = 0.5F;
         FirstAid.injuryDebuffOverrides.clear();
+        FirstAid.setSuppressionEntityBlacklist(FirstAid.getDefaultSuppressionEntityBlacklist());
         CapProvider.tutorialDone.clear();
         hitList.clear();
         rescueProgress.clear();
@@ -483,7 +483,7 @@ public final class EventHandler {
             if (!projectile.isAlive() || projectile.getOwner() == player) {
                 return false;
             }
-            if (projectile instanceof ThrownPotion) {
+            if (FirstAid.isSuppressionBlacklisted(projectile)) {
                 return false;
             }
             return projectile.getDeltaMovement().lengthSqr() >= 0.02D;

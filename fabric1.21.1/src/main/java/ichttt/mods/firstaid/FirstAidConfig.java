@@ -109,6 +109,7 @@ public final class FirstAidConfig {
         FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
         FirstAid.injuryDebuffOverrides.clear();
         FirstAid.injuryDebuffOverrides.putAll(SERVER.injuryDebuffOverrides.get());
+        FirstAid.setSuppressionEntityBlacklist(SERVER.suppressionEntityBlacklist.get());
     }
 
     public static void persistCommandSettings() {
@@ -130,6 +131,7 @@ public final class FirstAidConfig {
         SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
         SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
         SERVER.injuryDebuffOverrides.set(new LinkedHashMap<>(FirstAid.injuryDebuffOverrides));
+        SERVER.suppressionEntityBlacklist.set(new ArrayList<>(FirstAid.suppressionEntityBlacklist));
         saveServer();
     }
 
@@ -257,6 +259,7 @@ public final class FirstAidConfig {
         public final ConfigValue<Double> lowInjuryDebuffAmplifierScale;
         public final ConfigValue<Double> lowInjuryDebuffDurationScale;
         public final ConfigValue<Map<ResourceLocation, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
+        public final ConfigValue<List<ResourceLocation>> suppressionEntityBlacklist;
 
         public Server() {
             maxHealthHead = define(intValue("maxHealthHead", 7, 2, 12));
@@ -327,6 +330,7 @@ public final class FirstAidConfig {
             lowInjuryDebuffAmplifierScale = define(doubleValue("lowInjuryDebuffAmplifierScale", 0.5D, 0D, 1D));
             lowInjuryDebuffDurationScale = define(doubleValue("lowInjuryDebuffDurationScale", 0.5D, 0D, 1D));
             injuryDebuffOverrides = define(injuryDebuffOverridesValue("injuryDebuffOverrides"));
+            suppressionEntityBlacklist = define(resourceLocationListValue("suppressionEntityBlacklist", new ArrayList<>(FirstAid.getDefaultSuppressionEntityBlacklist())));
         }
 
         public static final class IEEntry {
@@ -575,6 +579,34 @@ public final class FirstAidConfig {
                 object.addProperty(entry.getKey().toString(), entry.getValue().name().toLowerCase(Locale.ROOT));
             }
             return object;
+        }, null);
+    }
+
+    private static ConfigValue<List<ResourceLocation>> resourceLocationListValue(String key, List<ResourceLocation> def) {
+        return new ConfigValue<>(key, def, element -> {
+            if (element == null || !element.isJsonArray()) {
+                return def;
+            }
+            List<ResourceLocation> values = new ArrayList<>();
+            JsonArray array = element.getAsJsonArray();
+            for (JsonElement entry : array) {
+                if (!entry.isJsonPrimitive()) {
+                    continue;
+                }
+                ResourceLocation id = ResourceLocation.tryParse(entry.getAsString());
+                if (id == null) {
+                    FirstAid.LOGGER.warn("Invalid suppression entity blacklist entry {}", entry.getAsString());
+                    continue;
+                }
+                values.add(id);
+            }
+            return values;
+        }, value -> {
+            JsonArray array = new JsonArray();
+            for (ResourceLocation entry : value) {
+                array.add(entry.toString());
+            }
+            return array;
         }, null);
     }
 

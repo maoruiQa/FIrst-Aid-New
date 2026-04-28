@@ -38,14 +38,21 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.entity.Entity;
 
 @Mod(FirstAid.MODID)
 public class FirstAid {
     public static final String MODID = "firstaid";
     public static final Logger LOGGER = LogManager.getLogger(MODID);
     public static final double DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS = 20.0D;
+    private static final Identifier POTION_ENTITY_ID = Identifier.fromNamespaceAndPath("minecraft", "potion");
+    private static final Identifier SPLASH_POTION_ENTITY_ID = Identifier.fromNamespaceAndPath("minecraft", "splash_potion");
+    private static final Identifier LINGERING_POTION_ENTITY_ID = Identifier.fromNamespaceAndPath("minecraft", "lingering_potion");
 
     public static final SimpleFirstAidChannel NETWORKING = new SimpleFirstAidChannel();
     public static boolean isSynced = false;
@@ -66,6 +73,7 @@ public class FirstAid {
     public static float lowInjuryDebuffAmplifierScale = 0.5F;
     public static float lowInjuryDebuffDurationScale = 0.5F;
     public static final Map<Identifier, InjuryDebuffMode> injuryDebuffOverrides = new ConcurrentHashMap<>();
+    public static final Set<Identifier> suppressionEntityBlacklist = ConcurrentHashMap.newKeySet();
 
     public enum MedicineEffectMode {
         REALISTIC(1.0F),
@@ -108,6 +116,26 @@ public class FirstAid {
 
     public static void setInjuryDebuffOverride(Identifier effectId, InjuryDebuffMode mode) {
         injuryDebuffOverrides.put(effectId, mode);
+    }
+
+    public static boolean isSuppressionBlacklisted(Entity entity) {
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+        return id != null && (suppressionEntityBlacklist.contains(id) || isPotionAliasBlacklisted(id));
+    }
+
+    public static void setSuppressionEntityBlacklist(Iterable<Identifier> entries) {
+        suppressionEntityBlacklist.clear();
+        for (Identifier entry : entries) {
+            suppressionEntityBlacklist.add(entry);
+        }
+    }
+
+    public static Set<Identifier> getDefaultSuppressionEntityBlacklist() {
+        return Collections.singleton(POTION_ENTITY_ID);
+    }
+
+    private static boolean isPotionAliasBlacklisted(Identifier id) {
+        return (SPLASH_POTION_ENTITY_ID.equals(id) || LINGERING_POTION_ENTITY_ID.equals(id)) && suppressionEntityBlacklist.contains(POTION_ENTITY_ID);
     }
 
     public static int scaleMedicalTimingTicks(int baseTicks) {

@@ -72,6 +72,7 @@ public class MessageClientRequest implements CustomPacketPayload {
                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                 if (damageModel == null) return;
                 CommonUtils.syncDamageModel(player);
+                FirstAid.NETWORKING.sendCommandSettingsSync(player, MessageSyncCommandSettings.current());
             } else if (message.type == RequestType.GIVE_UP) {
                 AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
                 if (damageModel instanceof ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel playerDamageModel) {
