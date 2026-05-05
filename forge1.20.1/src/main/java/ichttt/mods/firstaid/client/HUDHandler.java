@@ -29,6 +29,7 @@ import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.client.gui.FlashStateManager;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
 import ichttt.mods.firstaid.client.util.PlayerModelRenderer;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -50,6 +51,9 @@ public class HUDHandler implements ResourceManagerReloadListener, IGuiOverlay {
     public static final HUDHandler INSTANCE = new HUDHandler();
     private static final int FADE_TIME = 30;
     private static final int PLAYER_MODEL_PADDING = 12;
+    private static final int PLAYER_MODEL_HEIGHT = 66;
+    private static final int PLAYER_MODEL_SUMMARY_Y = 70;
+    private static final int PLAYER_MODEL_SUMMARY_HEIGHT = 54;
 
     private final Map<EnumPlayerPart, String> translationMap = new EnumMap<>(EnumPlayerPart.class);
     private final FlashStateManager flashStateManager = new FlashStateManager();
@@ -113,12 +117,13 @@ public class HUDHandler implements ResourceManagerReloadListener, IGuiOverlay {
 
         int xOffset = FirstAidConfig.CLIENT.xOffset.get();
         int yOffset = FirstAidConfig.CLIENT.yOffset.get();
+        int playerModelBlockHeight = PLAYER_MODEL_HEIGHT + PLAYER_MODEL_SUMMARY_HEIGHT;
         switch (FirstAidConfig.CLIENT.pos.get()) {
             case TOP_RIGHT -> xOffset = minecraft.getWindow().getGuiScaledWidth() - xOffset - (playerModel ? 34 : damageModel.getMaxRenderSize() + maxLength);
-            case BOTTOM_LEFT -> yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? 66 : 80);
+            case BOTTOM_LEFT -> yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? playerModelBlockHeight : 80);
             case BOTTOM_RIGHT -> {
                 xOffset = minecraft.getWindow().getGuiScaledWidth() - xOffset - (playerModel ? 34 : damageModel.getMaxRenderSize() + maxLength);
-                yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? 66 : 80);
+                yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? playerModelBlockHeight : 80);
             }
             default -> {
             }
@@ -160,7 +165,18 @@ public class HUDHandler implements ResourceManagerReloadListener, IGuiOverlay {
 
         if (playerModel) {
             boolean fourColors = overlayMode == FirstAidConfig.Client.OverlayMode.PLAYER_MODEL_4_COLORS;
+            stack.pushPose();
             PlayerModelRenderer.renderPlayerHealth(stack, damageModel, fourColors, guiGraphics, flashStateManager.update(Util.getMillis()), alpha, partialTick);
+            stack.popPose();
+            StatusSummaryRenderer.renderStatusSummary(
+                    guiGraphics,
+                    minecraft.font,
+                    minecraft.player,
+                    damageModel,
+                    damageModel instanceof PlayerDamageModel playerDamageModel ? playerDamageModel : null,
+                    0,
+                    PLAYER_MODEL_SUMMARY_Y
+            );
         } else {
             int xTranslation = maxLength + 6;
             for (AbstractDamageablePart part : damageModel) {

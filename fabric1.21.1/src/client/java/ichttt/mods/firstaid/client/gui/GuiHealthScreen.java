@@ -7,11 +7,10 @@ import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.client.ClientEventHandler;
 import ichttt.mods.firstaid.client.ClientHooks;
 import ichttt.mods.firstaid.client.MedicineStatusClientHelper;
+
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
-import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
 import ichttt.mods.firstaid.common.RegistryObjects;
-import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.network.MessageClientRequest.RequestType;
 import ichttt.mods.firstaid.common.util.CommonUtils;
@@ -26,7 +25,6 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.StringUtil;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -159,7 +157,6 @@ public class GuiHealthScreen extends Screen {
          guiGraphics.drawCenteredString(this.font, I18n.get("firstaid.gui.apply_hint", new Object[0]), this.width / 2, this.guiTop + 137 - 22, 16777215);
       }
 
-      this.renderStatusSummary(guiGraphics, renderModel);
       super.render(guiGraphics, mouseX, mouseY, partialTick);
    }
 
@@ -178,97 +175,6 @@ public class GuiHealthScreen extends Screen {
       return HealthRenderUtils.drawAsString(damageablePart, true)
          ? 160
          : 200 - Math.min(40, HealthRenderUtils.getHeartRenderWidth(damageablePart, true));
-   }
-
-   private void renderStatusSummary(GuiGraphics guiGraphics, AbstractPlayerDamageModel renderModel) {
-      if (this.minecraft != null && this.minecraft.player != null) {
-         Player player = this.minecraft.player;
-         PlayerDamageModel playerDamageModel = renderModel instanceof PlayerDamageModel model ? model : null;
-         int lineY = this.guiTop + 137 - 54;
-         if (renderModel.getPainLevel() > 0) {
-            boolean painSuppressed = player.hasEffect(RegistryObjects.MORPHINE_EFFECT) || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
-            Component painText = painSuppressed
-               ? Component.translatable("firstaid.gui.status.pain_suppressed")
-               : Component.translatable("firstaid.gui.status.pain", new Object[]{Component.translatable(getPainSeverityKey(renderModel.getPainLevel()))});
-            guiGraphics.drawString(this.font, painText, this.guiLeft + 8, lineY, painSuppressed ? 9425919 : 16747146);
-            lineY += 10;
-         }
-
-         if (renderModel.getAdrenalineLevel() > 0) {
-            int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : renderModel.getAdrenalineLevel();
-            guiGraphics.drawString(
-               this.font,
-               Component.translatable("firstaid.gui.status.suppression", new Object[]{Component.translatable(getSuppressionSeverityKey(suppressionLevel))}),
-               this.guiLeft + 8,
-               lineY,
-               12637930
-            );
-            lineY += 10;
-         }
-
-         if (renderModel.getUnconsciousTicks() > 0) {
-            guiGraphics.drawString(
-               this.font,
-               Component.translatable(
-                  playerDamageModel != null
-                     ? playerDamageModel.getUnconsciousReasonKey()
-                     : (renderModel.isCriticalConditionActive() ? "firstaid.gui.critical_condition" : "firstaid.gui.unconscious")
-               ),
-               this.guiLeft + 8,
-               lineY,
-               16766421
-            );
-            lineY += 10;
-            guiGraphics.drawString(
-               this.font,
-               playerDamageModel != null && playerDamageModel.canGiveUp()
-                  ? Component.translatable("firstaid.gui.death_countdown_seconds", new Object[]{playerDamageModel.getUnconsciousSecondsLeft()})
-                  : Component.translatable(
-                     "firstaid.gui.unconscious_left", new Object[]{StringUtil.formatTickDuration(renderModel.getUnconsciousTicks(), 20.0F)}
-                  ),
-               this.guiLeft + 8,
-               lineY,
-               16766421
-            );
-            if (playerDamageModel != null && playerDamageModel.canGiveUp()) {
-               lineY += 10;
-               guiGraphics.drawString(this.font, Component.translatable("firstaid.gui.waiting_for_rescue"), this.guiLeft + 8, lineY, 16766421);
-               lineY += 10;
-               guiGraphics.drawString(this.font, Component.translatable("firstaid.gui.rescue_help"), this.guiLeft + 8, lineY, 16766421);
-               lineY += 10;
-               guiGraphics.drawString(
-                  this.font,
-                  Component.translatable("firstaid.gui.give_up_hint", new Object[]{ClientHooks.GIVE_UP.getTranslatedKeyMessage()}),
-                  this.guiLeft + 8,
-                  lineY,
-                  16757683
-               );
-               lineY += 10;
-            }
-         }
-
-         for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(player)) {
-            lineY = MedicineStatusClientHelper.drawStatusLine(guiGraphics, this.font, display, this.guiLeft + 8, lineY);
-         }
-      }
-   }
-
-   private static String getPainSeverityKey(int painLevel) {
-      return switch (painLevel) {
-         case 1 -> "firstaid.gui.pain.mild";
-         case 2 -> "firstaid.gui.pain.moderate";
-         case 3 -> "firstaid.gui.pain.severe";
-         case 4 -> "firstaid.gui.pain.extreme";
-         default -> "firstaid.gui.pain.critical";
-      };
-   }
-
-   private static String getSuppressionSeverityKey(int suppressionLevel) {
-      return switch (suppressionLevel) {
-         case 1 -> "firstaid.gui.suppression.low";
-         case 2 -> "firstaid.gui.suppression.medium";
-         default -> "firstaid.gui.suppression.high";
-      };
    }
 
    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {

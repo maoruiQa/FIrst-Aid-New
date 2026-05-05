@@ -27,6 +27,7 @@ import ichttt.mods.firstaid.client.gui.FlashStateManager;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
 import ichttt.mods.firstaid.client.util.PlayerModelRenderer;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -47,6 +48,10 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
     public static final HUDHandler INSTANCE = new HUDHandler();
     private static final int FADE_TIME = 30;
     private static final int PLAYER_MODEL_PADDING = 12;
+    private static final int PLAYER_MODEL_HEIGHT = 66;
+    private static final int PLAYER_MODEL_SUMMARY_Y = 70;
+    private static final int PLAYER_MODEL_SUMMARY_PADDING = 4;
+    private static final int SUMMARY_LINE_HEIGHT = 10;
 
     private final Map<EnumPlayerPart, String> translationMap = new EnumMap<>(EnumPlayerPart.class);
     private final FlashStateManager flashStateManager = new FlashStateManager();
@@ -150,12 +155,15 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
         int yOffset = FirstAidConfig.CLIENT.yOffset.get();
         FirstAidConfig.Client.OverlayMode overlayMode = FirstAidConfig.CLIENT.overlayMode.get();
         boolean playerModel = overlayMode.isPlayerModel();
+        int summaryLineCount = playerModel ? StatusSummaryRenderer.countVisibleLines(damageModel, minecraft.player) : 0;
+        int summaryHeight = summaryLineCount > 0 ? PLAYER_MODEL_SUMMARY_PADDING + summaryLineCount * SUMMARY_LINE_HEIGHT : 0;
+        int playerModelHeight = PLAYER_MODEL_HEIGHT + summaryHeight;
         switch (FirstAidConfig.CLIENT.pos.get()) {
             case TOP_RIGHT -> xOffset = minecraft.getWindow().getGuiScaledWidth() - xOffset - (playerModel ? 34 : damageModel.getMaxRenderSize() + maxLength);
-            case BOTTOM_LEFT -> yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? 66 : 80);
+            case BOTTOM_LEFT -> yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? playerModelHeight : 80);
             case BOTTOM_RIGHT -> {
                 xOffset = minecraft.getWindow().getGuiScaledWidth() - xOffset - (playerModel ? 34 : damageModel.getMaxRenderSize() + maxLength);
-                yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? 66 : 80);
+                yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? playerModelHeight : 80);
             }
             default -> {
             }
@@ -196,6 +204,15 @@ public class HUDHandler implements ResourceManagerReloadListener, GuiLayer {
 
         if (playerModel) {
             PlayerModelRenderer.renderPlayerHealth(xOffset, yOffset, damageModel, overlayMode == FirstAidConfig.Client.OverlayMode.PLAYER_MODEL_4_COLORS, guiGraphics, flashStateManager.update(Util.getMillis()), FirstAidConfig.CLIENT.alpha.get(), deltaTracker.getGameTimeDeltaPartialTick(false));
+            StatusSummaryRenderer.renderStatusSummary(
+                    guiGraphics,
+                    minecraft.font,
+                    minecraft.player,
+                    damageModel,
+                    damageModel instanceof PlayerDamageModel playerDamageModel ? playerDamageModel : null,
+                    xOffset,
+                    yOffset + PLAYER_MODEL_SUMMARY_Y
+            );
         } else {
             int valueOffset = maxLength + 6;
             int y = yOffset;

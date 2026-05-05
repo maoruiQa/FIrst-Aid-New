@@ -27,8 +27,8 @@ import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
 import ichttt.mods.firstaid.client.ClientEventHandler;
 import ichttt.mods.firstaid.client.ClientHooks;
 import ichttt.mods.firstaid.client.MedicineStatusClientHelper;
+
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
-import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.gui.GuiGraphics;
@@ -181,8 +181,6 @@ public class GuiHealthScreen extends Screen {
             guiGraphics.drawCenteredString(font, I18n.get("firstaid.gui.apply_hint"), width / 2, guiTop + ySize - 22, 0xFFFFFF);
         }
 
-        renderStatusSummary(guiGraphics, renderModel);
-
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
@@ -207,76 +205,6 @@ public class GuiHealthScreen extends Screen {
             return 160;
         }
         return 200 - Math.min(40, HealthRenderUtils.getHeartRenderWidth(damageablePart, true));
-    }
-
-    private void renderStatusSummary(GuiGraphics guiGraphics, AbstractPlayerDamageModel renderModel) {
-        if (minecraft == null || minecraft.player == null) {
-            return;
-        }
-
-        Player player = minecraft.player;
-        PlayerDamageModel playerDamageModel = renderModel instanceof PlayerDamageModel model ? model : null;
-        int lineY = guiTop + ySize - 54;
-
-        if (renderModel.getAdrenalineLevel() > 0) {
-            int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : renderModel.getAdrenalineLevel();
-            guiGraphics.drawString(font,
-                    Component.translatable("firstaid.gui.status.suppression", Component.translatable(getSuppressionSeverityKey(suppressionLevel))),
-                    guiLeft + 8,
-                    lineY,
-                    0xC0D6EA);
-            lineY += 10;
-        }
-
-        if (renderModel.getUnconsciousTicks() > 0) {
-            guiGraphics.drawString(font,
-                    Component.translatable(playerDamageModel != null
-                            ? playerDamageModel.getUnconsciousReasonKey()
-                            : renderModel.isCriticalConditionActive() ? "firstaid.gui.critical_condition" : "firstaid.gui.unconscious"),
-                    guiLeft + 8,
-                    lineY,
-                    0xFFD5D5);
-            lineY += 10;
-            guiGraphics.drawString(font,
-                    playerDamageModel != null && playerDamageModel.canGiveUp()
-                            ? Component.translatable("firstaid.gui.death_countdown_seconds", playerDamageModel.getUnconsciousSecondsLeft())
-                            : Component.translatable("firstaid.gui.unconscious_left", StringUtil.formatTickDuration(renderModel.getUnconsciousTicks(), 20F)),
-                    guiLeft + 8,
-                    lineY,
-                    0xFFD5D5);
-            if (playerDamageModel != null && playerDamageModel.canGiveUp()) {
-                lineY += 10;
-                guiGraphics.drawString(font,
-                        Component.translatable("firstaid.gui.waiting_for_rescue"),
-                        guiLeft + 8,
-                        lineY,
-                        0xFFD5D5);
-                lineY += 10;
-                guiGraphics.drawString(font,
-                        Component.translatable("firstaid.gui.rescue_help"),
-                        guiLeft + 8,
-                        lineY,
-                        0xFFD5D5);
-                lineY += 10;
-                guiGraphics.drawString(font,
-                        Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()),
-                        guiLeft + 8,
-                        lineY,
-                        0xFFB3B3);
-            }
-        }
-
-        for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(player)) {
-            lineY = MedicineStatusClientHelper.drawStatusLine(guiGraphics, font, display, guiLeft + 8, lineY);
-        }
-    }
-
-    private static String getSuppressionSeverityKey(int suppressionLevel) {
-        return switch (suppressionLevel) {
-            case 1 -> "firstaid.gui.suppression.low";
-            case 2 -> "firstaid.gui.suppression.medium";
-            default -> "firstaid.gui.suppression.high";
-        };
     }
 
     @Override
