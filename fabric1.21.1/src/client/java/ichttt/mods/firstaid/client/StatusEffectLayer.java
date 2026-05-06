@@ -61,7 +61,7 @@ public class StatusEffectLayer implements HudRenderCallback {
                float smoothPain = Mth.lerp(deltaTracker.getGameTimeDeltaTicks(), this.lastPainStrength, this.painStrength);
                float smoothSuppression = Mth.lerp(deltaTracker.getGameTimeDeltaTicks(), this.lastSuppressionStrength, this.suppressionStrength);
                float pulseTime = minecraft.player.tickCount + deltaTracker.getGameTimeDeltaTicks();
-               if (smoothPain > 0.0F) {
+               if (smoothPain > 0.0F && FirstAid.enablePainVignette) {
                   float pulse = deathDanger > 0.0F
                      ? 0.82F + (0.18F + deathDanger * 0.27F) * Mth.sin(pulseTime * (0.08F + deathDanger * 0.04F))
                      : 0.9F + 0.1F * Mth.sin(pulseTime * 0.32F);
@@ -129,7 +129,6 @@ public class StatusEffectLayer implements HudRenderCallback {
                   renderRescuePrompt(guiGraphics, minecraft, width / 2, height / 2 + 24, deltaTracker.getGameTimeDeltaTicks());
                }
 
-               renderStatusSummary(guiGraphics, minecraft, damageModel, playerDamageModel);
             }
          }
       }

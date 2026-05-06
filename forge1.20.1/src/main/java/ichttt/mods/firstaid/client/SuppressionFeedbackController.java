@@ -85,7 +85,7 @@ public final class SuppressionFeedbackController {
 
         boolean painSuppressed = player.hasEffect(RegistryObjects.MORPHINE_EFFECT.get())
                 || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT.get());
-        float targetPainFov = painSuppressed || playerDamageModel == null
+        float targetPainFov = painSuppressed || playerDamageModel == null || !FirstAid.enablePainFovCompression
                 ? 0.0F
                 : playerDamageModel.getPainVisualStrength() * PAIN_FOV_MAX_REDUCTION;
 
@@ -106,7 +106,7 @@ public final class SuppressionFeedbackController {
         pitchImpulse *= 0.85F;
         fovImpulse *= holding ? 0.93F : 0.83F;
 
-        if (FirstAidConfig.CLIENT.enableSounds.get() && painLevel >= SEVERE_PAIN_LEVEL && lastPainLevel < SEVERE_PAIN_LEVEL
+        if (FirstAidConfig.CLIENT.enableSounds.get() && FirstAid.enablePainAudioEffects && painLevel >= SEVERE_PAIN_LEVEL && lastPainLevel < SEVERE_PAIN_LEVEL
                 && level.getGameTime() >= soundCooldownUntilGameTime) {
             soundCooldownUntilGameTime = level.getGameTime() + SEVERE_PAIN_SOUND_COOLDOWN_TICKS;
             playTinnitusSound(0.52F + 0.12F * Math.min(2, painLevel - SEVERE_PAIN_LEVEL));

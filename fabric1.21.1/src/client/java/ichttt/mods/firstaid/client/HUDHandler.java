@@ -27,6 +27,7 @@ import ichttt.mods.firstaid.client.gui.FlashStateManager;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
 import ichttt.mods.firstaid.client.util.PlayerModelRenderer;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import net.minecraft.client.DeltaTracker;
@@ -115,12 +116,14 @@ public class HUDHandler implements IdentifiableResourceReloadListener, ResourceM
         int yOffset = FirstAidConfig.CLIENT.yOffset.get();
         FirstAidConfig.Client.OverlayMode overlayMode = FirstAidConfig.CLIENT.overlayMode.get();
         boolean playerModel = overlayMode.isPlayerModel();
+        int summaryLineCount = playerModel ? StatusSummaryRenderer.countVisibleLines(damageModel, minecraft.player) : 0;
+        int playerModelHeight = 66 + (summaryLineCount > 0 ? summaryLineCount * 10 + 4 : 0);
         switch (FirstAidConfig.CLIENT.pos.get()) {
             case TOP_RIGHT -> xOffset = minecraft.getWindow().getGuiScaledWidth() - xOffset - (playerModel ? 34 : damageModel.getMaxRenderSize() + maxLength);
-            case BOTTOM_LEFT -> yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? 66 : 80);
+            case BOTTOM_LEFT -> yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? playerModelHeight : 80);
             case BOTTOM_RIGHT -> {
                 xOffset = minecraft.getWindow().getGuiScaledWidth() - xOffset - (playerModel ? 34 : damageModel.getMaxRenderSize() + maxLength);
-                yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? 66 : 80);
+                yOffset = minecraft.getWindow().getGuiScaledHeight() - yOffset - (playerModel ? playerModelHeight : 80);
             }
             default -> {
             }
@@ -149,6 +152,15 @@ public class HUDHandler implements IdentifiableResourceReloadListener, ResourceM
 
         if (playerModel) {
             PlayerModelRenderer.renderPlayerHealth(xOffset, yOffset, damageModel, overlayMode == FirstAidConfig.Client.OverlayMode.PLAYER_MODEL_4_COLORS, guiGraphics, flashStateManager.update(Util.getMillis()), FirstAidConfig.CLIENT.alpha.get(), deltaTracker.getGameTimeDeltaPartialTick(false));
+            StatusSummaryRenderer.renderStatusSummary(
+                    guiGraphics,
+                    minecraft.font,
+                    minecraft.player,
+                    damageModel,
+                    damageModel instanceof PlayerDamageModel playerDamageModel ? playerDamageModel : null,
+                    xOffset,
+                    yOffset + 70
+            );
         } else {
             int valueOffset = maxLength + 6;
             int y = yOffset;

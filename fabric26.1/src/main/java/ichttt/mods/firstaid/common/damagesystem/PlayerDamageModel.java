@@ -338,7 +338,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    }
 
    public static int getMorphineActivationDelay() {
-      return FirstAid.scaleMedicalTimingTicks(200);
+      return FirstAid.getMorphineActivationDelayTicks();
    }
 
    public static int getPainkillerDuration() {
@@ -354,7 +354,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
    }
 
    public static int getPainkillerActivationDelay() {
-      return FirstAid.scaleMedicalTimingTicks(600);
+      return FirstAid.getPainkillerActivationDelayTicks();
    }
 
    public void queuePainkillerActivation() {

@@ -18,6 +18,7 @@
 
 package ichttt.mods.firstaid.common.items;
 
+import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.medicine.ItemMedicine;
 import ichttt.mods.firstaid.api.medicine.MedicineStatusContext;
 import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
@@ -59,6 +60,11 @@ public class ItemPainkillers extends ItemMedicine {
         return context.getPlayer().hasEffect(RegistryObjects.PAINKILLER_EFFECT.get()) && !context.getPlayer().hasEffect(RegistryObjects.MORPHINE_EFFECT.get())
                 ? new MedicineStatusDisplay(STATUS_ID, Component.translatable("firstaid.gui.status.painkiller"), null, 9425919)
                 : null;
+    }
+
+    @Override
+    public int getUseDuration(ItemStack stack) {
+        return FirstAidConfig.SERVER.painkillersUseDuration.get();
     }
 
     @Override

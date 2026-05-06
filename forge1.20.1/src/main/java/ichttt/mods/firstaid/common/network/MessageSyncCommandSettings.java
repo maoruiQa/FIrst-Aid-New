@@ -29,14 +29,20 @@ import java.util.List;
 import java.util.function.Supplier;
 
 public class MessageSyncCommandSettings {
+    private final boolean enablePainVignette;
+    private final boolean enablePainFovCompression;
+    private final boolean enablePainAudioEffects;
     private final String suppressionEntityBlacklist;
 
-    private MessageSyncCommandSettings(String suppressionEntityBlacklist) {
+    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, String suppressionEntityBlacklist) {
+        this.enablePainVignette = enablePainVignette;
+        this.enablePainFovCompression = enablePainFovCompression;
+        this.enablePainAudioEffects = enablePainAudioEffects;
         this.suppressionEntityBlacklist = suppressionEntityBlacklist;
     }
 
     public MessageSyncCommandSettings(FriendlyByteBuf buffer) {
-        this(buffer.readUtf(32767));
+        this(buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readUtf(32767));
     }
 
     public static MessageSyncCommandSettings current() {
@@ -47,10 +53,17 @@ public class MessageSyncCommandSettings {
             }
             builder.append(entry);
         }
-        return new MessageSyncCommandSettings(builder.toString());
+        return new MessageSyncCommandSettings(
+                FirstAid.enablePainVignette,
+                FirstAid.enablePainFovCompression,
+                FirstAid.enablePainAudioEffects,
+                builder.toString());
     }
 
     public void encode(FriendlyByteBuf buf) {
+        buf.writeBoolean(enablePainVignette);
+        buf.writeBoolean(enablePainFovCompression);
+        buf.writeBoolean(enablePainAudioEffects);
         buf.writeUtf(suppressionEntityBlacklist, 32767);
     }
 
@@ -58,7 +71,12 @@ public class MessageSyncCommandSettings {
         public static void onMessage(MessageSyncCommandSettings message, Supplier<NetworkEvent.Context> supplier) {
             NetworkEvent.Context ctx = supplier.get();
             CommonUtils.checkClient(ctx);
-            ctx.enqueueWork(() -> FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist)));
+            ctx.enqueueWork(() -> {
+                FirstAid.enablePainVignette = message.enablePainVignette;
+                FirstAid.enablePainFovCompression = message.enablePainFovCompression;
+                FirstAid.enablePainAudioEffects = message.enablePainAudioEffects;
+                FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist));
+            });
         }
 
         private static List<ResourceLocation> parseList(String raw) {

@@ -54,6 +54,8 @@ public class FirstAid {
     public static final String MODID = "firstaid";
     public static final Logger LOGGER = LogManager.getLogger(MODID);
     public static final double DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS = 20.0D;
+    public static final double DEFAULT_MORPHINE_ACTIVATION_DELAY_SECONDS = 10.0D;
+    public static final double DEFAULT_PAINKILLER_ACTIVATION_DELAY_SECONDS = 30.0D;
     private static final ResourceLocation POTION_ENTITY_ID = new ResourceLocation("minecraft", "potion");
     private static final ResourceLocation SPLASH_POTION_ENTITY_ID = new ResourceLocation("minecraft", "splash_potion");
     private static final ResourceLocation LINGERING_POTION_ENTITY_ID = new ResourceLocation("minecraft", "lingering_potion");
@@ -70,10 +72,15 @@ public class FirstAid {
     public static boolean isSynced = false;
     public static boolean dynamicPainEnabled = true;
     public static int mildPainLevel = 1;
+    public static boolean enablePainVignette = true;
+    public static boolean enablePainFovCompression = true;
+    public static boolean enablePainAudioEffects = true;
     public static boolean lowSuppressionEnabled = false;
     public static float lowSuppressionMultiplier = 0.4F;
     public static boolean rescueWakeUpEnabled = false;
     public static double rescueWakeUpDelaySeconds = DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
+    public static double morphineActivationDelaySeconds = DEFAULT_MORPHINE_ACTIVATION_DELAY_SECONDS;
+    public static double painkillerActivationDelaySeconds = DEFAULT_PAINKILLER_ACTIVATION_DELAY_SECONDS;
     public static NaturalRegenMode naturalRegenMode = NaturalRegenMode.LIMITED;
     public static NaturalRegenStrategy naturalRegenStrategy = NaturalRegenStrategy.CRITICAL;
     public static float naturalRegenLimitRatio = 0.85F;
@@ -114,6 +121,14 @@ public class FirstAid {
 
     public static int scaleMedicalTimingTicks(int baseTicks) {
         return Math.max(1, baseTicks);
+    }
+
+    public static int getMorphineActivationDelayTicks() {
+        return Math.max(0, (int) Math.round(morphineActivationDelaySeconds * 20.0D));
+    }
+
+    public static int getPainkillerActivationDelayTicks() {
+        return Math.max(0, (int) Math.round(painkillerActivationDelaySeconds * 20.0D));
     }
 
     public static int getRescueWakeUpDelayTicks() {

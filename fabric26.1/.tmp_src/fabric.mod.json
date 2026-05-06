@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "firstaid",
+  "version": "${version}",
+  "name": "First Aid",
+  "description": "First Aid is a game changing mod focused around a new health system",
+  "authors": [
+    "ichttt"
+  ],
+  "contact": {
+    "homepage": "https://minecraft.curseforge.com/projects/first-aid",
+    "issues": "https://github.com/ichttft/firstaid"
+  },
+  "license": "GPL-3.0-or-later",
+  "icon": "firstaid_logo.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "ichttt.mods.firstaid.fabric.FirstAidFabricEntrypoint"
+    ],
+    "client": [
+      "ichttt.mods.firstaid.fabric.FirstAidFabricClientEntrypoint"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "1.21.11",
+    "java": ">=21"
+  }
+}

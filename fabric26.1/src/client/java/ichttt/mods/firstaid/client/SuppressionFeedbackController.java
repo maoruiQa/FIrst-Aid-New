@@ -64,7 +64,9 @@ public final class SuppressionFeedbackController {
          this.suppressionIntensity = (playerDamageModel == null ? 0.0F : playerDamageModel.getSuppressionIntensity()) * suppressionScale;
          this.holdTicks = playerDamageModel == null ? 0 : playerDamageModel.getSuppressionHoldTicks();
          boolean painSuppressed = player.hasEffect(RegistryObjects.MORPHINE_EFFECT) || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
-         float targetPainFov = !painSuppressed && playerDamageModel != null ? playerDamageModel.getPainVisualStrength() * 12.0F : 0.0F;
+         float targetPainFov = !painSuppressed && playerDamageModel != null && FirstAid.enablePainFovCompression
+            ? playerDamageModel.getPainVisualStrength() * 12.0F
+            : 0.0F;
          boolean holding = this.holdTicks > 0;
          float targetMuffle = holding ? Math.max(0.88F, this.suppressionIntensity * 1.12F) : this.suppressionIntensity * 0.98F;
          float targetTinnitus = holding ? Math.max(0.48F, this.suppressionIntensity * 0.64F) : this.suppressionIntensity * 0.42F;
@@ -82,6 +84,7 @@ public final class SuppressionFeedbackController {
          this.pitchImpulse *= 0.85F;
          this.fovImpulse *= holding ? 0.93F : 0.83F;
          if ((Boolean)FirstAidConfig.CLIENT.enableSounds.get()
+            && FirstAid.enablePainAudioEffects
             && painLevel >= 4
             && this.lastPainLevel < 4
             && level.getGameTime() >= this.soundCooldownUntilGameTime) {

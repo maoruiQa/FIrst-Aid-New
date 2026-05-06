@@ -62,10 +62,15 @@ public class FirstAidConfig {
         migrateLegacyBandageApplyTime();
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
         FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
+        FirstAid.enablePainVignette = SERVER.enablePainVignette.get();
+        FirstAid.enablePainFovCompression = SERVER.enablePainFovCompression.get();
+        FirstAid.enablePainAudioEffects = SERVER.enablePainAudioEffects.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
+        FirstAid.morphineActivationDelaySeconds = SERVER.morphineActivationDelaySeconds.get();
+        FirstAid.painkillerActivationDelaySeconds = SERVER.painkillerActivationDelaySeconds.get();
         FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
         FirstAid.naturalRegenStrategy = SERVER.naturalRegenStrategy.get();
         FirstAid.naturalRegenLimitRatio = SERVER.naturalRegenLimitRatio.get().floatValue();
@@ -84,10 +89,15 @@ public class FirstAidConfig {
     public static void persistCommandSettings() {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
         SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
+        SERVER.enablePainVignette.set(FirstAid.enablePainVignette);
+        SERVER.enablePainFovCompression.set(FirstAid.enablePainFovCompression);
+        SERVER.enablePainAudioEffects.set(FirstAid.enablePainAudioEffects);
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
+        SERVER.morphineActivationDelaySeconds.set(FirstAid.morphineActivationDelaySeconds);
+        SERVER.painkillerActivationDelaySeconds.set(FirstAid.painkillerActivationDelaySeconds);
         SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
         SERVER.naturalRegenStrategy.set(FirstAid.naturalRegenStrategy);
         SERVER.naturalRegenLimitRatio.set((double) FirstAid.naturalRegenLimitRatio);
@@ -323,6 +333,15 @@ public class FirstAidConfig {
             mildPainLevel = builder
                     .comment("Pain level used when /firstaid pain mild is active")
                     .defineInRange("mildPainLevel", 1, 1, 5);
+            enablePainVignette = builder
+                    .comment("Enable red screen vignette overlay when in pain")
+                    .define("enablePainVignette", true);
+            enablePainFovCompression = builder
+                    .comment("Enable FOV compression (tunnel vision) when in pain")
+                    .define("enablePainFovCompression", true);
+            enablePainAudioEffects = builder
+                    .comment("Enable severe pain audio effects (tinnitus sound)")
+                    .define("enablePainAudioEffects", true);
             lowSuppressionEnabled = builder
                     .comment("Persistent toggle for /firstaid suppression (dynamic vs mild)")
                     .define("lowSuppressionEnabled", false);
@@ -335,6 +354,21 @@ public class FirstAidConfig {
             rescueWakeUpDelaySeconds = builder
                     .comment("Persistent delay in seconds for /firstaid revivewakeup on [seconds]")
                     .defineInRange("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0D, 3600D);
+            morphineActivationDelaySeconds = builder
+                    .comment("Exact morphine activation delay in seconds")
+                    .defineInRange("morphineActivationDelaySeconds", FirstAid.DEFAULT_MORPHINE_ACTIVATION_DELAY_SECONDS, 0D, 3600D);
+            painkillerActivationDelaySeconds = builder
+                    .comment("Exact painkiller activation delay in seconds")
+                    .defineInRange("painkillerActivationDelaySeconds", FirstAid.DEFAULT_PAINKILLER_ACTIVATION_DELAY_SECONDS, 0D, 3600D);
+            morphineUseDuration = builder
+                    .comment("Use duration of morphine in ticks (20 ticks = 1 second)")
+                    .defineInRange("morphineUseDuration", 40, 1, 72000);
+            painkillersUseDuration = builder
+                    .comment("Use duration of painkillers in ticks (20 ticks = 1 second)")
+                    .defineInRange("painkillersUseDuration", 32, 1, 72000);
+            adrenalineUseDuration = builder
+                    .comment("Use duration of adrenaline injector in ticks (20 ticks = 1 second)")
+                    .defineInRange("adrenalineUseDuration", 40, 1, 72000);
             naturalRegenLimitRatio = builder
                     .comment("Maximum health fraction natural regeneration can restore in limited modes")
                     .defineInRange("naturalRegenLimitRatio", 0.85D, 0D, 1D);
@@ -453,10 +487,18 @@ public class FirstAidConfig {
         public final ModConfigSpec.ConfigValue<List<? extends Integer>> enchMulOverrideMultiplier;
         public final ModConfigSpec.BooleanValue dynamicPainEnabled;
         public final ModConfigSpec.IntValue mildPainLevel;
+        public final ModConfigSpec.BooleanValue enablePainVignette;
+        public final ModConfigSpec.BooleanValue enablePainFovCompression;
+        public final ModConfigSpec.BooleanValue enablePainAudioEffects;
         public final ModConfigSpec.BooleanValue lowSuppressionEnabled;
         public final ModConfigSpec.DoubleValue lowSuppressionMultiplier;
         public final ModConfigSpec.BooleanValue rescueWakeUpEnabled;
         public final ModConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
+        public final ModConfigSpec.DoubleValue morphineActivationDelaySeconds;
+        public final ModConfigSpec.DoubleValue painkillerActivationDelaySeconds;
+        public final ModConfigSpec.IntValue morphineUseDuration;
+        public final ModConfigSpec.IntValue painkillersUseDuration;
+        public final ModConfigSpec.IntValue adrenalineUseDuration;
         public final ModConfigSpec.DoubleValue naturalRegenLimitRatio;
         public final ModConfigSpec.DoubleValue naturalRegenCriticalPriorityRatio;
         public final ModConfigSpec.EnumValue<FirstAid.MedicineEffectMode> medicineEffectMode;

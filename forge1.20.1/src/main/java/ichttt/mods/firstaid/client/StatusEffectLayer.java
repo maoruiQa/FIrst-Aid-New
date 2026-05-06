@@ -87,7 +87,7 @@ public class StatusEffectLayer implements IGuiOverlay {
         float smoothSuppression = Mth.lerp(partialTick, lastSuppressionStrength, suppressionStrength);
         float pulseTime = minecraft.player.tickCount + partialTick;
 
-        if (smoothPain > 0.0F) {
+        if (smoothPain > 0.0F && FirstAid.enablePainVignette) {
             float pulse = deathDanger > 0.0F
                     ? 0.82F + (0.18F + deathDanger * 0.27F) * Mth.sin(pulseTime * (0.08F + deathDanger * 0.04F))
                     : 0.9F + 0.1F * Mth.sin(pulseTime * 0.32F);

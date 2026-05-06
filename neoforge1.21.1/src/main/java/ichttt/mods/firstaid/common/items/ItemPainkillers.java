@@ -1,5 +1,6 @@
 package ichttt.mods.firstaid.common.items;
 
+import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.medicine.ItemMedicine;
 import ichttt.mods.firstaid.api.medicine.MedicineStatusContext;
 import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
@@ -44,7 +45,7 @@ public class ItemPainkillers extends ItemMedicine {
 
    @Override
    public int getUseDuration(ItemStack stack, LivingEntity entity) {
-      return 32;
+      return (Integer)FirstAidConfig.SERVER.painkillersUseDuration.get();
    }
 
    @Override

@@ -29,7 +29,6 @@ import ichttt.mods.firstaid.client.ClientHooks;
 import ichttt.mods.firstaid.client.MedicineStatusClientHelper;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
 import ichttt.mods.firstaid.common.RegistryObjects;
-import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -185,8 +184,6 @@ public class GuiHealthScreen extends Screen {
             guiGraphics.centeredText(font, I18n.get("firstaid.gui.apply_hint"), width / 2, guiTop + ySize - 22, 0xFFFFFF);
         }
 
-        renderStatusSummary(guiGraphics, renderModel);
-
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
     }
 
@@ -206,142 +203,6 @@ public class GuiHealthScreen extends Screen {
             return 160;
         }
         return 200 - Math.min(40, HealthRenderUtils.getHeartRenderWidth(damageablePart, true));
-    }
-
-    private void renderStatusSummary(GuiGraphicsExtractor guiGraphics, AbstractPlayerDamageModel renderModel) {
-        if (minecraft == null || minecraft.player == null) {
-            return;
-        }
-
-        Player player = minecraft.player;
-        PlayerDamageModel playerDamageModel = renderModel instanceof PlayerDamageModel model ? model : null;
-        int lineY = guiTop + ySize - 54;
-
-        int painLevel = renderModel.getPainLevel();
-        if (painLevel <= 0) {
-            painLevel = calculateLocalPainLevel(renderModel);
-        }
-        if (painLevel > 0) {
-            boolean painSuppressed = player.hasEffect(RegistryObjects.MORPHINE_EFFECT) || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
-            Component painText = painSuppressed
-                    ? Component.translatable("firstaid.gui.status.pain_suppressed")
-                    : Component.translatable("firstaid.gui.status.pain", Component.translatable(getPainSeverityKey(painLevel)));
-            guiGraphics.text(font, painText, guiLeft + 8, lineY, painSuppressed ? 0x8FD3FF : 0xFF8A8A);
-            lineY += 10;
-        }
-
-        if (renderModel.getAdrenalineLevel() > 0) {
-            int suppressionLevel = playerDamageModel != null ? playerDamageModel.getSuppressionLevel() : renderModel.getAdrenalineLevel();
-            guiGraphics.text(font,
-                    Component.translatable("firstaid.gui.status.suppression", Component.translatable(getSuppressionSeverityKey(suppressionLevel))),
-                    guiLeft + 8,
-                    lineY,
-                    0xC0D6EA);
-            lineY += 10;
-        }
-
-        if (renderModel.getUnconsciousTicks() > 0) {
-            guiGraphics.text(font,
-                    Component.translatable(playerDamageModel != null
-                            ? playerDamageModel.getUnconsciousReasonKey()
-                            : renderModel.isCriticalConditionActive() ? "firstaid.gui.critical_condition" : "firstaid.gui.unconscious"),
-                    guiLeft + 8,
-                    lineY,
-                    0xFFD5D5);
-            lineY += 10;
-            guiGraphics.text(font,
-                    playerDamageModel != null && playerDamageModel.canGiveUp()
-                            ? Component.translatable("firstaid.gui.death_countdown_seconds", playerDamageModel.getUnconsciousSecondsLeft())
-                            : Component.translatable("firstaid.gui.unconscious_left", StringUtil.formatTickDuration(renderModel.getUnconsciousTicks(), 20F)),
-                    guiLeft + 8,
-                    lineY,
-                    0xFFD5D5);
-            if (playerDamageModel != null && playerDamageModel.canGiveUp()) {
-                lineY += 10;
-                guiGraphics.text(font,
-                        Component.translatable("firstaid.gui.waiting_for_rescue"),
-                        guiLeft + 8,
-                        lineY,
-                        0xFFD5D5);
-                lineY += 10;
-                guiGraphics.text(font,
-                        Component.translatable("firstaid.gui.rescue_help"),
-                        guiLeft + 8,
-                        lineY,
-                        0xFFD5D5);
-                lineY += 10;
-                guiGraphics.text(font,
-                        Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()),
-                        guiLeft + 8,
-                        lineY,
-                        0xFFB3B3);
-            }
-        }
-
-        for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(player)) {
-            lineY = MedicineStatusClientHelper.drawStatusLine(guiGraphics, font, display, guiLeft + 8, lineY);
-        }
-    }
-
-    private static String getPainSeverityKey(int painLevel) {
-        return switch (painLevel) {
-            case 1 -> "firstaid.gui.pain.mild";
-            case 2 -> "firstaid.gui.pain.moderate";
-            case 3 -> "firstaid.gui.pain.severe";
-            case 4 -> "firstaid.gui.pain.extreme";
-            default -> "firstaid.gui.pain.critical";
-        };
-    }
-
-    private static String getSuppressionSeverityKey(int suppressionLevel) {
-        return switch (suppressionLevel) {
-            case 1 -> "firstaid.gui.suppression.low";
-            case 2 -> "firstaid.gui.suppression.medium";
-            default -> "firstaid.gui.suppression.high";
-        };
-    }
-
-    private static int calculateLocalPainLevel(AbstractPlayerDamageModel model) {
-        boolean hasInjury = false;
-        int fullyLostParts = 0;
-        float maxSeverity = 0.0F;
-        float weightedSeverity = 0.0F;
-        float totalWeight = 0.0F;
-        for (AbstractDamageablePart part : model) {
-            float visualHealth = CommonUtils.getVisualHealth(part);
-            float missingHealth = CommonUtils.getVisibleMissingHealth(part);
-            if (missingHealth <= 0F) {
-                continue;
-            }
-            hasInjury = true;
-            float injuryRatio = missingHealth / part.getMaxHealth();
-            if (visualHealth <= 0F) {
-                fullyLostParts++;
-                injuryRatio = part.canCauseDeath ? 1.0F : 0.85F;
-            }
-            if (part.canCauseDeath && injuryRatio >= 0.55F) {
-                injuryRatio = Math.min(1.0F, injuryRatio + 0.15F);
-            }
-            float weight = part.canCauseDeath ? 1.35F : 1.0F;
-            maxSeverity = Math.max(maxSeverity, injuryRatio);
-            weightedSeverity += injuryRatio * weight;
-            totalWeight += weight;
-        }
-
-        if (!hasInjury) {
-            return 0;
-        }
-        if (!FirstAid.dynamicPainEnabled) {
-            return Math.max(1, Math.min(5, FirstAid.mildPainLevel));
-        }
-        float averageSeverity = totalWeight <= 0.0F ? 0.0F : weightedSeverity / totalWeight;
-        float combinedSeverity = Math.min(1.0F, maxSeverity * 0.65F + averageSeverity * 0.35F);
-        int maxPainLevel = 5;
-        int painLevel = Math.max(1, Math.min(maxPainLevel, 1 + (int) Math.floor(combinedSeverity * (maxPainLevel - 0.0001F))));
-        if (fullyLostParts < 3 && painLevel >= maxPainLevel) {
-            return maxPainLevel - 1;
-        }
-        return painLevel;
     }
 
     @Override

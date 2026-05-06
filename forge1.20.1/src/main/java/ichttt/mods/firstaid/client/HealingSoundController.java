@@ -20,6 +20,7 @@ package ichttt.mods.firstaid.client;
 
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
+import ichttt.mods.firstaid.api.medicine.ItemMedicine;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -40,14 +41,19 @@ import javax.annotation.Nullable;
 public final class HealingSoundController {
     private static @Nullable PillsUseSound activePillsSound;
     private static @Nullable ItemUseSound activeHealingSound;
+    private static @Nullable ResourceLocation activeMedicineStartSound;
+    private static @Nullable ItemStack activeMedicineStack;
+    private static @Nullable ItemUseSound activeMedicineLoopSound;
 
     private HealingSoundController() {
     }
 
     public static void tick(Minecraft minecraft) {
+        SoundManager soundManager = minecraft.getSoundManager();
         if (!FirstAidConfig.CLIENT.enableSounds.get()) {
-            stopPillsSound(minecraft.getSoundManager());
-            stopHealingSound(minecraft.getSoundManager());
+            stopPillsSound(soundManager);
+            stopMedicineSounds(soundManager);
+            stopHealingSound(soundManager);
             return;
         }
 
@@ -55,10 +61,16 @@ public final class HealingSoundController {
         if (player != null && player.isAlive() && isUsingPills(player)) {
             if (activePillsSound == null || activePillsSound.isStopped()) {
                 activePillsSound = new PillsUseSound(player, RegistryObjects.PILLS_USE.get());
-                minecraft.getSoundManager().play(activePillsSound);
+                soundManager.play(activePillsSound);
             }
         } else {
-            stopPillsSound(minecraft.getSoundManager());
+            stopPillsSound(soundManager);
+        }
+
+        if (player != null && player.isAlive()) {
+            updateMedicineSounds(soundManager, player);
+        } else {
+            stopMedicineSounds(soundManager);
         }
 
         if (player != null && player.isAlive()) {
@@ -68,22 +80,23 @@ public final class HealingSoundController {
                     && itemHealing.getApplySoundMode(useStack) == ItemHealing.ApplySoundMode.WHILE_USING
                     && itemHealing.getApplySoundEvent(useStack) != null) {
                 if (activeHealingSound == null || activeHealingSound.isStopped() || !activeHealingSound.matches(player, useStack)) {
-                    stopHealingSound(minecraft.getSoundManager());
+                    stopHealingSound(soundManager);
                     ItemStack playingStack = useStack.copy();
                     playingStack.setCount(1);
                     activeHealingSound = new ItemUseSound(player, playingStack, itemHealing.getApplySoundEvent(useStack));
-                    minecraft.getSoundManager().play(activeHealingSound);
+                    soundManager.play(activeHealingSound);
                 }
             } else {
-                stopHealingSound(minecraft.getSoundManager());
+                stopHealingSound(soundManager);
             }
         } else {
-            stopHealingSound(minecraft.getSoundManager());
+            stopHealingSound(soundManager);
         }
     }
 
     public static void clear() {
         stopPillsSound(Minecraft.getInstance().getSoundManager());
+        stopMedicineSounds(Minecraft.getInstance().getSoundManager());
         stopHealingSound(Minecraft.getInstance().getSoundManager());
     }
 
@@ -112,12 +125,57 @@ public final class HealingSoundController {
         player.playSound(soundEvent, 1.0F, 1.0F);
     }
 
-    private static boolean isUsingPills(LocalPlayer player) {
-        if (!player.isUsingItem()) {
-            return false;
+    private static void updateMedicineSounds(SoundManager soundManager, LocalPlayer player) {
+        ItemStack useStack = player.getUseItem();
+        if (player.isUsingItem() && useStack.getItem() instanceof ItemMedicine itemMedicine) {
+            if (!matchesCurrentMedicine(player, useStack)) {
+                stopMedicineSounds(soundManager);
+                activeMedicineStack = useStack.copy();
+                activeMedicineStack.setCount(1);
+                SoundEvent startSound = itemMedicine.getUseStartSound(useStack);
+                if (startSound != null) {
+                    activeMedicineStartSound = startSound.getLocation();
+                    player.playSound(startSound, 1.0F, 1.0F);
+                }
+            }
+
+            SoundEvent loopSound = itemMedicine.getUseLoopSound(useStack);
+            if (loopSound != null) {
+                if (activeMedicineLoopSound == null || activeMedicineLoopSound.isStopped() || !activeMedicineLoopSound.matches(player, useStack)) {
+                    stopMedicineLoopSound(soundManager);
+                    ItemStack playingStack = useStack.copy();
+                    playingStack.setCount(1);
+                    activeMedicineLoopSound = new ItemUseSound(player, playingStack, loopSound);
+                    soundManager.play(activeMedicineLoopSound);
+                }
+            } else {
+                stopMedicineLoopSound(soundManager);
+            }
+        } else {
+            stopMedicineSounds(soundManager);
         }
-        ItemStack stack = player.getUseItem();
-        return stack.is(RegistryObjects.MORPHINE.get()) || stack.is(RegistryObjects.PAINKILLERS.get());
+    }
+
+    private static boolean matchesCurrentMedicine(LocalPlayer player, ItemStack stack) {
+        return activeMedicineStack != null && player.isUsingItem() && ItemStack.isSameItemSameTags(activeMedicineStack, stack);
+    }
+
+    private static void stopMedicineSounds(SoundManager soundManager) {
+        stopMedicineLoopSound(soundManager);
+        if (activeMedicineStartSound != null) {
+            soundManager.stop(activeMedicineStartSound, SoundSource.PLAYERS);
+            activeMedicineStartSound = null;
+        }
+        activeMedicineStack = null;
+    }
+
+    private static void stopMedicineLoopSound(SoundManager soundManager) {
+        if (activeMedicineLoopSound == null) {
+            return;
+        }
+        activeMedicineLoopSound.stop();
+        soundManager.stop(activeMedicineLoopSound);
+        activeMedicineLoopSound = null;
     }
 
     private static void stopPillsSound(SoundManager soundManager) {
@@ -136,6 +194,10 @@ public final class HealingSoundController {
         activeHealingSound.stop();
         soundManager.stop(activeHealingSound);
         activeHealingSound = null;
+    }
+
+    private static boolean isUsingPills(LocalPlayer player) {
+        return player.isUsingItem() && player.getUseItem().is(RegistryObjects.PAINKILLERS.get());
     }
 
     private static final class PillsUseSound implements TickableSoundInstance {

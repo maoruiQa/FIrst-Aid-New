@@ -447,10 +447,15 @@ public class EventHandler {
         FirstAid.LOGGER.debug("Cleaning up");
         FirstAid.dynamicPainEnabled = true;
         FirstAid.mildPainLevel = 1;
+        FirstAid.enablePainVignette = true;
+        FirstAid.enablePainFovCompression = true;
+        FirstAid.enablePainAudioEffects = true;
         FirstAid.lowSuppressionEnabled = false;
         FirstAid.lowSuppressionMultiplier = 0.4F;
         FirstAid.rescueWakeUpEnabled = false;
         FirstAid.rescueWakeUpDelaySeconds = FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
+        FirstAid.morphineActivationDelaySeconds = FirstAid.DEFAULT_MORPHINE_ACTIVATION_DELAY_SECONDS;
+        FirstAid.painkillerActivationDelaySeconds = FirstAid.DEFAULT_PAINKILLER_ACTIVATION_DELAY_SECONDS;
         FirstAid.naturalRegenMode = FirstAid.NaturalRegenMode.LIMITED;
         FirstAid.naturalRegenStrategy = FirstAid.NaturalRegenStrategy.CRITICAL;
         FirstAid.naturalRegenLimitRatio = 0.85F;

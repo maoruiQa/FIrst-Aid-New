@@ -345,7 +345,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public static int getMorphineActivationDelay() {
-        return FirstAid.scaleMedicalTimingTicks(MORPHINE_ACTIVATION_DELAY_TICKS);
+        return FirstAid.getMorphineActivationDelayTicks();
     }
 
     public static int getPainkillerDuration() {
@@ -353,7 +353,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public static int getPainkillerActivationDelay() {
-        return FirstAid.scaleMedicalTimingTicks(PAINKILLER_ACTIVATION_DELAY_TICKS);
+        return FirstAid.getPainkillerActivationDelayTicks();
     }
 
     public static int getAdrenalineDuration() {

@@ -62,6 +62,9 @@ public class FirstAidConfig {
         migrateLegacyBandageApplyTime();
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
         FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
+        FirstAid.enablePainVignette = SERVER.enablePainVignette.get();
+        FirstAid.enablePainFovCompression = SERVER.enablePainFovCompression.get();
+        FirstAid.enablePainAudioEffects = SERVER.enablePainAudioEffects.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
@@ -72,6 +75,8 @@ public class FirstAidConfig {
         FirstAid.naturalRegenCriticalPriorityRatio = SERVER.naturalRegenCriticalPriorityRatio.get().floatValue();
         FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
         FirstAid.medicineTimingMultiplier = SERVER.medicineTimingMultiplier.get().floatValue();
+        FirstAid.morphineActivationDelaySeconds = SERVER.morphineActivationDelaySeconds.get();
+        FirstAid.painkillerActivationDelaySeconds = SERVER.painkillerActivationDelaySeconds.get();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
         FirstAid.lowInjuryDebuffDamageScale = SERVER.lowInjuryDebuffDamageScale.get().floatValue();
         FirstAid.lowInjuryDebuffAmplifierScale = SERVER.lowInjuryDebuffAmplifierScale.get().floatValue();
@@ -84,6 +89,9 @@ public class FirstAidConfig {
     public static void persistCommandSettings() {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
         SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
+        SERVER.enablePainVignette.set(FirstAid.enablePainVignette);
+        SERVER.enablePainFovCompression.set(FirstAid.enablePainFovCompression);
+        SERVER.enablePainAudioEffects.set(FirstAid.enablePainAudioEffects);
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
@@ -95,6 +103,8 @@ public class FirstAidConfig {
         SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
         SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
         SERVER.medicineTimingMultiplier.set((double) FirstAid.medicineTimingMultiplier);
+        SERVER.morphineActivationDelaySeconds.set(FirstAid.morphineActivationDelaySeconds);
+        SERVER.painkillerActivationDelaySeconds.set(FirstAid.painkillerActivationDelaySeconds);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
         SERVER.lowInjuryDebuffDamageScale.set((double) FirstAid.lowInjuryDebuffDamageScale);
         SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
@@ -323,6 +333,15 @@ public class FirstAidConfig {
             mildPainLevel = builder
                     .comment("Pain level used when /firstaid pain mild is active")
                     .defineInRange("mildPainLevel", 1, 1, 5);
+            enablePainVignette = builder
+                    .comment("Enable red screen vignette overlay when in pain")
+                    .define("enablePainVignette", true);
+            enablePainFovCompression = builder
+                    .comment("Enable FOV compression (tunnel vision) when in pain")
+                    .define("enablePainFovCompression", true);
+            enablePainAudioEffects = builder
+                    .comment("Enable severe pain audio effects (tinnitus sound)")
+                    .define("enablePainAudioEffects", true);
             lowSuppressionEnabled = builder
                     .comment("Persistent toggle for /firstaid suppression (dynamic vs mild)")
                     .define("lowSuppressionEnabled", false);
@@ -347,6 +366,21 @@ public class FirstAidConfig {
             medicineTimingMultiplier = builder
                     .comment("Multiplier applied to medicine timing; command presets set this to realistic=1.0, assisted=0.5, casual=0.25")
                     .defineInRange("medicineTimingMultiplier", 1D, 0.01D, 20D);
+            morphineActivationDelaySeconds = builder
+                    .comment("Exact morphine activation delay in seconds")
+                    .defineInRange("morphineActivationDelaySeconds", FirstAid.DEFAULT_MORPHINE_ACTIVATION_DELAY_SECONDS, 0D, 3600D);
+            painkillerActivationDelaySeconds = builder
+                    .comment("Exact painkiller activation delay in seconds")
+                    .defineInRange("painkillerActivationDelaySeconds", FirstAid.DEFAULT_PAINKILLER_ACTIVATION_DELAY_SECONDS, 0D, 3600D);
+            morphineUseDuration = builder
+                    .comment("Use duration of morphine in ticks (20 ticks = 1 second)")
+                    .defineInRange("morphineUseDuration", 40, 1, 72000);
+            painkillersUseDuration = builder
+                    .comment("Use duration of painkillers in ticks (20 ticks = 1 second)")
+                    .defineInRange("painkillersUseDuration", 32, 1, 72000);
+            adrenalineUseDuration = builder
+                    .comment("Use duration of adrenaline injector in ticks (20 ticks = 1 second)")
+                    .defineInRange("adrenalineUseDuration", 40, 1, 72000);
             injuryDebuffMode = builder
                     .comment("Persistent toggle for /firstaid injurydebuff (normal/low/off)")
                     .defineEnum("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL);
@@ -453,6 +487,9 @@ public class FirstAidConfig {
         public final ModConfigSpec.ConfigValue<List<? extends Integer>> enchMulOverrideMultiplier;
         public final ModConfigSpec.BooleanValue dynamicPainEnabled;
         public final ModConfigSpec.IntValue mildPainLevel;
+        public final ModConfigSpec.BooleanValue enablePainVignette;
+        public final ModConfigSpec.BooleanValue enablePainFovCompression;
+        public final ModConfigSpec.BooleanValue enablePainAudioEffects;
         public final ModConfigSpec.BooleanValue lowSuppressionEnabled;
         public final ModConfigSpec.DoubleValue lowSuppressionMultiplier;
         public final ModConfigSpec.BooleanValue rescueWakeUpEnabled;
@@ -461,6 +498,11 @@ public class FirstAidConfig {
         public final ModConfigSpec.DoubleValue naturalRegenCriticalPriorityRatio;
         public final ModConfigSpec.EnumValue<FirstAid.MedicineEffectMode> medicineEffectMode;
         public final ModConfigSpec.DoubleValue medicineTimingMultiplier;
+        public final ModConfigSpec.DoubleValue morphineActivationDelaySeconds;
+        public final ModConfigSpec.DoubleValue painkillerActivationDelaySeconds;
+        public final ModConfigSpec.IntValue morphineUseDuration;
+        public final ModConfigSpec.IntValue painkillersUseDuration;
+        public final ModConfigSpec.IntValue adrenalineUseDuration;
         public final ModConfigSpec.EnumValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
         public final ModConfigSpec.DoubleValue lowInjuryDebuffDamageScale;
         public final ModConfigSpec.DoubleValue lowInjuryDebuffAmplifierScale;

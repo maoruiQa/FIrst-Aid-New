@@ -32,13 +32,25 @@ import java.util.List;
 public class MessageSyncCommandSettings implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<MessageSyncCommandSettings> TYPE = new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "sync_command_settings"));
     public static final StreamCodec<RegistryFriendlyByteBuf, MessageSyncCommandSettings> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            message -> message.enablePainVignette,
+            ByteBufCodecs.BOOL,
+            message -> message.enablePainFovCompression,
+            ByteBufCodecs.BOOL,
+            message -> message.enablePainAudioEffects,
             ByteBufCodecs.stringUtf8(32767),
             message -> message.suppressionEntityBlacklist,
             MessageSyncCommandSettings::new);
 
+    private final boolean enablePainVignette;
+    private final boolean enablePainFovCompression;
+    private final boolean enablePainAudioEffects;
     private final String suppressionEntityBlacklist;
 
-    private MessageSyncCommandSettings(String suppressionEntityBlacklist) {
+    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, String suppressionEntityBlacklist) {
+        this.enablePainVignette = enablePainVignette;
+        this.enablePainFovCompression = enablePainFovCompression;
+        this.enablePainAudioEffects = enablePainAudioEffects;
         this.suppressionEntityBlacklist = suppressionEntityBlacklist;
     }
 
@@ -50,7 +62,11 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
             }
             builder.append(entry);
         }
-        return new MessageSyncCommandSettings(builder.toString());
+        return new MessageSyncCommandSettings(
+                FirstAid.enablePainVignette,
+                FirstAid.enablePainFovCompression,
+                FirstAid.enablePainAudioEffects,
+                builder.toString());
     }
 
     @Override
@@ -59,7 +75,12 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
     }
 
     public static void handle(MessageSyncCommandSettings message, IPayloadContext context) {
-        context.enqueueWork(() -> FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist)));
+        context.enqueueWork(() -> {
+            FirstAid.enablePainVignette = message.enablePainVignette;
+            FirstAid.enablePainFovCompression = message.enablePainFovCompression;
+            FirstAid.enablePainAudioEffects = message.enablePainAudioEffects;
+            FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist));
+        });
     }
 
     private static List<ResourceLocation> parseList(String raw) {
