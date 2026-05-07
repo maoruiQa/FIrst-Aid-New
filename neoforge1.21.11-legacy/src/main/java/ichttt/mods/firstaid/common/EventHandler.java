@@ -504,6 +504,9 @@ public class EventHandler {
             if (projectile instanceof AbstractThrownPotion) {
                 return false;
             }
+            if (FirstAid.isSuppressionBlacklisted(projectile)) {
+                return false;
+            }
             return projectile.getDeltaMovement().lengthSqr() >= 0.02D;
         });
         for (Projectile projectile : projectiles) {
@@ -873,4 +876,3 @@ public class EventHandler {
         EXECUTE
     }
 }
-

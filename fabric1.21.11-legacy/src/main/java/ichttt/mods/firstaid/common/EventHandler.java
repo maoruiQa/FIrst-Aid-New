@@ -457,7 +457,7 @@ public final class EventHandler {
          if (!projectilex.isAlive() || projectilex.getOwner() == player) {
             return false;
          } else {
-            return projectilex instanceof AbstractThrownPotion ? false : projectilex.getDeltaMovement().lengthSqr() >= 0.02;
+            return projectilex instanceof AbstractThrownPotion || FirstAid.isSuppressionBlacklisted(projectilex) ? false : projectilex.getDeltaMovement().lengthSqr() >= 0.02;
          }
       })) {
          Vec3 currentPosition = projectile.position();
