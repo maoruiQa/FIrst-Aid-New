@@ -45,8 +45,12 @@ public final class MedicineStatusClientHelper {
          textX += 10;
       }
 
-      guiGraphics.drawString(font, display.getText(), textX, y + 1, display.getColor());
+      guiGraphics.drawString(font, display.getText(), textX, y + 1, opaque(display.getColor()));
       return y + 10;
+   }
+
+   private static int opaque(int rgb) {
+      return 0xFF000000 | rgb;
    }
 
    private static List<ItemMedicine> getMedicines() {

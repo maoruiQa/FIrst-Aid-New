@@ -57,7 +57,7 @@ public final class StatusSummaryRenderer {
             Component painText = painSuppressed
                     ? Component.translatable("firstaid.gui.status.pain_suppressed")
                     : Component.translatable("firstaid.gui.status.pain", Component.translatable(getPainSeverityKey(painLevel)));
-            guiGraphics.drawString(font, painText, baseX, lineY, painSuppressed ? 9425919 : 16747146);
+            guiGraphics.drawString(font, painText, baseX, lineY, opaque(painSuppressed ? 9425919 : 16747146));
             lineY += 10;
         }
 
@@ -69,7 +69,7 @@ public final class StatusSummaryRenderer {
                     Component.translatable("firstaid.gui.status.suppression", Component.translatable(getSuppressionSeverityKey(suppressionLevel))),
                     baseX,
                     lineY,
-                    12637930
+                    opaque(12637930)
             );
             lineY += 10;
         }
@@ -85,7 +85,7 @@ public final class StatusSummaryRenderer {
                     ),
                     baseX,
                     lineY,
-                    16766421
+                    opaque(16766421)
             );
             lineY += 10;
             guiGraphics.drawString(
@@ -95,15 +95,15 @@ public final class StatusSummaryRenderer {
                             : Component.translatable("firstaid.gui.unconscious_left", StringUtil.formatTickDuration(unconsciousTicks, 20.0F)),
                     baseX,
                     lineY,
-                    16766421
+                    opaque(16766421)
             );
             lineY += 10;
             if (playerDamageModel != null && playerDamageModel.canGiveUp()) {
-                guiGraphics.drawString(font, Component.translatable("firstaid.gui.waiting_for_rescue"), baseX, lineY, 16766421);
+                guiGraphics.drawString(font, Component.translatable("firstaid.gui.waiting_for_rescue"), baseX, lineY, opaque(16766421));
                 lineY += 10;
-                guiGraphics.drawString(font, Component.translatable("firstaid.gui.rescue_help"), baseX, lineY, 16766421);
+                guiGraphics.drawString(font, Component.translatable("firstaid.gui.rescue_help"), baseX, lineY, opaque(16766421));
                 lineY += 10;
-                guiGraphics.drawString(font, Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()), baseX, lineY, 16757683);
+                guiGraphics.drawString(font, Component.translatable("firstaid.gui.give_up_hint", ClientHooks.GIVE_UP.getTranslatedKeyMessage()), baseX, lineY, opaque(16757683));
                 lineY += 10;
             }
         }
@@ -142,6 +142,10 @@ public final class StatusSummaryRenderer {
             count++;
         }
         return count;
+    }
+
+    private static int opaque(int rgb) {
+        return 0xFF000000 | rgb;
     }
 
     private static String getPainSeverityKey(int painLevel) {
