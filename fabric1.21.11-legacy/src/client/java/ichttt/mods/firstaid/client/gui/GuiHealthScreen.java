@@ -6,13 +6,8 @@ import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
 import ichttt.mods.firstaid.client.ClientEventHandler;
 import ichttt.mods.firstaid.client.ClientHooks;
-import ichttt.mods.firstaid.client.MedicineStatusClientHelper;
-import ichttt.mods.firstaid.client.StatusSummaryRenderer;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
-import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
-import ichttt.mods.firstaid.common.RegistryObjects;
-import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.network.MessageClientRequest.RequestType;
 import ichttt.mods.firstaid.common.util.CommonUtils;
@@ -28,7 +23,6 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.StringUtil;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -161,7 +155,6 @@ public class GuiHealthScreen extends Screen {
          guiGraphics.drawCenteredString(this.font, I18n.get("firstaid.gui.apply_hint", new Object[0]), this.width / 2, this.guiTop + 137 - 22, 16777215);
       }
 
-      this.renderStatusSummary(guiGraphics, renderModel);
       super.render(guiGraphics, mouseX, mouseY, partialTick);
    }
 
@@ -180,13 +173,6 @@ public class GuiHealthScreen extends Screen {
       return HealthRenderUtils.drawAsString(damageablePart, true)
          ? 160
          : 200 - Math.min(40, HealthRenderUtils.getHeartRenderWidth(damageablePart, true));
-   }
-
-   private void renderStatusSummary(GuiGraphics guiGraphics, AbstractPlayerDamageModel renderModel) {
-      if (this.minecraft != null && this.minecraft.player != null) {
-         PlayerDamageModel playerDamageModel = renderModel instanceof PlayerDamageModel model ? model : null;
-         StatusSummaryRenderer.renderStatusSummary(guiGraphics, this.font, this.minecraft.player, renderModel, playerDamageModel, this.guiLeft + 8, this.guiTop + 137 - 54);
-      }
    }
 
    public boolean keyPressed(KeyEvent event) {

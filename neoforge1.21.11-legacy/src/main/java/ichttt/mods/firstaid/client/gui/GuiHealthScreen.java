@@ -23,14 +23,9 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.api.healing.ItemHealing;
-import ichttt.mods.firstaid.api.medicine.MedicineStatusDisplay;
 import ichttt.mods.firstaid.client.ClientEventHandler;
 import ichttt.mods.firstaid.client.ClientHooks;
-import ichttt.mods.firstaid.client.MedicineStatusClientHelper;
-import ichttt.mods.firstaid.client.StatusSummaryRenderer;
 import ichttt.mods.firstaid.client.util.HealthRenderUtils;
-import ichttt.mods.firstaid.common.RegistryObjects;
-import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.network.MessageClientRequest;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.gui.GuiGraphics;
@@ -44,7 +39,6 @@ import net.minecraft.util.StringUtil;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.entity.player.Player;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -186,8 +180,6 @@ public class GuiHealthScreen extends Screen {
             guiGraphics.drawCenteredString(font, I18n.get("firstaid.gui.apply_hint"), width / 2, guiTop + ySize - 22, 0xFFFFFF);
         }
 
-        renderStatusSummary(guiGraphics, renderModel);
-
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
@@ -207,15 +199,6 @@ public class GuiHealthScreen extends Screen {
             return 160;
         }
         return 200 - Math.min(40, HealthRenderUtils.getHeartRenderWidth(damageablePart, true));
-    }
-
-    private void renderStatusSummary(GuiGraphics guiGraphics, AbstractPlayerDamageModel renderModel) {
-        if (minecraft == null || minecraft.player == null) {
-            return;
-        }
-
-        PlayerDamageModel playerDamageModel = renderModel instanceof PlayerDamageModel model ? model : null;
-        StatusSummaryRenderer.renderStatusSummary(guiGraphics, font, minecraft.player, renderModel, playerDamageModel, guiLeft + 8, guiTop + ySize - 54);
     }
 
     @Override

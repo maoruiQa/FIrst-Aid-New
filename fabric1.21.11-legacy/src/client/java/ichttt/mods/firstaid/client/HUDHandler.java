@@ -50,7 +50,7 @@ public class HUDHandler implements IdentifiableResourceReloadListener, ResourceM
          Minecraft minecraft = Minecraft.getInstance();
          if (minecraft.player != null && minecraft.player.isAlive() && minecraft.gameMode != null && !minecraft.options.hideGui) {
             AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(minecraft.player);
-            if (damageModel != null) {
+            if (damageModel != null && FirstAid.isSynced) {
                if (this.translationMap.isEmpty()) {
                   this.buildTranslationTable();
                }
