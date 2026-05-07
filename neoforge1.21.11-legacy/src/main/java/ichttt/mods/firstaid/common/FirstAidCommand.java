@@ -26,9 +26,11 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
+import ichttt.mods.firstaid.common.network.MessageSyncCommandSettings;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -52,7 +54,16 @@ public final class FirstAidCommand {
                         .then(Commands.literal("dynamic")
                                 .executes(context -> setLowSuppression(context.getSource(), false)))
                         .then(Commands.literal("mild")
-                                .executes(context -> setLowSuppression(context.getSource(), true))))
+                                .executes(context -> setLowSuppression(context.getSource(), true)))
+                        .then(Commands.literal("blacklist")
+                                .then(Commands.literal("add")
+                                        .then(Commands.argument("entity", StringArgumentType.greedyString())
+                                                .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(BuiltInRegistries.ENTITY_TYPE.keySet(), builder))
+                                                .executes(context -> addSuppressionBlacklistEntry(context.getSource(), StringArgumentType.getString(context, "entity")))))
+                                .then(Commands.literal("remove")
+                                        .then(Commands.argument("entity", StringArgumentType.greedyString())
+                                                .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(FirstAid.suppressionEntityBlacklist, builder))
+                                                .executes(context -> removeSuppressionBlacklistEntry(context.getSource(), StringArgumentType.getString(context, "entity")))))))
                 .then(Commands.literal("revivewakeup")
                         .then(Commands.literal("on")
                                 .executes(context -> setRescueWakeUp(context.getSource(), true))
@@ -123,6 +134,47 @@ public final class FirstAidCommand {
                 : "firstaid.command.suppression.dynamic"), true);
         FirstAidConfig.persistCommandSettings();
         return 1;
+    }
+
+    private static int addSuppressionBlacklistEntry(CommandSourceStack source, String entityInput) {
+        Identifier entityId = parseEntityId(source, entityInput);
+        if (entityId == null) {
+            return 0;
+        }
+        if (BuiltInRegistries.ENTITY_TYPE.getValue(entityId) == null) {
+            source.sendFailure(Component.translatable("firstaid.command.suppression.blacklist.unknown", entityId.toString()));
+            return 0;
+        }
+        FirstAid.suppressionEntityBlacklist.add(entityId);
+        FirstAidConfig.persistCommandSettings();
+        syncCommandSettings(source);
+        source.sendSuccess(() -> Component.translatable("firstaid.command.suppression.blacklist.add", entityId.toString()), true);
+        return 1;
+    }
+
+    private static int removeSuppressionBlacklistEntry(CommandSourceStack source, String entityInput) {
+        Identifier entityId = parseEntityId(source, entityInput);
+        if (entityId == null) {
+            return 0;
+        }
+        if (BuiltInRegistries.ENTITY_TYPE.getValue(entityId) == null) {
+            source.sendFailure(Component.translatable("firstaid.command.suppression.blacklist.unknown", entityId.toString()));
+            return 0;
+        }
+        FirstAid.suppressionEntityBlacklist.remove(entityId);
+        FirstAidConfig.persistCommandSettings();
+        syncCommandSettings(source);
+        source.sendSuccess(() -> Component.translatable("firstaid.command.suppression.blacklist.remove", entityId.toString()), true);
+        return 1;
+    }
+
+    private static void syncCommandSettings(CommandSourceStack source) {
+        if (source.getServer() == null) {
+            return;
+        }
+        for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
+            FirstAid.NETWORKING.sendCommandSettingsSync(player, MessageSyncCommandSettings.current());
+        }
     }
 
     private static int setRescueWakeUp(CommandSourceStack source, boolean enabled) {
@@ -254,6 +306,17 @@ public final class FirstAidCommand {
             source.sendFailure(Component.translatable("firstaid.command.injurydebuff.effect.invalid", input));
         }
         return effectId;
+    }
+
+    private static Identifier parseEntityId(CommandSourceStack source, String input) {
+        Identifier entityId = Identifier.tryParse(input);
+        if (entityId == null) {
+            entityId = Identifier.tryParse("minecraft:" + input);
+        }
+        if (entityId == null) {
+            source.sendFailure(Component.translatable("firstaid.command.suppression.blacklist.invalid", input));
+        }
+        return entityId;
     }
 }
 

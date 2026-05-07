@@ -78,6 +78,7 @@ public class FirstAidConfig {
         FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
         FirstAid.injuryDebuffOverrides.clear();
         FirstAid.injuryDebuffOverrides.putAll(parseInjuryDebuffOverrides(SERVER.injuryDebuffOverrides.get()));
+        FirstAid.setSuppressionEntityBlacklist(parseSuppressionEntityBlacklist(SERVER.suppressionEntityBlacklist.get()));
     }
 
     public static void persistCommandSettings() {
@@ -99,6 +100,7 @@ public class FirstAidConfig {
         SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
         SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
         SERVER.injuryDebuffOverrides.set(serializeInjuryDebuffOverrides(FirstAid.injuryDebuffOverrides));
+        SERVER.suppressionEntityBlacklist.set(serializeIdentifierList(FirstAid.suppressionEntityBlacklist));
         serverSpec.save();
     }
 
@@ -143,6 +145,33 @@ public class FirstAidConfig {
         }
         for (Map.Entry<Identifier, FirstAid.InjuryDebuffMode> entry : overrides.entrySet()) {
             values.add(entry.getKey() + "=" + entry.getValue().name().toLowerCase(Locale.ROOT));
+        }
+        return values;
+    }
+
+    private static List<Identifier> parseSuppressionEntityBlacklist(List<? extends String> entries) {
+        List<Identifier> values = new ArrayList<>();
+        if (entries == null) {
+            return values;
+        }
+        for (String entry : entries) {
+            if (entry == null) {
+                continue;
+            }
+            Identifier id = Identifier.tryParse(entry.trim());
+            if (id != null) {
+                values.add(id);
+            } else {
+                FirstAid.LOGGER.warn("Invalid suppression entity blacklist entry {}", entry);
+            }
+        }
+        return values;
+    }
+
+    private static List<String> serializeIdentifierList(Iterable<Identifier> entries) {
+        List<String> values = new ArrayList<>();
+        for (Identifier entry : entries) {
+            values.add(entry.toString());
         }
         return values;
     }
@@ -306,6 +335,15 @@ public class FirstAidConfig {
             rescueWakeUpDelaySeconds = builder
                     .comment("Persistent delay in seconds for /firstaid revivewakeup on [seconds]")
                     .defineInRange("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0D, 3600D);
+            morphineUseDuration = builder
+                    .comment("Morphine use duration in ticks")
+                    .defineInRange("morphineUseDuration", 40, 1, 72000);
+            painkillersUseDuration = builder
+                    .comment("Painkillers use duration in ticks")
+                    .defineInRange("painkillersUseDuration", 32, 1, 72000);
+            adrenalineUseDuration = builder
+                    .comment("Adrenaline injector use duration in ticks")
+                    .defineInRange("adrenalineUseDuration", 40, 1, 72000);
             naturalRegenLimitRatio = builder
                     .comment("Maximum health fraction natural regeneration can restore in limited modes")
                     .defineInRange("naturalRegenLimitRatio", 0.85D, 0D, 1D);
@@ -333,6 +371,9 @@ public class FirstAidConfig {
             injuryDebuffOverrides = builder
                     .comment("Per-effect overrides for /firstaid injurydebuff. Format: modid:effect=normal|low|off")
                     .defineList("injuryDebuffOverrides", Collections.emptyList(), o -> o != null && !o.toString().isBlank());
+            suppressionEntityBlacklist = builder
+                    .comment("Entity type ids that cannot trigger suppression near-miss effects")
+                    .defineList("suppressionEntityBlacklist", serializeIdentifierList(FirstAid.getDefaultSuppressionEntityBlacklist()), o -> o != null && Identifier.tryParse(o.toString()) != null);
             builder.pop();
 
             builder.push("Enchantment Handling");
@@ -425,6 +466,9 @@ public class FirstAidConfig {
         public final ModConfigSpec.DoubleValue lowSuppressionMultiplier;
         public final ModConfigSpec.BooleanValue rescueWakeUpEnabled;
         public final ModConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
+        public final ModConfigSpec.IntValue morphineUseDuration;
+        public final ModConfigSpec.IntValue painkillersUseDuration;
+        public final ModConfigSpec.IntValue adrenalineUseDuration;
         public final ModConfigSpec.DoubleValue naturalRegenLimitRatio;
         public final ModConfigSpec.DoubleValue naturalRegenCriticalPriorityRatio;
         public final ModConfigSpec.EnumValue<FirstAid.MedicineEffectMode> medicineEffectMode;
@@ -434,6 +478,7 @@ public class FirstAidConfig {
         public final ModConfigSpec.DoubleValue lowInjuryDebuffAmplifierScale;
         public final ModConfigSpec.DoubleValue lowInjuryDebuffDurationScale;
         public final ModConfigSpec.ConfigValue<List<? extends String>> injuryDebuffOverrides;
+        public final ModConfigSpec.ConfigValue<List<? extends String>> suppressionEntityBlacklist;
 
 
         private static ModConfigSpec.IntValue healthEntry(ModConfigSpec.Builder builder, String name, int defaultVal) {
@@ -592,4 +637,3 @@ public class FirstAidConfig {
 //    @ExtraConfig.Advanced
     public static final boolean watchSetHealth = true; //If we need this at all, this is server as well
 }
-

@@ -28,6 +28,7 @@ import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.RandomDamageDistributionAlgorithm;
 import ichttt.mods.firstaid.common.damagesystem.distribution.StandardDamageDistributionAlgorithm;
 import ichttt.mods.firstaid.common.init.FirstAidDataAttachments;
+import ichttt.mods.firstaid.common.network.MessageSyncCommandSettings;
 import ichttt.mods.firstaid.common.registries.FirstAidRegistryLookups;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import ichttt.mods.firstaid.common.util.PlayerSizeHelper;
@@ -342,6 +343,7 @@ public class EventHandler {
             ServerPlayer playerMP = (ServerPlayer) event.getEntity();
             awardStarterRecipes(playerMP);
             CommonUtils.syncDamageModel(playerMP);
+            FirstAid.NETWORKING.sendCommandSettingsSync(playerMP, MessageSyncCommandSettings.current());
             sendOpCommandTip(playerMP);
         }
     }
@@ -871,5 +873,4 @@ public class EventHandler {
         EXECUTE
     }
 }
-
 

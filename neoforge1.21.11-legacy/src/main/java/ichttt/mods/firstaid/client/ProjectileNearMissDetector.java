@@ -24,7 +24,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
@@ -168,10 +167,7 @@ public final class ProjectileNearMissDetector {
     }
 
     private boolean isValidProjectile(Projectile projectile) {
-        if (!projectile.isAlive() || projectile.isRemoved()) {
-            return false;
-        }
-        return !(projectile instanceof AbstractThrownPotion);
+        return projectile.isAlive() && !projectile.isRemoved() && !FirstAid.isSuppressionBlacklisted(projectile);
     }
 
     private float resolveLateralSign(Player player, Vec3 offset) {
