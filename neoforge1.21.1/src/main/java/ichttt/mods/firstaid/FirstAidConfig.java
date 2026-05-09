@@ -513,7 +513,7 @@ public class FirstAidConfig {
 
         private static ModConfigSpec.IntValue healthEntry(ModConfigSpec.Builder builder, String name, int defaultVal) {
             String noSpaceName = name.replace(' ', '_');
-            return builder.comment("Max health of the " + name).translation("firstaid.config.maxhealth." + noSpaceName.toLowerCase(Locale.ENGLISH)).defineInRange("maxHealth" + noSpaceName, defaultVal, 2, 12);
+            return builder.comment("Max health of the " + name).translation("firstaid.config.maxhealth." + noSpaceName.toLowerCase(Locale.ENGLISH)).defineInRange("maxHealth" + noSpaceName, defaultVal, 2, Integer.MAX_VALUE);
         }
 
         private static ModConfigSpec.DoubleValue multiplierEntry(ModConfigSpec.Builder builder, String name, double defaultVal) {

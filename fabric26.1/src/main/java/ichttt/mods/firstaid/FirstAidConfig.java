@@ -179,6 +179,10 @@ public final class FirstAidConfig {
       return new FirstAidConfig.ConfigValue<>(key, def, JsonElement::getAsInt, value -> new JsonPrimitive(value), value -> value >= min && value <= max);
    }
 
+   private static FirstAidConfig.ConfigValue<Integer> intValueMinOnly(String key, int def, int min) {
+      return new FirstAidConfig.ConfigValue<>(key, def, JsonElement::getAsInt, value -> new JsonPrimitive(value), value -> value >= min);
+   }
+
    private static FirstAidConfig.ConfigValue<Double> doubleValue(String key, double def, double min, double max) {
       return new FirstAidConfig.ConfigValue<>(key, def, JsonElement::getAsDouble, value -> new JsonPrimitive(value), value -> value >= min && value <= max);
    }
@@ -468,16 +472,16 @@ public final class FirstAidConfig {
    }
 
    public static final class Server extends FirstAidConfig.ConfigSection {
-      public final FirstAidConfig.ConfigValue<Integer> maxHealthHead = this.define(FirstAidConfig.intValue("maxHealthHead", 7, 2, 12));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthHead = this.define(FirstAidConfig.intValueMinOnly("maxHealthHead", 7, 2));
       public final FirstAidConfig.ConfigValue<Boolean> causeDeathHead;
-      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftArm = this.define(FirstAidConfig.intValue("maxHealthLeftArm", 4, 2, 12));
-      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftLeg = this.define(FirstAidConfig.intValue("maxHealthLeftLeg", 4, 2, 12));
-      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftFoot = this.define(FirstAidConfig.intValue("maxHealthLeftFoot", 4, 2, 12));
-      public final FirstAidConfig.ConfigValue<Integer> maxHealthBody = this.define(FirstAidConfig.intValue("maxHealthBody", 11, 2, 12));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftArm = this.define(FirstAidConfig.intValueMinOnly("maxHealthLeftArm", 4, 2));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftLeg = this.define(FirstAidConfig.intValueMinOnly("maxHealthLeftLeg", 4, 2));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthLeftFoot = this.define(FirstAidConfig.intValueMinOnly("maxHealthLeftFoot", 4, 2));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthBody = this.define(FirstAidConfig.intValueMinOnly("maxHealthBody", 11, 2));
       public final FirstAidConfig.ConfigValue<Boolean> causeDeathBody;
-      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightArm = this.define(FirstAidConfig.intValue("maxHealthRightArm", 4, 2, 12));
-      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightLeg = this.define(FirstAidConfig.intValue("maxHealthRightLeg", 4, 2, 12));
-      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightFoot = this.define(FirstAidConfig.intValue("maxHealthRightFoot", 4, 2, 12));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightArm = this.define(FirstAidConfig.intValueMinOnly("maxHealthRightArm", 4, 2));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightLeg = this.define(FirstAidConfig.intValueMinOnly("maxHealthRightLeg", 4, 2));
+      public final FirstAidConfig.ConfigValue<Integer> maxHealthRightFoot = this.define(FirstAidConfig.intValueMinOnly("maxHealthRightFoot", 4, 2));
       public final FirstAidConfig.ConfigValue<Double> headArmorMultiplier;
       public final FirstAidConfig.ConfigValue<Double> chestArmorMultiplier;
       public final FirstAidConfig.ConfigValue<Double> legsArmorMultiplier;

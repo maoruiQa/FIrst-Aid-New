@@ -280,14 +280,14 @@ public final class FirstAidConfig {
         public final ConfigValue<List<ResourceLocation>> suppressionEntityBlacklist;
 
         public Server() {
-            maxHealthHead = define(intValue("maxHealthHead", 7, 2, 12));
-            maxHealthLeftArm = define(intValue("maxHealthLeftArm", 4, 2, 12));
-            maxHealthLeftLeg = define(intValue("maxHealthLeftLeg", 4, 2, 12));
-            maxHealthLeftFoot = define(intValue("maxHealthLeftFoot", 4, 2, 12));
-            maxHealthBody = define(intValue("maxHealthBody", 11, 2, 12));
-            maxHealthRightArm = define(intValue("maxHealthRightArm", 4, 2, 12));
-            maxHealthRightLeg = define(intValue("maxHealthRightLeg", 4, 2, 12));
-            maxHealthRightFoot = define(intValue("maxHealthRightFoot", 4, 2, 12));
+            maxHealthHead = define(intValueMinOnly("maxHealthHead", 7, 2));
+            maxHealthLeftArm = define(intValueMinOnly("maxHealthLeftArm", 4, 2));
+            maxHealthLeftLeg = define(intValueMinOnly("maxHealthLeftLeg", 4, 2));
+            maxHealthLeftFoot = define(intValueMinOnly("maxHealthLeftFoot", 4, 2));
+            maxHealthBody = define(intValueMinOnly("maxHealthBody", 11, 2));
+            maxHealthRightArm = define(intValueMinOnly("maxHealthRightArm", 4, 2));
+            maxHealthRightLeg = define(intValueMinOnly("maxHealthRightLeg", 4, 2));
+            maxHealthRightFoot = define(intValueMinOnly("maxHealthRightFoot", 4, 2));
             causeDeathHead = define(boolValue("causeDeathHead", true));
             causeDeathBody = define(boolValue("causeDeathBody", true));
 
@@ -509,6 +509,10 @@ public final class FirstAidConfig {
 
     private static ConfigValue<Integer> intValue(String key, int def, int min, int max) {
         return new ConfigValue<>(key, def, JsonElement::getAsInt, value -> new com.google.gson.JsonPrimitive(value), value -> value >= min && value <= max);
+    }
+
+    private static ConfigValue<Integer> intValueMinOnly(String key, int def, int min) {
+        return new ConfigValue<>(key, def, JsonElement::getAsInt, value -> new com.google.gson.JsonPrimitive(value), value -> value >= min);
     }
 
     private static ConfigValue<Double> doubleValue(String key, double def, double min, double max) {

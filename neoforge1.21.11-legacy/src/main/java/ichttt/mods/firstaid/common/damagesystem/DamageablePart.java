@@ -173,8 +173,6 @@ public class DamageablePart extends AbstractDamageablePart {
             return;
         activeHealer = null;
         absorption = 0F;
-        if (nbt.contains("maxHealth") && FirstAidConfig.SERVER.scaleMaxHealth.get())
-            maxHealth = nbt.getIntOr("maxHealth", maxHealth);
         currentHealth = Math.min(maxHealth, nbt.getFloatOr("health", currentHealth));
         if (nbt.contains("absorption")) {
             setAbsorption(nbt.getFloatOr("absorption", 0F));

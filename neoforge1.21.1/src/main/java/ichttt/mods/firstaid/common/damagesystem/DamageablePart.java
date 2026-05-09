@@ -173,9 +173,6 @@ public class DamageablePart extends AbstractDamageablePart {
             return;
         activeHealer = null;
         absorption = 0F;
-        if (nbt.contains("maxHealth", Tag.TAG_INT) && FirstAidConfig.SERVER.scaleMaxHealth.get()) {
-            maxHealth = nbt.getInt("maxHealth");
-        }
         if (nbt.contains("health", Tag.TAG_ANY_NUMERIC)) {
             currentHealth = Math.min(maxHealth, nbt.getFloat("health"));
         }

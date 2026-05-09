@@ -419,7 +419,7 @@ public class FirstAidConfig {
 
         private static ForgeConfigSpec.IntValue healthEntry(ForgeConfigSpec.Builder builder, String name, int defaultVal) {
             String noSpaceName = name.replace(' ', '_');
-            return builder.comment("Max health of the " + name).translation("firstaid.config.maxhealth." + noSpaceName.toLowerCase(Locale.ENGLISH)).defineInRange("maxHealth" + noSpaceName, defaultVal, 2, 12);
+            return builder.comment("Max health of the " + name).translation("firstaid.config.maxhealth." + noSpaceName.toLowerCase(Locale.ENGLISH)).defineInRange("maxHealth" + noSpaceName, defaultVal, 2, Integer.MAX_VALUE);
         }
 
         private static ForgeConfigSpec.DoubleValue multiplierEntry(ForgeConfigSpec.Builder builder, String name, double defaultVal) {
