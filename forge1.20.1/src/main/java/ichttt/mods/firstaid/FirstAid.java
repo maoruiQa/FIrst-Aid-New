@@ -145,7 +145,7 @@ public class FirstAid {
         RegistryObjects.registerToBus(bus);
         FirstAidRegistries.setup(bus);
 
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, FirstAidConfig.serverSpec);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, FirstAidConfig.serverSpec, "firstaid-server.toml");
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, FirstAidConfig.generalSpec);
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, FirstAidConfig.clientSpec);
 

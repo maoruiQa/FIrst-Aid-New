@@ -28,9 +28,6 @@ import java.util.List;
 import java.util.Locale;
 
 public class FirstAidConfig {
-    private static final int LEGACY_BANDAGE_APPLY_TIME = 2500;
-    private static final int BANDAGE_APPLY_TIME = 3000;
-
     static final ForgeConfigSpec serverSpec;
     static final ForgeConfigSpec generalSpec;
     static final ForgeConfigSpec clientSpec;
@@ -78,7 +75,6 @@ public class FirstAidConfig {
     }
 
     public static void applyCommandSettings() {
-        migrateLegacyBandageApplyTime();
         FirstAid.dynamicPainEnabled = SERVER.dynamicPainEnabled.get();
         FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
         FirstAid.enablePainVignette = SERVER.enablePainVignette.get();
@@ -95,13 +91,6 @@ public class FirstAidConfig {
         FirstAid.naturalRegenLimitRatio = SERVER.naturalRegenLimitRatio.get().floatValue();
         FirstAid.naturalRegenCriticalPriorityRatio = SERVER.naturalRegenCriticalPriorityRatio.get().floatValue();
         FirstAid.setSuppressionEntityBlacklist(parseResourceLocationList(SERVER.suppressionEntityBlacklist.get()));
-    }
-
-    private static void migrateLegacyBandageApplyTime() {
-        if (SERVER.bandage.applyTime.get() == LEGACY_BANDAGE_APPLY_TIME) {
-            SERVER.bandage.applyTime.set(BANDAGE_APPLY_TIME);
-            serverSpec.save();
-        }
     }
 
     private static List<ResourceLocation> parseResourceLocationList(List<? extends String> entries) {
@@ -144,11 +133,11 @@ public class FirstAidConfig {
         Server(ForgeConfigSpec.Builder builder) {
             builder.comment("Server to Client synced configuration settings").push("Damage System");
 
-            maxHealthHead = healthEntry(builder, "Head", 7);
+            maxHealthHead = healthEntry(builder, "Head", 4);
             maxHealthLeftArm = healthEntry(builder, "Left Arm", 4);
             maxHealthLeftLeg = healthEntry(builder, "Left Leg", 4);
             maxHealthLeftFoot = healthEntry(builder, "Left Foot", 4);
-            maxHealthBody = healthEntry(builder, "Body", 11);
+            maxHealthBody = healthEntry(builder, "Body", 6);
             maxHealthRightArm = healthEntry(builder, "Right Arm", 4);
             maxHealthRightLeg = healthEntry(builder, "Right Leg", 4);
             maxHealthRightFoot = healthEntry(builder, "Right Foot", 4);
@@ -187,7 +176,7 @@ public class FirstAidConfig {
 
             builder.pop(2).push("Internal Healing");
 
-            bandage = new IEEntry(builder, "bandage", 4, 18, 3000);
+            bandage = new IEEntry(builder, "bandage", 4, 18, 2500);
             plaster = new IEEntry(builder, "plaster", 2, 22, 3000);
 
             builder.pop().push("External Healing");
@@ -419,7 +408,7 @@ public class FirstAidConfig {
 
         private static ForgeConfigSpec.IntValue healthEntry(ForgeConfigSpec.Builder builder, String name, int defaultVal) {
             String noSpaceName = name.replace(' ', '_');
-            return builder.comment("Max health of the " + name).translation("firstaid.config.maxhealth." + noSpaceName.toLowerCase(Locale.ENGLISH)).defineInRange("maxHealth" + noSpaceName, defaultVal, 2, Integer.MAX_VALUE);
+            return builder.comment("Max health of the " + name).translation("firstaid.config.maxhealth." + noSpaceName.toLowerCase(Locale.ENGLISH)).defineInRange("maxHealth" + noSpaceName, defaultVal, 2, 12);
         }
 
         private static ForgeConfigSpec.DoubleValue multiplierEntry(ForgeConfigSpec.Builder builder, String name, double defaultVal) {
