@@ -736,10 +736,6 @@ public class ClientEventHandler {
             return;
         }
 
-        mc.player.displayClientMessage(
-                Component.translatable("firstaid.gui.healing_actionbar", formatSingleDecimal(getPendingHealingRemainingSeconds())).withStyle(ChatFormatting.AQUA),
-                true
-        );
         if (mc.screen instanceof GuiHealthScreen || !isHealingUseHeld(mc)) {
             pendingHealingSelection = pendingHealingSelection.withProgress(0, false);
             return;
@@ -760,17 +756,6 @@ public class ClientEventHandler {
     }
 
     private static void updateMedicineUseFeedback(Minecraft mc) {
-        if (isMedicineUseActive(mc)) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
-                                    "firstaid.gui.medicine_actionbar",
-                                    mc.player.getUseItem().getHoverName(),
-                                    formatSingleDecimal(getMedicineRemainingSeconds(mc.player))
-                            )
-                            .withStyle(ChatFormatting.AQUA),
-                    true
-            );
-        }
     }
 
     private static int getHealingHoldDurationTicks(ItemHealing itemHealing, ItemStack stack) {
@@ -789,13 +774,6 @@ public class ClientEventHandler {
 
         float extraTicks = isHealingUseHeld(Minecraft.getInstance()) ? Math.max(0.0F, partialTick) : 0.0F;
         return Math.min(holdDurationTicks, pendingHealingSelection.holdTicks() + extraTicks);
-    }
-
-    private static float getPendingHealingRemainingSeconds() {
-        if (pendingHealingSelection == null) {
-            return 0.0F;
-        }
-        return Math.max(0.0F, (pendingHealingSelection.holdDurationTicks() - pendingHealingSelection.holdTicks()) / 20.0F);
     }
 
     private static boolean isMedicineUseActive(Minecraft mc) {
@@ -827,10 +805,6 @@ public class ClientEventHandler {
         }
         int usedTicks = Math.max(0, holdDurationTicks - mc.player.getUseItemRemainingTicks());
         return Math.min((float) holdDurationTicks, usedTicks + Math.max(0.0F, partialTick));
-    }
-
-    private static float getMedicineRemainingSeconds(Player player) {
-        return Math.max(0.0F, player.getUseItemRemainingTicks() / 20.0F);
     }
 
     private static String formatSingleDecimal(float value) {

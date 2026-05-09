@@ -144,8 +144,6 @@ public class DamageablePart extends AbstractDamageablePart {
     public void deserializeNBT(@Nullable CompoundTag nbt) {
         if (nbt == null)
             return;
-        if (nbt.contains("maxHealth") && FirstAidConfig.SERVER.scaleMaxHealth.get())
-            maxHealth = nbt.getInt("maxHealth");
         currentHealth = Math.min(maxHealth, nbt.getFloat("health"));
         ItemStack stack = null;
         if (nbt.contains("healer"))
