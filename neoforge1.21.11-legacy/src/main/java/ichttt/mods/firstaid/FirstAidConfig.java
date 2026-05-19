@@ -64,6 +64,9 @@ public class FirstAidConfig {
         FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
+        FirstAid.enablePainVignette = SERVER.enablePainVignette.get();
+        FirstAid.enablePainFovCompression = SERVER.enablePainFovCompression.get();
+        FirstAid.enablePainAudioEffects = SERVER.enablePainAudioEffects.get();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
@@ -86,6 +89,9 @@ public class FirstAidConfig {
         SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
+        SERVER.enablePainVignette.set(FirstAid.enablePainVignette);
+        SERVER.enablePainFovCompression.set(FirstAid.enablePainFovCompression);
+        SERVER.enablePainAudioEffects.set(FirstAid.enablePainAudioEffects);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
@@ -329,6 +335,15 @@ public class FirstAidConfig {
             lowSuppressionMultiplier = builder
                     .comment("Visual suppression intensity multiplier used when /firstaid suppression mild is active")
                     .defineInRange("lowSuppressionMultiplier", 0.4D, 0D, 1D);
+            enablePainVignette = builder
+                    .comment("Enable red screen vignette overlay when in pain")
+                    .define("enablePainVignette", true);
+            enablePainFovCompression = builder
+                    .comment("Enable FOV compression (tunnel vision) when in pain")
+                    .define("enablePainFovCompression", true);
+            enablePainAudioEffects = builder
+                    .comment("Enable severe pain audio effects (tinnitus sound)")
+                    .define("enablePainAudioEffects", true);
             rescueWakeUpEnabled = builder
                     .comment("Persistent toggle for /firstaid revivewakeup (on vs off)")
                     .define("rescueWakeUpEnabled", false);
@@ -467,6 +482,9 @@ public class FirstAidConfig {
         public final ModConfigSpec.IntValue mildPainLevel;
         public final ModConfigSpec.BooleanValue lowSuppressionEnabled;
         public final ModConfigSpec.DoubleValue lowSuppressionMultiplier;
+        public final ModConfigSpec.BooleanValue enablePainVignette;
+        public final ModConfigSpec.BooleanValue enablePainFovCompression;
+        public final ModConfigSpec.BooleanValue enablePainAudioEffects;
         public final ModConfigSpec.BooleanValue rescueWakeUpEnabled;
         public final ModConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
         public final ModConfigSpec.IntValue morphineUseDuration;

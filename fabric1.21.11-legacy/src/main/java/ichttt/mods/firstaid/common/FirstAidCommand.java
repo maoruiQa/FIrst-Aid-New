@@ -31,6 +31,24 @@ public final class FirstAidCommand {
                Commands.literal("pain")
                   .then(Commands.literal("dynamic").executes(context -> setDynamicPain(context.getSource(), true)))
                   .then(Commands.literal("mild").executes(context -> setDynamicPain(context.getSource(), false)))
+                  .then(
+                     Commands.literal("display")
+                        .then(
+                           Commands.literal("vignette")
+                              .then(Commands.literal("on").executes(context -> setPainVignette(context.getSource(), true)))
+                              .then(Commands.literal("off").executes(context -> setPainVignette(context.getSource(), false)))
+                        )
+                        .then(
+                           Commands.literal("fov")
+                              .then(Commands.literal("on").executes(context -> setPainFovCompression(context.getSource(), true)))
+                              .then(Commands.literal("off").executes(context -> setPainFovCompression(context.getSource(), false)))
+                        )
+                        .then(
+                           Commands.literal("audio")
+                              .then(Commands.literal("on").executes(context -> setPainAudioEffects(context.getSource(), true)))
+                              .then(Commands.literal("off").executes(context -> setPainAudioEffects(context.getSource(), false)))
+                        )
+                  )
             )
             .then(
                Commands.literal("suppression")
@@ -157,6 +175,30 @@ public final class FirstAidCommand {
       FirstAid.lowSuppressionEnabled = enabled;
       source.sendSuccess(() -> Component.translatable(enabled ? "firstaid.command.suppression.mild" : "firstaid.command.suppression.dynamic"), true);
       FirstAidConfig.persistCommandSettings();
+      return 1;
+   }
+
+   private static int setPainVignette(CommandSourceStack source, boolean enabled) {
+      FirstAid.enablePainVignette = enabled;
+      FirstAidConfig.persistCommandSettings();
+      syncServerConfig(source);
+      source.sendSuccess(() -> Component.translatable(enabled ? "firstaid.command.pain.display.vignette.on" : "firstaid.command.pain.display.vignette.off"), true);
+      return 1;
+   }
+
+   private static int setPainFovCompression(CommandSourceStack source, boolean enabled) {
+      FirstAid.enablePainFovCompression = enabled;
+      FirstAidConfig.persistCommandSettings();
+      syncServerConfig(source);
+      source.sendSuccess(() -> Component.translatable(enabled ? "firstaid.command.pain.display.fov.on" : "firstaid.command.pain.display.fov.off"), true);
+      return 1;
+   }
+
+   private static int setPainAudioEffects(CommandSourceStack source, boolean enabled) {
+      FirstAid.enablePainAudioEffects = enabled;
+      FirstAidConfig.persistCommandSettings();
+      syncServerConfig(source);
+      source.sendSuccess(() -> Component.translatable(enabled ? "firstaid.command.pain.display.audio.on" : "firstaid.command.pain.display.audio.off"), true);
       return 1;
    }
 

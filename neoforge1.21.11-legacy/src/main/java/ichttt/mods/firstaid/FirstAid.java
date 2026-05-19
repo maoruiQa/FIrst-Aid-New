@@ -60,6 +60,9 @@ public class FirstAid {
     public static int mildPainLevel = 1;
     public static boolean lowSuppressionEnabled = false;
     public static float lowSuppressionMultiplier = 0.4F;
+    public static boolean enablePainVignette = true;
+    public static boolean enablePainFovCompression = true;
+    public static boolean enablePainAudioEffects = true;
     public static boolean rescueWakeUpEnabled = false;
     public static double rescueWakeUpDelaySeconds = DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
     public static NaturalRegenMode naturalRegenMode = NaturalRegenMode.LIMITED;

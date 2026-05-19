@@ -113,7 +113,7 @@ public class StatusEffectLayer implements GuiLayer {
         float smoothSuppression = Mth.lerp(deltaTracker.getGameTimeDeltaTicks(), lastSuppressionStrength, suppressionStrength);
         float pulseTime = minecraft.player.tickCount + deltaTracker.getGameTimeDeltaTicks();
 
-        if (smoothPain > 0.0F) {
+        if (smoothPain > 0.0F && FirstAid.enablePainVignette) {
             float pulse = deathDanger > 0.0F
                     ? 0.82F + (0.18F + deathDanger * 0.27F) * Mth.sin(pulseTime * (0.08F + deathDanger * 0.04F))
                     : 0.9F + 0.1F * Mth.sin(pulseTime * 0.32F);

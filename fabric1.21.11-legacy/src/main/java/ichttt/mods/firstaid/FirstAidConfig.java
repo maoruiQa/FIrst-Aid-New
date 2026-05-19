@@ -72,6 +72,9 @@ public final class FirstAidConfig {
       FirstAid.mildPainLevel = SERVER.mildPainLevel.get();
       FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
       FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
+      FirstAid.enablePainVignette = SERVER.enablePainVignette.get();
+      FirstAid.enablePainFovCompression = SERVER.enablePainFovCompression.get();
+      FirstAid.enablePainAudioEffects = SERVER.enablePainAudioEffects.get();
       FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
       FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
       FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
@@ -94,6 +97,9 @@ public final class FirstAidConfig {
       SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
       SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
       SERVER.lowSuppressionMultiplier.set((double)FirstAid.lowSuppressionMultiplier);
+      SERVER.enablePainVignette.set(FirstAid.enablePainVignette);
+      SERVER.enablePainFovCompression.set(FirstAid.enablePainFovCompression);
+      SERVER.enablePainAudioEffects.set(FirstAid.enablePainAudioEffects);
       SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
       SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
       SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
@@ -510,6 +516,9 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Integer> mildPainLevel;
       public final FirstAidConfig.ConfigValue<Boolean> lowSuppressionEnabled;
       public final FirstAidConfig.ConfigValue<Double> lowSuppressionMultiplier;
+      public final FirstAidConfig.ConfigValue<Boolean> enablePainVignette;
+      public final FirstAidConfig.ConfigValue<Boolean> enablePainFovCompression;
+      public final FirstAidConfig.ConfigValue<Boolean> enablePainAudioEffects;
       public final FirstAidConfig.ConfigValue<Boolean> rescueWakeUpEnabled;
       public final FirstAidConfig.ConfigValue<Double> rescueWakeUpDelaySeconds;
       public final FirstAidConfig.ConfigValue<Integer> morphineUseDuration;
@@ -582,6 +591,9 @@ public final class FirstAidConfig {
          this.mildPainLevel = this.define(FirstAidConfig.intValue("mildPainLevel", 1, 1, 5));
          this.lowSuppressionEnabled = this.define(FirstAidConfig.boolValue("lowSuppressionEnabled", false));
          this.lowSuppressionMultiplier = this.define(FirstAidConfig.doubleValue("lowSuppressionMultiplier", 0.4, 0.0, 1.0));
+         this.enablePainVignette = this.define(FirstAidConfig.boolValue("enablePainVignette", true));
+         this.enablePainFovCompression = this.define(FirstAidConfig.boolValue("enablePainFovCompression", true));
+         this.enablePainAudioEffects = this.define(FirstAidConfig.boolValue("enablePainAudioEffects", true));
          this.rescueWakeUpEnabled = this.define(FirstAidConfig.boolValue("rescueWakeUpEnabled", false));
          this.rescueWakeUpDelaySeconds = this.define(
             FirstAidConfig.doubleValue("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0.0, 3600.0)
