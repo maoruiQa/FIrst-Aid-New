@@ -593,7 +593,7 @@ public final class FirstAidConfig {
          this.enchMulOverrideMultiplier = this.define(
             FirstAidConfig.intList("enchantmentOverrideMultiplier", Collections.singletonList(2), value -> value >= 1 && value <= 4)
          );
-         this.dynamicPainEnabled = this.define(FirstAidConfig.boolValue("dynamicPainEnabled", true));
+         this.dynamicPainEnabled = this.define(FirstAidConfig.boolValue("dynamicPainEnabled", false));
          this.mildPainLevel = this.define(FirstAidConfig.intValue("mildPainLevel", 1, 1, 5));
          this.enablePainVignette = this.define(FirstAidConfig.boolValue("enablePainVignette", true));
          this.enablePainFovCompression = this.define(FirstAidConfig.boolValue("enablePainFovCompression", true));

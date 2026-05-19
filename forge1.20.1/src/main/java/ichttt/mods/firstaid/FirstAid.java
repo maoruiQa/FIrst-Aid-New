@@ -70,7 +70,7 @@ public class FirstAid {
             s -> s.startsWith(NETWORKING_MAJOR),
             s -> s.equals(NETWORKING_VERSION));
     public static boolean isSynced = false;
-    public static boolean dynamicPainEnabled = true;
+    public static boolean dynamicPainEnabled = false;
     public static int mildPainLevel = 1;
     public static boolean enablePainVignette = true;
     public static boolean enablePainFovCompression = true;

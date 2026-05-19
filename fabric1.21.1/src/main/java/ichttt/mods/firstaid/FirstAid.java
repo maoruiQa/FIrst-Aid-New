@@ -49,7 +49,7 @@ public final class FirstAid {
     private static final ResourceLocation LINGERING_POTION_ENTITY_ID = ResourceLocation.fromNamespaceAndPath("minecraft", "lingering_potion");
 
     public static boolean isSynced = false;
-    public static boolean dynamicPainEnabled = true;
+    public static boolean dynamicPainEnabled = false;
     public static int mildPainLevel = 1;
     public static boolean lowSuppressionEnabled = false;
     public static float lowSuppressionMultiplier = 0.4F;
@@ -175,4 +175,3 @@ public final class FirstAid {
         PRCompatManager.init();
     }
 }
-

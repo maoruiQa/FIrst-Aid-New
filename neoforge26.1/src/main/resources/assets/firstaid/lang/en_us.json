@@ -187,7 +187,7 @@
   "firstaid.tip.commands.group.rescue": "Rescue",
   "firstaid.tip.commands.group.advanced": "Advanced",
   "firstaid.tip.commands.pain.label": "Pain",
-  "firstaid.tip.commands.pain.detail": "Switch pain intensity mode\nDynamic: pain scales with injuries\nMild: keep pain on the softer side\nDisplay toggles: vignette, FOV, audio\nClick to fill: /firstaid pain dynamic",
+  "firstaid.tip.commands.pain.detail": "Switch pain intensity mode\nDynamic: pain scales with injuries\nMild: keep pain on the softer side\nDisplay toggles: vignette, FOV, audio\nClick to fill: /firstaid pain mild",
   "firstaid.tip.commands.suppression.label": "Suppression",
   "firstaid.tip.commands.suppression.detail": "Switch suppression intensity\nDynamic: reacts to combat pressure\nMild: keep suppression effects lighter\nClick to fill: /firstaid suppression dynamic",
   "firstaid.tip.commands.commandtips.label": "Join Tips",

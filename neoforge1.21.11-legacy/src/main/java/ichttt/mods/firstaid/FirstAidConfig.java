@@ -325,7 +325,7 @@ public class FirstAidConfig {
             builder.push("Command Settings");
             dynamicPainEnabled = builder
                     .comment("Persistent toggle for /firstaid pain (dynamic vs mild)")
-                    .define("dynamicPainEnabled", true);
+                    .define("dynamicPainEnabled", false);
             mildPainLevel = builder
                     .comment("Pain level used when /firstaid pain mild is active")
                     .defineInRange("mildPainLevel", 1, 1, 5);

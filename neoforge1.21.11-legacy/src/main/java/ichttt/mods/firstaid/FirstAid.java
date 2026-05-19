@@ -56,7 +56,7 @@ public class FirstAid {
 
     public static final SimpleFirstAidChannel NETWORKING = new SimpleFirstAidChannel();
     public static boolean isSynced = false;
-    public static boolean dynamicPainEnabled = true;
+    public static boolean dynamicPainEnabled = false;
     public static int mildPainLevel = 1;
     public static boolean lowSuppressionEnabled = false;
     public static float lowSuppressionMultiplier = 0.4F;

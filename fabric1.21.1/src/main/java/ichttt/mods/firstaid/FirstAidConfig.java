@@ -334,7 +334,7 @@ public final class FirstAidConfig {
             enchMulOverrideIdentifiers = define(stringList("enchantmentOverrideIdentifiers", Collections.singletonList("minecraft:feather_falling"), value -> !value.isBlank()));
             enchMulOverrideMultiplier = define(intList("enchantmentOverrideMultiplier", Collections.singletonList(2), value -> value >= 1 && value <= 4));
 
-            dynamicPainEnabled = define(boolValue("dynamicPainEnabled", true));
+            dynamicPainEnabled = define(boolValue("dynamicPainEnabled", false));
             mildPainLevel = define(intValue("mildPainLevel", 1, 1, 5));
             lowSuppressionEnabled = define(boolValue("lowSuppressionEnabled", false));
             lowSuppressionMultiplier = define(doubleValue("lowSuppressionMultiplier", 0.4D, 0D, 1D));

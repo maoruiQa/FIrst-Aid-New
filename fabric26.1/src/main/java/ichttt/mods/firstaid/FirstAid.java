@@ -29,7 +29,7 @@ public final class FirstAid {
    private static final Identifier SPLASH_POTION_ENTITY_ID = Identifier.fromNamespaceAndPath("minecraft", "splash_potion");
    private static final Identifier LINGERING_POTION_ENTITY_ID = Identifier.fromNamespaceAndPath("minecraft", "lingering_potion");
    public static boolean isSynced = false;
-   public static boolean dynamicPainEnabled = true;
+   public static boolean dynamicPainEnabled = false;
    public static int mildPainLevel = 1;
    public static boolean enablePainVignette = true;
    public static boolean enablePainFovCompression = true;

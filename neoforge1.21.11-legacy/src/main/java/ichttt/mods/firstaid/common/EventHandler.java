@@ -446,7 +446,7 @@ public class EventHandler {
     @SubscribeEvent
     public static void onServerStop(ServerStoppedEvent event) {
         FirstAid.LOGGER.debug("Cleaning up");
-        FirstAid.dynamicPainEnabled = true;
+        FirstAid.dynamicPainEnabled = false;
         FirstAid.mildPainLevel = 1;
         FirstAid.lowSuppressionEnabled = false;
         FirstAid.lowSuppressionMultiplier = 0.4F;
@@ -806,7 +806,7 @@ public class EventHandler {
         player.displayClientMessage(Component.translatable("firstaid.tip.commands.subheader").withStyle(ChatFormatting.GRAY), false);
         player.displayClientMessage(buildCommandTipLine(
                 "firstaid.tip.commands.group.core",
-                buildCommandTipChip("firstaid.tip.commands.pain.label", "firstaid.tip.commands.pain.detail", "/firstaid pain dynamic", ChatFormatting.AQUA),
+                buildCommandTipChip("firstaid.tip.commands.pain.label", "firstaid.tip.commands.pain.detail", "/firstaid pain mild", ChatFormatting.AQUA),
                 buildCommandTipChip("firstaid.tip.commands.suppression.label", "firstaid.tip.commands.suppression.detail", "/firstaid suppression dynamic", ChatFormatting.AQUA),
                 buildCommandTipChip("firstaid.tip.commands.commandtips.label", "firstaid.tip.commands.commandtips.detail", "/firstaid commandtips off", ChatFormatting.GRAY),
                 buildCommandTipChip("firstaid.tip.commands.medicineeffect.label", "firstaid.tip.commands.medicineeffect.detail", "/firstaid medicineeffect assisted", ChatFormatting.YELLOW)

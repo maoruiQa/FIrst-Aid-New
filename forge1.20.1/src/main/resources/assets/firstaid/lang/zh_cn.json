@@ -189,7 +189,7 @@
   "firstaid.tip.commands.group.rescue": "\u6551\u63f4",
   "firstaid.tip.commands.group.advanced": "\u9ad8\u7ea7",
   "firstaid.tip.commands.pain.label": "\u75bc\u75db",
-  "firstaid.tip.commands.pain.detail": "\u5207\u6362\u75bc\u75db\u5f3a\u5ea6\u6a21\u5f0f\nDynamic\uff1a\u968f\u4f24\u52bf\u52a8\u6001\u53d8\u5316\nMild\uff1a\u603b\u662f\u4fdd\u6301\u8f83\u8f7b\n\u70b9\u51fb\u586b\u5165\uff1a/firstaid pain dynamic",
+  "firstaid.tip.commands.pain.detail": "\u5207\u6362\u75bc\u75db\u5f3a\u5ea6\u6a21\u5f0f\nDynamic\uff1a\u968f\u4f24\u52bf\u52a8\u6001\u53d8\u5316\nMild\uff1a\u603b\u662f\u4fdd\u6301\u8f83\u8f7b\n\u70b9\u51fb\u586b\u5165\uff1a/firstaid pain mild",
   "firstaid.tip.commands.suppression.label": "\u538b\u5236",
   "firstaid.tip.commands.suppression.detail": "\u5207\u6362\u538b\u5236\u6548\u679c\u5f3a\u5ea6\nDynamic\uff1a\u968f\u6218\u6597\u538b\u529b\u53d8\u5316\nMild\uff1a\u4fdd\u6301\u8f83\u8f7b\u7684\u538b\u5236\u6548\u679c\n\u70b9\u51fb\u586b\u5165\uff1a/firstaid suppression dynamic",
   "firstaid.tip.commands.naturalregen.label": "\u81ea\u7136\u56de\u8840",
