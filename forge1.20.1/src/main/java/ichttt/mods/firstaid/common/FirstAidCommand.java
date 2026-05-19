@@ -92,6 +92,22 @@ public final class FirstAidCommand {
                                         .executes(context -> setRescueWakeUpDelay(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))
                         .then(Commands.literal("off")
                                 .executes(context -> setRescueWakeUp(context.getSource(), false)))));
+        dispatcher.register(Commands.literal("firstaid")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.literal("commandtips")
+                        .then(Commands.literal("on")
+                                .executes(context -> setCommandTips(context.getSource(), true)))
+                        .then(Commands.literal("off")
+                                .executes(context -> setCommandTips(context.getSource(), false)))));
+    }
+
+    private static int setCommandTips(CommandSourceStack source, boolean enabled) {
+        FirstAidConfig.SERVER.commandTipsEnabled.set(enabled);
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.translatable(enabled
+                ? "firstaid.command.commandtips.on"
+                : "firstaid.command.commandtips.off"), true);
+        return 1;
     }
 
     private static int setDynamicPain(CommandSourceStack source, boolean enabled) {

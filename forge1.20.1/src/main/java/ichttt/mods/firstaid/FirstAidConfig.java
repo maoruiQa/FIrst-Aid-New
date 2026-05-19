@@ -300,6 +300,9 @@ public class FirstAidConfig {
             suppressionEntityBlacklist = builder
                     .comment("Entity type ids that cannot trigger suppression near-miss effects")
                     .defineList("suppressionEntityBlacklist", serializeResourceLocationList(FirstAid.getDefaultSuppressionEntityBlacklist()), o -> o != null && ResourceLocation.tryParse(o.toString()) != null);
+            commandTipsEnabled = builder
+                    .comment("If true, operators receive the FirstAid admin command tip when joining a world")
+                    .define("commandTipsEnabled", true);
 
             builder.pop();
 
@@ -400,6 +403,7 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.IntValue painkillersUseDuration;
         public final ForgeConfigSpec.IntValue adrenalineUseDuration;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> suppressionEntityBlacklist;
+        public final ForgeConfigSpec.BooleanValue commandTipsEnabled;
 
         public final ForgeConfigSpec.IntValue enchantmentMultiplier;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> enchMulOverrideResourceLocations;

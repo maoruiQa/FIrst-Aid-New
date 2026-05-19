@@ -278,6 +278,7 @@ public final class FirstAidConfig {
         public final ConfigValue<Double> lowInjuryDebuffDurationScale;
         public final ConfigValue<Map<ResourceLocation, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
         public final ConfigValue<List<ResourceLocation>> suppressionEntityBlacklist;
+        public final ConfigValue<Boolean> commandTipsEnabled;
 
         public Server() {
             maxHealthHead = define(intValueMinOnly("maxHealthHead", 7, 2));
@@ -357,6 +358,7 @@ public final class FirstAidConfig {
             lowInjuryDebuffDurationScale = define(doubleValue("lowInjuryDebuffDurationScale", 0.5D, 0D, 1D));
             injuryDebuffOverrides = define(injuryDebuffOverridesValue("injuryDebuffOverrides"));
             suppressionEntityBlacklist = define(resourceLocationListValue("suppressionEntityBlacklist", new ArrayList<>(FirstAid.getDefaultSuppressionEntityBlacklist())));
+            commandTipsEnabled = define(boolValue("commandTipsEnabled", true));
         }
 
         public static final class IEEntry {

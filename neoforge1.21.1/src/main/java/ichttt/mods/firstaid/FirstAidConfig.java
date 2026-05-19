@@ -399,6 +399,9 @@ public class FirstAidConfig {
             suppressionEntityBlacklist = builder
                     .comment("Entity type ids that cannot trigger suppression near-miss effects")
                     .defineList("suppressionEntityBlacklist", serializeResourceLocationList(FirstAid.getDefaultSuppressionEntityBlacklist()), o -> o != null && ResourceLocation.tryParse(o.toString()) != null);
+            commandTipsEnabled = builder
+                    .comment("If true, operators receive the FirstAid admin command tip when joining a world")
+                    .define("commandTipsEnabled", true);
             builder.pop();
 
             builder.push("Enchantment Handling");
@@ -509,6 +512,7 @@ public class FirstAidConfig {
         public final ModConfigSpec.DoubleValue lowInjuryDebuffDurationScale;
         public final ModConfigSpec.ConfigValue<List<? extends String>> injuryDebuffOverrides;
         public final ModConfigSpec.ConfigValue<List<? extends String>> suppressionEntityBlacklist;
+        public final ModConfigSpec.BooleanValue commandTipsEnabled;
 
 
         private static ModConfigSpec.IntValue healthEntry(ModConfigSpec.Builder builder, String name, int defaultVal) {

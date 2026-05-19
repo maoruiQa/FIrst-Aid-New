@@ -570,7 +570,7 @@ public class EventHandler {
     }
 
     private static void sendOpCommandTip(ServerPlayer player) {
-        if (!player.hasPermissions(2)) {
+        if (!FirstAidConfig.SERVER.commandTipsEnabled.get() || !player.hasPermissions(2)) {
             return;
         }
         player.displayClientMessage(Component.translatable("firstaid.tip.commands.header").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
@@ -578,7 +578,8 @@ public class EventHandler {
         player.displayClientMessage(buildCommandTipLine(
                 "firstaid.tip.commands.group.core",
                 buildCommandTipChip("firstaid.tip.commands.pain.label", "firstaid.tip.commands.pain.detail", "/firstaid pain dynamic", ChatFormatting.AQUA),
-                buildCommandTipChip("firstaid.tip.commands.suppression.label", "firstaid.tip.commands.suppression.detail", "/firstaid suppression dynamic", ChatFormatting.AQUA)
+                buildCommandTipChip("firstaid.tip.commands.suppression.label", "firstaid.tip.commands.suppression.detail", "/firstaid suppression dynamic", ChatFormatting.AQUA),
+                buildCommandTipChip("firstaid.tip.commands.commandtips.label", "firstaid.tip.commands.commandtips.detail", "/firstaid commandtips off", ChatFormatting.GRAY)
         ), false);
         player.displayClientMessage(buildCommandTipLine(
                 "firstaid.tip.commands.group.rescue",

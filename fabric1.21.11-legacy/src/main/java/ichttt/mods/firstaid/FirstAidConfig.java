@@ -525,6 +525,7 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Double> lowInjuryDebuffDurationScale;
       public final FirstAidConfig.ConfigValue<Map<Identifier, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
       public final FirstAidConfig.ConfigValue<List<Identifier>> suppressionEntityBlacklist;
+      public final FirstAidConfig.ConfigValue<Boolean> commandTipsEnabled;
 
       public Server() {
          this.causeDeathHead = this.define(FirstAidConfig.boolValue("causeDeathHead", true));
@@ -602,6 +603,7 @@ public final class FirstAidConfig {
          this.suppressionEntityBlacklist = this.define(
             FirstAidConfig.identifierList("suppressionEntityBlacklist", new ArrayList<>(FirstAid.getDefaultSuppressionEntityBlacklist()))
          );
+         this.commandTipsEnabled = this.define(FirstAidConfig.boolValue("commandTipsEnabled", true));
       }
 
       public static enum ArmorEnchantmentMode {
