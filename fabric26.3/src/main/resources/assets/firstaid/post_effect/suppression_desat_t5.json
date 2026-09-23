@@ -1,0 +1,78 @@
+{
+  "targets": {
+    "swap": {},
+    "swap2": {}
+  },
+  "passes": [
+    {
+      "vertex_shader": "minecraft:core/screenquad",
+      "fragment_shader": "firstaid:post/desaturation",
+      "inputs": [
+        {
+          "sampler_name": "In",
+          "target": "minecraft:main"
+        }
+      ],
+      "uniforms": {
+        "SaturationSettings": [
+          {
+            "name": "SaturationAmount",
+            "type": "float",
+            "value": 0.96
+          }
+        ]
+      },
+      "output": "swap"
+    },
+    {
+      "vertex_shader": "minecraft:core/screenquad",
+      "fragment_shader": "firstaid:post/pain_pulse_blur",
+      "inputs": [
+        {
+          "sampler_name": "In",
+          "target": "swap"
+        }
+      ],
+      "uniforms": {
+        "BlurSettings": [
+          {
+            "name": "Center",
+            "type": "vec2",
+            "value": [ 0.5, 0.5 ]
+          },
+          {
+            "name": "Samples",
+            "type": "int",
+            "value": 10
+          },
+          {
+            "name": "Strength",
+            "type": "float",
+            "value": 0.125
+          }
+        ]
+      },
+      "output": "swap2"
+    },
+    {
+      "vertex_shader": "minecraft:core/screenquad",
+      "fragment_shader": "minecraft:post/blit",
+      "inputs": [
+        {
+          "sampler_name": "In",
+          "target": "swap2"
+        }
+      ],
+      "uniforms": {
+        "BlitConfig": [
+          {
+            "name": "ColorModulate",
+            "type": "vec4",
+            "value": [ 1.0, 1.0, 1.0, 1.0 ]
+          }
+        ]
+      },
+      "output": "minecraft:main"
+    }
+  ]
+}

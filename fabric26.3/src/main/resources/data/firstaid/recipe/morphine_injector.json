@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "MMI",
+    "RBI",
+    " I "
+  ],
+  "key": {
+    "M": "firstaid:morphine",
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "B": "minecraft:glass_bottle"
+  },
+  "result": {
+    "count": 1,
+    "id": "firstaid:morphine_injector"
+  }
+}
