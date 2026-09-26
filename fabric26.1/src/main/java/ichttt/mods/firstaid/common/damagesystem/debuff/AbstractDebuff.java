@@ -2,6 +2,10 @@ package ichttt.mods.firstaid.common.damagesystem.debuff;
 
 import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.debuff.IDebuff;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
+import ichttt.mods.firstaid.common.util.CommonUtils;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.player.Player;
 import java.util.Objects;
 import javax.annotation.Nonnull;
 import net.minecraft.core.Holder;
@@ -31,4 +35,10 @@ public abstract class AbstractDebuff implements IDebuff {
    protected final int scaleDurationForMode(int duration) {
       return duration <= 1 ? duration : Math.max(1, Math.round(duration * FirstAid.lowInjuryDebuffDurationScale));
    }
+
+    protected final void applyInjuryEffect(Player player, MobEffectInstance instance) {
+        if (CommonUtils.getDamageModel(player) instanceof PlayerDamageModel model) {
+            model.applyTrackedInjuryEffect(player, this.effectId.toString(), instance);
+        }
+    }
 }

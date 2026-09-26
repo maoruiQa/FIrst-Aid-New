@@ -33,18 +33,20 @@ public class MessageSyncCommandSettings {
     private final boolean enablePainFovCompression;
     private final boolean enablePainAudioEffects;
     private final boolean projectileSuppressionEnabled;
+    private final boolean lowSuppressionEnabled;
     private final String suppressionEntityBlacklist;
 
-    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, boolean projectileSuppressionEnabled, String suppressionEntityBlacklist) {
+    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, boolean projectileSuppressionEnabled, boolean lowSuppressionEnabled, String suppressionEntityBlacklist) {
         this.enablePainVignette = enablePainVignette;
         this.enablePainFovCompression = enablePainFovCompression;
         this.enablePainAudioEffects = enablePainAudioEffects;
         this.projectileSuppressionEnabled = projectileSuppressionEnabled;
+        this.lowSuppressionEnabled = lowSuppressionEnabled;
         this.suppressionEntityBlacklist = suppressionEntityBlacklist;
     }
 
     public MessageSyncCommandSettings(FriendlyByteBuf buffer) {
-        this(buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readUtf(32767));
+        this(buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readUtf(32767));
     }
 
     public static MessageSyncCommandSettings current() {
@@ -60,6 +62,7 @@ public class MessageSyncCommandSettings {
                 FirstAid.enablePainFovCompression,
                 FirstAid.enablePainAudioEffects,
                 FirstAid.projectileSuppressionEnabled,
+                FirstAid.lowSuppressionEnabled,
                 builder.toString());
     }
 
@@ -68,6 +71,7 @@ public class MessageSyncCommandSettings {
         buf.writeBoolean(enablePainFovCompression);
         buf.writeBoolean(enablePainAudioEffects);
         buf.writeBoolean(projectileSuppressionEnabled);
+        buf.writeBoolean(lowSuppressionEnabled);
         buf.writeUtf(suppressionEntityBlacklist, 32767);
     }
 
@@ -80,6 +84,7 @@ public class MessageSyncCommandSettings {
                 FirstAid.enablePainFovCompression = message.enablePainFovCompression;
                 FirstAid.enablePainAudioEffects = message.enablePainAudioEffects;
                 FirstAid.projectileSuppressionEnabled = message.projectileSuppressionEnabled;
+                FirstAid.lowSuppressionEnabled = message.lowSuppressionEnabled;
                 FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist));
             });
         }

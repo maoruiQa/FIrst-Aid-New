@@ -77,6 +77,7 @@ public final class FirstAidConfig {
       FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
       FirstAid.projectileSuppressionEnabled = SERVER.projectileSuppressionEnabled.get();
       FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
+      FirstAid.suppressionGainMultiplier = SERVER.suppressionGainMultiplier.get().floatValue();
       FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
       FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
       FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
@@ -108,6 +109,7 @@ public final class FirstAidConfig {
       SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
       SERVER.projectileSuppressionEnabled.set(FirstAid.projectileSuppressionEnabled);
       SERVER.lowSuppressionMultiplier.set((double)FirstAid.lowSuppressionMultiplier);
+      SERVER.suppressionGainMultiplier.set((double) FirstAid.suppressionGainMultiplier);
       SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
       SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
       SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
@@ -535,6 +537,14 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Boolean> lowSuppressionEnabled;
       public final FirstAidConfig.ConfigValue<Boolean> projectileSuppressionEnabled;
       public final FirstAidConfig.ConfigValue<Double> lowSuppressionMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> suppressionGainMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> encounterSightRange;
+      public final FirstAidConfig.ConfigValue<Double> encounterThreatRange;
+      public final FirstAidConfig.ConfigValue<Integer> encounterRecentAttackerTicks;
+      public final FirstAidConfig.ConfigValue<Boolean> adrenalineFatigueEnabled;
+      public final FirstAidConfig.ConfigValue<Integer> adrenalineFatigueThresholdSeconds;
+      public final FirstAidConfig.ConfigValue<Double> adrenalineFatigueDurationRatio;
+      public final FirstAidConfig.ConfigValue<Double> encounterBaseIntensity;
       public final FirstAidConfig.ConfigValue<Boolean> rescueWakeUpEnabled;
       public final FirstAidConfig.ConfigValue<Double> rescueWakeUpDelaySeconds;
       public final FirstAidConfig.ConfigValue<Integer> morphineUseDuration;
@@ -543,6 +553,15 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Integer> morphineInjectorUseDuration;
       public final FirstAidConfig.ConfigValue<Boolean> criticalCrawlEnabled;
       public final FirstAidConfig.ConfigValue<Boolean> addictionEnabled;
+      public final FirstAidConfig.ConfigValue<Double> morphineAddictionGain;
+      public final FirstAidConfig.ConfigValue<Double> morphineInjectorAddictionGain;
+      public final FirstAidConfig.ConfigValue<Integer> bandageCraftYield;
+      public final FirstAidConfig.ConfigValue<Integer> plasterCraftYield;
+      public final FirstAidConfig.ConfigValue<Integer> painkillersCraftYield;
+      public final FirstAidConfig.ConfigValue<Integer> morphineCraftYield;
+      public final FirstAidConfig.ConfigValue<Integer> morphineInjectorCraftUses;
+      public final FirstAidConfig.ConfigValue<Integer> adrenalineInjectorCraftUses;
+      public final FirstAidConfig.ConfigValue<Integer> defibrillatorCraftUses;
       public final FirstAidConfig.ConfigValue<Double> naturalRegenLimitRatio;
       public final FirstAidConfig.ConfigValue<Double> naturalRegenCriticalPriorityRatio;
       public final FirstAidConfig.ConfigValue<FirstAid.MedicineEffectMode> medicineEffectMode;
@@ -615,9 +634,17 @@ public final class FirstAidConfig {
          this.enablePainBlur = this.define(FirstAidConfig.boolValue("enablePainBlur", true));
          this.enablePainFovCompression = this.define(FirstAidConfig.boolValue("enablePainFovCompression", true));
          this.enablePainAudioEffects = this.define(FirstAidConfig.boolValue("enablePainAudioEffects", true));
-         this.lowSuppressionEnabled = this.define(FirstAidConfig.boolValue("lowSuppressionEnabled", true));
+         this.lowSuppressionEnabled = this.define(FirstAidConfig.boolValue("lowSuppressionEnabled", false));
          this.projectileSuppressionEnabled = this.define(FirstAidConfig.boolValue("projectileSuppressionEnabled", true));
          this.lowSuppressionMultiplier = this.define(FirstAidConfig.doubleValue("lowSuppressionMultiplier", 0.4, 0.0, 1.0));
+         this.suppressionGainMultiplier = this.define(FirstAidConfig.doubleValue("suppressionGainMultiplier", 0.15, 0.01, 1.0));
+         this.encounterSightRange = this.define(FirstAidConfig.doubleValue("encounterSightRange", 16.0, 1.0, 128.0));
+         this.encounterThreatRange = this.define(FirstAidConfig.doubleValue("encounterThreatRange", 12.0, 1.0, 128.0));
+         this.encounterRecentAttackerTicks = this.define(FirstAidConfig.intValue("encounterRecentAttackerTicks", 600, 1, 72000));
+         this.adrenalineFatigueEnabled = this.define(FirstAidConfig.boolValue("adrenalineFatigueEnabled", true));
+         this.adrenalineFatigueThresholdSeconds = this.define(FirstAidConfig.intValue("adrenalineFatigueThresholdSeconds", 60, 1, 3600));
+         this.adrenalineFatigueDurationRatio = this.define(FirstAidConfig.doubleValue("adrenalineFatigueDurationRatio", 0.10, 0.0, 1.0));
+         this.encounterBaseIntensity = this.define(FirstAidConfig.doubleValue("encounterBaseIntensity", 0.20, 0.0, 1.0));
          this.rescueWakeUpEnabled = this.define(FirstAidConfig.boolValue("rescueWakeUpEnabled", true));
          this.rescueWakeUpDelaySeconds = this.define(
             FirstAidConfig.doubleValue("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0.0, 3600.0)
@@ -628,6 +655,15 @@ public final class FirstAidConfig {
          this.morphineInjectorUseDuration = this.define(FirstAidConfig.intValue("morphineInjectorUseDuration", 40, 1, 72000));
          this.criticalCrawlEnabled = this.define(FirstAidConfig.boolValue("criticalCrawlEnabled", true));
          this.addictionEnabled = this.define(FirstAidConfig.boolValue("addictionEnabled", true));
+         this.morphineAddictionGain = this.define(FirstAidConfig.doubleValue("morphineAddictionGain", 7.8, 0, 100));
+         this.morphineInjectorAddictionGain = this.define(FirstAidConfig.doubleValue("morphineInjectorAddictionGain", 20, 0, 100));
+         this.bandageCraftYield = this.define(FirstAidConfig.intValue("bandageCraftYield", 4, 1, 16));
+         this.plasterCraftYield = this.define(FirstAidConfig.intValue("plasterCraftYield", 4, 1, 16));
+         this.painkillersCraftYield = this.define(FirstAidConfig.intValue("painkillersCraftYield", 2, 1, 16));
+         this.morphineCraftYield = this.define(FirstAidConfig.intValue("morphineCraftYield", 1, 1, 16));
+         this.morphineInjectorCraftUses = this.define(FirstAidConfig.intValue("morphineInjectorCraftUses", 2, 1, 1000));
+         this.adrenalineInjectorCraftUses = this.define(FirstAidConfig.intValue("adrenalineInjectorCraftUses", 4, 1, 1000));
+         this.defibrillatorCraftUses = this.define(FirstAidConfig.intValue("defibrillatorCraftUses", 3, 1, 1000));
          this.naturalRegenLimitRatio = this.define(FirstAidConfig.doubleValue("naturalRegenLimitRatio", 0.85, 0.0, 1.0));
          this.naturalRegenCriticalPriorityRatio = this.define(FirstAidConfig.doubleValue("naturalRegenCriticalPriorityRatio", 0.85, 0.0, 1.0));
          this.medicineEffectMode = this.define(

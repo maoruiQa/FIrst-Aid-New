@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Camera.class)
 public abstract class CameraMixin {
@@ -59,5 +60,10 @@ public abstract class CameraMixin {
          UP.rotate(this.rotation, this.up);
          LEFT.rotate(this.rotation, this.left);
       }
+   }
+
+   @Inject(method = "calculateFov", at = @At("RETURN"), cancellable = true)
+   private void firstaid$applyFov(float partialTick, CallbackInfoReturnable<Float> cir) {
+      cir.setReturnValue(ClientEventHandler.getSuppressionFeedbackController().applyFov(cir.getReturnValue()));
    }
 }

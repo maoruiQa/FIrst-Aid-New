@@ -87,25 +87,17 @@ public final class SuppressionFeedbackController {
         float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
         suppressionIntensity = (playerDamageModel == null ? 0.0F : playerDamageModel.getSuppressionIntensity()) * suppressionScale;
         holdTicks = playerDamageModel == null ? 0 : playerDamageModel.getSuppressionHoldTicks();
-        boolean painSuppressed = player.hasEffect(RegistryObjects.MORPHINE_EFFECT)
-                || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
+        boolean painSuppressed = playerDamageModel != null && playerDamageModel.isPainSuppressed(player);
         float targetPainFov = painSuppressed || playerDamageModel == null || !FirstAid.enablePainFovCompression
                 ? 0.0F
                 : playerDamageModel.getPainVisualStrength() * PAIN_FOV_MAX_REDUCTION;
 
         boolean holding = holdTicks > 0;
-        float targetMuffle = holding
-                ? Math.max(0.88F, suppressionIntensity * 1.12F)
-                : suppressionIntensity * 0.98F;
-        float targetTinnitus = holding
-                ? Math.max(0.48F, suppressionIntensity * 0.64F)
-                : suppressionIntensity * 0.42F;
-        float targetShake = holding
-                ? 0.38F + suppressionIntensity * 0.55F
-                : suppressionIntensity * 0.34F;
-        float targetFovCompression = holding
-                ? 4.4F + suppressionIntensity * 7.0F
-                : suppressionIntensity * 3.6F;
+        float targetMuffle = (holding ? 0.55F : 0.42F) * suppressionIntensity;
+        float tinnitusProgress = Mth.clamp((suppressionIntensity - 0.70F) / 0.30F, 0.0F, 1.0F);
+        float targetTinnitus = 0.57F * tinnitusProgress;
+        float targetShake = (holding ? 0.30F : 0.10F) * FirstAid.suppressionDisplayCurve(suppressionIntensity);
+        float targetFovCompression = (holding ? 3.2F : 1.0F) * FirstAid.suppressionDisplayCurve(suppressionIntensity);
 
         audioMuffleStrength = approach(audioMuffleStrength, targetMuffle, targetMuffle > audioMuffleStrength ? 0.22F : 0.025F);
         tinnitusStrength = approach(tinnitusStrength, targetTinnitus, targetTinnitus > tinnitusStrength ? 0.12F : 0.02F);
@@ -176,7 +168,7 @@ public final class SuppressionFeedbackController {
         Level level = player.level();
         if (level.getGameTime() >= soundCooldownUntilGameTime) {
             soundCooldownUntilGameTime = level.getGameTime() + Mth.ceil(8 + (1.0F - severity) * 12.0F);
-            playTinnitusSound(severity);
+            playTinnitusSound(severity * Mth.clamp((suppressionIntensity - 0.70F) / 0.30F, 0.0F, 1.0F));
         }
     }
 
@@ -188,7 +180,7 @@ public final class SuppressionFeedbackController {
         float oscillation = cameraCarrier.oscillation();
         event.setYaw(event.getYaw() + yawImpulse + oscillation * 0.20F);
         event.setPitch(event.getPitch() + pitchImpulse + oscillation * 0.14F);
-        event.setRoll(event.getRoll() + rollImpulse + oscillation * 0.80F + suppressionIntensity * 0.55F + shakeStrength * 0.18F);
+        event.setRoll(event.getRoll() + rollImpulse + oscillation * 0.80F + FirstAid.suppressionDisplayCurve(suppressionIntensity) * 0.55F + shakeStrength * 0.18F);
     }
 
     public void applyFov(ViewportEvent.ComputeFov event) {
@@ -219,11 +211,12 @@ public final class SuppressionFeedbackController {
     }
 
     private void playTinnitusSound(float severity) {
+        if (severity <= 0.01F) return;
         Minecraft client = Minecraft.getInstance();
         SoundManager soundManager = client.getSoundManager();
         SoundEvent tinnitus = BuiltInRegistries.SOUND_EVENT.getValue(TINNITUS_SOUND);
         if (tinnitus != null) {
-            soundManager.play(SimpleSoundInstance.forUI(tinnitus, 0.18F + severity * 0.28F, 0.96F + severity * 0.08F));
+            soundManager.play(SimpleSoundInstance.forUI(tinnitus, 0.46F * severity, 0.96F + severity * 0.08F));
         }
     }
 
@@ -259,7 +252,7 @@ public final class SuppressionFeedbackController {
             float time = (float) (entity.tickCount + partialTick);
             float low = (float) Math.sin(time * 0.65F);
             float high = (float) Math.sin(time * 2.75F);
-            return (low * 0.35F + high * 0.65F) * (shakeStrength * 0.65F + suppressionIntensity * 0.18F);
+            return (low * 0.35F + high * 0.65F) * (shakeStrength * 0.65F + FirstAid.suppressionDisplayCurve(suppressionIntensity) * 0.18F);
         }
     }
 

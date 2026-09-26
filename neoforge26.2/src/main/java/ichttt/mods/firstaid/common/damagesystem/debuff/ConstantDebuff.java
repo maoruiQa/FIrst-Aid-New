@@ -83,7 +83,7 @@ public class ConstantDebuff extends AbstractDebuff {
                 if (mode == FirstAid.InjuryDebuffMode.LOW) {
                     amplifier = scaleAmplifierForMode(amplifier);
                 }
-                player.addEffect(new MobEffectInstance(effect, 60, amplifier, false, false));
+                this.applyInjuryEffect(player, new MobEffectInstance(effect, 60, amplifier, false, false));
             }
         }
         ticks++;

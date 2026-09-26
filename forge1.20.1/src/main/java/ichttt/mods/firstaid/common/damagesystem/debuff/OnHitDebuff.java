@@ -50,7 +50,7 @@ public class OnHitDebuff extends AbstractDebuff {
         for (OnHitDebuffEntry entry : timeBoundaries) {
             if (damage >= entry.damageTakenThreshold()) {
                 value = Math.max(value, entry.effectDuration()); //TODO why is there no break here?
-                player.addEffect(new MobEffectInstance(effect, entry.effectDuration(), 0, false, false));
+                this.applyInjuryEffect(player, new MobEffectInstance(effect, entry.effectDuration(), 0, false, false));
             }
         }
         if (value != -1 && sound != null)

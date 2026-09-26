@@ -63,6 +63,7 @@ public class FirstAidConfig {
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.projectileSuppressionEnabled.set(FirstAid.projectileSuppressionEnabled);
         SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
+        SERVER.suppressionGainMultiplier.set((double) FirstAid.suppressionGainMultiplier);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.morphineActivationDelaySeconds.set(FirstAid.morphineActivationDelaySeconds);
@@ -88,6 +89,7 @@ public class FirstAidConfig {
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.projectileSuppressionEnabled = SERVER.projectileSuppressionEnabled.get();
         FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
+        FirstAid.suppressionGainMultiplier = SERVER.suppressionGainMultiplier.get().floatValue();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.morphineActivationDelaySeconds = SERVER.morphineActivationDelaySeconds.get();
@@ -270,7 +272,7 @@ public class FirstAidConfig {
                     .comment("Enable red screen vignette overlay when in pain")
                     .define("enablePainVignette", true);
             enablePainBlur = builder
-                    .comment("Enable radial pain blur / weak suppression warp post-processing")
+                    .comment("Enable radial pain blur / weak adrenaline warp post-processing")
                     .define("enablePainBlur", true);
             enablePainFovCompression = builder
                     .comment("Enable FOV compression (tunnel vision) when in pain")
@@ -279,14 +281,27 @@ public class FirstAidConfig {
                     .comment("Enable severe pain audio effects (tinnitus sound)")
                     .define("enablePainAudioEffects", true);
             lowSuppressionEnabled = builder
-                    .comment("Persistent toggle for /firstaid suppression (dynamic vs mild)")
-                    .define("lowSuppressionEnabled", true);
+                    .comment("Persistent toggle for /firstaid adrenaline (dynamic vs mild)")
+                    .define("lowSuppressionEnabled", false);
             projectileSuppressionEnabled = builder
-                    .comment("Persistent toggle for projectile near-miss suppression")
+                    .comment("Persistent toggle for projectile near-miss adrenaline")
                     .define("projectileSuppressionEnabled", true);
             lowSuppressionMultiplier = builder
-                    .comment("Visual suppression intensity multiplier used when /firstaid suppression mild is active")
+                    .comment("Visual adrenaline intensity multiplier used when /firstaid adrenaline mild is active")
                     .defineInRange("lowSuppressionMultiplier", 0.4D, 0D, 1D);
+
+            suppressionGainMultiplier = builder
+
+                    .comment("Per-hit adrenaline gain multiplier; also set by /firstaid adrenaline gain")
+
+                    .defineInRange("suppressionGainMultiplier", 0.15D, 0.01D, 1D);
+            encounterSightRange = builder.comment("Visible hostile encounter range in blocks").defineInRange("encounterSightRange", 16.0D, 1.0D, 128.0D);
+            encounterThreatRange = builder.comment("Current threat range in blocks").defineInRange("encounterThreatRange", 12.0D, 1.0D, 128.0D);
+            encounterRecentAttackerTicks = builder.comment("Recent player attacker memory in ticks").defineInRange("encounterRecentAttackerTicks", 600, 1, 72000);
+            adrenalineFatigueEnabled = builder.comment("Apply fatigue after prolonged adrenaline when no threats remain").define("adrenalineFatigueEnabled", true);
+            adrenalineFatigueThresholdSeconds = builder.comment("Continuous adrenaline seconds before fatigue can occur").defineInRange("adrenalineFatigueThresholdSeconds", 60, 1, 3600);
+            adrenalineFatigueDurationRatio = builder.comment("Fatigue duration as a fraction of adrenaline duration").defineInRange("adrenalineFatigueDurationRatio", 0.10D, 0.0D, 1.0D);
+            encounterBaseIntensity = builder.comment("Minimum adrenaline intensity on encounter").defineInRange("encounterBaseIntensity", 0.20D, 0.0D, 1.0D);
             rescueWakeUpEnabled = builder
                     .comment("Persistent toggle for /firstaid revivewakeup (on vs off)")
                     .define("rescueWakeUpEnabled", true);
@@ -323,8 +338,17 @@ public class FirstAidConfig {
             addictionEnabled = builder
                     .comment("If true, repeated morphine use builds addiction and can trigger withdrawal episodes")
                     .define("addictionEnabled", true);
+            morphineAddictionGain = builder.defineInRange("morphineAddictionGain", 7.8, 0, 100);
+            morphineInjectorAddictionGain = builder.defineInRange("morphineInjectorAddictionGain", 20.0D, 0.0D, 100.0D);
+            bandageCraftYield = builder.defineInRange("bandageCraftYield", 4, 1, 16);
+            plasterCraftYield = builder.defineInRange("plasterCraftYield", 4, 1, 16);
+            painkillersCraftYield = builder.defineInRange("painkillersCraftYield", 2, 1, 16);
+            morphineCraftYield = builder.defineInRange("morphineCraftYield", 1, 1, 16);
+            morphineInjectorCraftUses = builder.defineInRange("morphineInjectorCraftUses", 2, 1, 1000);
+            adrenalineInjectorCraftUses = builder.defineInRange("adrenalineInjectorCraftUses", 4, 1, 1000);
+            defibrillatorCraftUses = builder.defineInRange("defibrillatorCraftUses", 3, 1, 1000);
             suppressionEntityBlacklist = builder
-                    .comment("Entity type ids that cannot trigger suppression near-miss effects")
+                    .comment("Entity type ids that cannot trigger adrenaline near-miss effects")
                     .defineList("suppressionEntityBlacklist", serializeResourceLocationList(FirstAid.getDefaultSuppressionEntityBlacklist()), o -> o != null && ResourceLocation.tryParse(o.toString()) != null);
             commandTipsEnabled = builder
                     .comment("If true, operators receive the FirstAid admin command tip when joining a world")
@@ -422,6 +446,14 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.BooleanValue lowSuppressionEnabled;
         public final ForgeConfigSpec.BooleanValue projectileSuppressionEnabled;
         public final ForgeConfigSpec.DoubleValue lowSuppressionMultiplier;
+        public final ForgeConfigSpec.DoubleValue suppressionGainMultiplier;
+        public final ForgeConfigSpec.DoubleValue encounterSightRange;
+        public final ForgeConfigSpec.DoubleValue encounterThreatRange;
+        public final ForgeConfigSpec.IntValue encounterRecentAttackerTicks;
+        public final ForgeConfigSpec.BooleanValue adrenalineFatigueEnabled;
+        public final ForgeConfigSpec.IntValue adrenalineFatigueThresholdSeconds;
+        public final ForgeConfigSpec.DoubleValue adrenalineFatigueDurationRatio;
+        public final ForgeConfigSpec.DoubleValue encounterBaseIntensity;
         public final ForgeConfigSpec.BooleanValue rescueWakeUpEnabled;
         public final ForgeConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
         public final ForgeConfigSpec.DoubleValue naturalRegenLimitRatio;
@@ -434,6 +466,15 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.IntValue morphineInjectorUseDuration;
         public final ForgeConfigSpec.BooleanValue criticalCrawlEnabled;
         public final ForgeConfigSpec.BooleanValue addictionEnabled;
+        public final ForgeConfigSpec.DoubleValue morphineAddictionGain;
+        public final ForgeConfigSpec.DoubleValue morphineInjectorAddictionGain;
+        public final ForgeConfigSpec.IntValue bandageCraftYield;
+        public final ForgeConfigSpec.IntValue plasterCraftYield;
+        public final ForgeConfigSpec.IntValue painkillersCraftYield;
+        public final ForgeConfigSpec.IntValue morphineCraftYield;
+        public final ForgeConfigSpec.IntValue morphineInjectorCraftUses;
+        public final ForgeConfigSpec.IntValue adrenalineInjectorCraftUses;
+        public final ForgeConfigSpec.IntValue defibrillatorCraftUses;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> suppressionEntityBlacklist;
         public final ForgeConfigSpec.BooleanValue commandTipsEnabled;
 

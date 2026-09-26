@@ -43,7 +43,7 @@ public class ItemAdrenalineInjector extends ItemMedicine {
     private static final ResourceLocation STATUS_ID = new ResourceLocation("firstaid", "adrenaline");
 
     public ItemAdrenalineInjector(Item.Properties properties) {
-        super(properties.stacksTo(1).durability(2));
+        super(properties.stacksTo(1).durability(4));
     }
 
     @Override

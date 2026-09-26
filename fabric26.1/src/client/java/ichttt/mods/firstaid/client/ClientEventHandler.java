@@ -591,7 +591,8 @@ public final class ClientEventHandler {
    }
 
    private static boolean isRescueItem(ItemStack stack) {
-      return stack.is((Item)RegistryObjects.BANDAGE.get()) || stack.is((Item)RegistryObjects.PLASTER.get()) || isDefibrillator(stack);
+      return stack.is((Item)RegistryObjects.BANDAGE.get()) || stack.is((Item)RegistryObjects.PLASTER.get())
+         || isDefibrillator(stack) || stack.is((Item)RegistryObjects.ADRENALINE_INJECTOR.get());
    }
 
    private static boolean isDefibrillator(ItemStack stack) {
@@ -613,7 +614,8 @@ public final class ClientEventHandler {
 
    private static int getInteractionHoldDurationTicks(ItemStack stack, ClientEventHandler.InteractionType type) {
       return switch (type) {
-         case RESCUE -> isDefibrillator(stack) ? DEFIBRILLATOR_RESCUE_HOLD_TICKS : RESCUE_HOLD_TICKS;
+         case RESCUE -> isDefibrillator(stack) || stack.is((Item)RegistryObjects.ADRENALINE_INJECTOR.get())
+            ? DEFIBRILLATOR_RESCUE_HOLD_TICKS : RESCUE_HOLD_TICKS;
          case EXECUTE -> EXECUTION_HOLD_TICKS;
          default -> 0;
       };

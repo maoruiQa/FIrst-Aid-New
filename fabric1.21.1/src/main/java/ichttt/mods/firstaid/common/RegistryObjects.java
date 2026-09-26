@@ -102,7 +102,7 @@ public final class RegistryObjects {
                 stack -> ItemHealing.ApplySoundMode.WHILE_USING
         ));
         DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));
-        ADRENALINE_INJECTOR = registerItem("adrenaline_injector", new ItemAdrenalineInjector(itemProperties("adrenaline_injector").durability(2)));
+        ADRENALINE_INJECTOR = registerItem("adrenaline_injector", new ItemAdrenalineInjector(itemProperties("adrenaline_injector").durability(4)));
         MORPHINE_INJECTOR = registerItem("morphine_injector", new ItemMorphineInjector(itemProperties("morphine_injector").durability(2)));
         MORPHINE = registerItem("morphine", new ItemMorphine(itemProperties("morphine")));
         PAINKILLERS = registerItem("painkillers", new ItemPainkillers(itemProperties("painkillers")));

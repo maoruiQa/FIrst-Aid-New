@@ -98,15 +98,14 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
         float deathDanger = playerDamageModel == null ? 0.0F : playerDamageModel.getDeathCountdownDangerProgress();
-        boolean painSuppressed = minecraft.player.hasEffect(RegistryObjects.MORPHINE_EFFECT)
-                || minecraft.player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
+        boolean painSuppressed = playerDamageModel != null && playerDamageModel.isPainSuppressed(minecraft.player);
         float basePain = playerDamageModel == null ? 0.0F : playerDamageModel.getPainVisualStrength(painSuppressed);
         float dangerPain = deathDanger <= 0.0F ? 0.0F : Mth.clamp(0.18F + deathDanger * 0.82F, 0.0F, 1.0F);
         float targetPain = Math.max(basePain, dangerPain);
         SuppressionFeedbackController suppressionFeedbackController = ClientEventHandler.getSuppressionFeedbackController();
         float modelSuppression = playerDamageModel == null ? Math.min(1.0F, damageModel.getAdrenalineTicks() / 200.0F) : playerDamageModel.getSuppressionIntensity();
         float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
-        float targetSuppression = Math.max(modelSuppression, suppressionFeedbackController.getVisualStrength()) * suppressionScale;
+        float targetSuppression = FirstAid.suppressionDisplayCurve(Math.max(modelSuppression, suppressionFeedbackController.getVisualStrength()) * suppressionScale);
 
         tickStrengths(targetPain, targetSuppression);
         float smoothPain = Mth.lerp(deltaTracker.getGameTimeDeltaTicks(), lastPainStrength, painStrength);
@@ -347,8 +346,7 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
     ) {
         int lineY = 8;
               if (damageModel.getPainLevel() > 0) {
-         boolean painSuppressed = minecraft.player.hasEffect(RegistryObjects.PAINKILLER_EFFECT)
-            || minecraft.player.hasEffect(RegistryObjects.MORPHINE_EFFECT);
+         boolean painSuppressed = damageModel instanceof PlayerDamageModel && ((PlayerDamageModel) damageModel).isPainSuppressed(minecraft.player);
          Component painText = painSuppressed
             ? Component.translatable("firstaid.gui.status.pain_suppressed")
             : Component.translatable("firstaid.gui.status.pain", new Object[]{Component.translatable(getPainSeverityKey(damageModel.getPainLevel()))});

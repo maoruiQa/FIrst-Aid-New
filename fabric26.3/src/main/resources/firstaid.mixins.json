@@ -5,6 +5,9 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "FoodDataMixin",
+    "RecipeMapMixin",
+    "ShapedRecipeResultMixin",
+    "ShapelessRecipeResultMixin",
     "LivingEntityHealthMixin",
     "PoisonMobEffectMixin",
     "LivingEntityHealMixin",
@@ -17,8 +20,10 @@
   ],
   "client": [
     "client.CameraMixin",
-    "client.GuiMixin",
     "client.GameRendererMixin",
+    "client.GameRendererAccessor",
+    "client.MinecraftMixin",
+    "client.GuiMixin",
     "client.AvatarRendererMixin",
     "client.LivingEntityRendererMixin",
     "client.LivingEntityRendererStateMixin",

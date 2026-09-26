@@ -6,6 +6,8 @@
   "compatibilityLevel": "JAVA_17",
   "mixins": [
     "FoodDataMixin",
+    "RecipeManagerMixin",
+    "CraftedDurabilityMixin",
     "PlayerDimensionsMixin",
     "ProjectileMixin"
   ],

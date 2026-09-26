@@ -96,7 +96,7 @@ public final class PainVisualEffectsController {
         // Saturation ONLY while firstaid:morphine is active — never painkiller / model lag.
         boolean hasMorphineEffect = player.hasEffect(RegistryObjects.MORPHINE_EFFECT);
         boolean hasPainkiller = player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
-        boolean painSuppressed = hasMorphineEffect || hasPainkiller;
+        boolean painSuppressed = model != null && model.isPainSuppressed(player);
 
         tickHitPulse(player, model, painSuppressed);
 
@@ -134,7 +134,7 @@ public final class PainVisualEffectsController {
         float modelSuppression = model == null ? 0.0F : model.getSuppressionIntensity();
         float feedbackSuppression = ClientEventHandler.getSuppressionFeedbackController().getVisualStrength();
         float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
-        float targetSuppression = Math.max(modelSuppression, feedbackSuppression) * suppressionScale;
+        float targetSuppression = FirstAid.suppressionDisplayCurve(Math.max(modelSuppression, feedbackSuppression) * suppressionScale);
 
         painStrength = approach(painStrength, targetPain, targetPain > painStrength ? PAIN_APPROACH_UP : PAIN_APPROACH_DOWN);
         if (hasMorphineEffect) {
@@ -402,7 +402,7 @@ public final class PainVisualEffectsController {
             float progress = (layer + 1) / (float) layers;
             float falloff = 1.0F - progress;
             int thickness = Math.max(4, Math.round(baseThickness * (0.28F + progress * (1.15F + intensity * 1.05F))));
-            int alpha = Math.round((14.0F + 130.0F * intensity) * falloff * falloff);
+            int alpha = Math.round((144.0F * intensity) * falloff * falloff);
             if (alpha > 0) {
                 int r = 188 + Math.round(28.0F * s);
                 int g = 192 + Math.round(30.0F * s);
@@ -410,7 +410,7 @@ public final class PainVisualEffectsController {
                 fillEdge(guiGraphics, width, height, color(Math.min(220, alpha), r, g, b), thickness);
             }
         }
-        int wash = Math.round(6.0F + 42.0F * s * s);
+        int wash = Math.round(48.0F * s);
         if (wash > 0) {
             guiGraphics.fill(0, 0, width, height, color(wash, 200, 204, 210));
         }

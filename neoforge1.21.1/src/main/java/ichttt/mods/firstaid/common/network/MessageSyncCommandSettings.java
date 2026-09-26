@@ -40,6 +40,8 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
             message -> message.enablePainAudioEffects,
             ByteBufCodecs.BOOL,
             message -> message.projectileSuppressionEnabled,
+            ByteBufCodecs.BOOL,
+            message -> message.lowSuppressionEnabled,
             ByteBufCodecs.stringUtf8(32767),
             message -> message.suppressionEntityBlacklist,
             MessageSyncCommandSettings::new);
@@ -48,13 +50,15 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
     private final boolean enablePainFovCompression;
     private final boolean enablePainAudioEffects;
     private final boolean projectileSuppressionEnabled;
+    private final boolean lowSuppressionEnabled;
     private final String suppressionEntityBlacklist;
 
-    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, boolean projectileSuppressionEnabled, String suppressionEntityBlacklist) {
+    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, boolean projectileSuppressionEnabled, boolean lowSuppressionEnabled, String suppressionEntityBlacklist) {
         this.enablePainVignette = enablePainVignette;
         this.enablePainFovCompression = enablePainFovCompression;
         this.enablePainAudioEffects = enablePainAudioEffects;
         this.projectileSuppressionEnabled = projectileSuppressionEnabled;
+        this.lowSuppressionEnabled = lowSuppressionEnabled;
         this.suppressionEntityBlacklist = suppressionEntityBlacklist;
     }
 
@@ -71,6 +75,7 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
                 FirstAid.enablePainFovCompression,
                 FirstAid.enablePainAudioEffects,
                 FirstAid.projectileSuppressionEnabled,
+                FirstAid.lowSuppressionEnabled,
                 builder.toString());
     }
 
@@ -85,6 +90,7 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
             FirstAid.enablePainFovCompression = message.enablePainFovCompression;
             FirstAid.enablePainAudioEffects = message.enablePainAudioEffects;
             FirstAid.projectileSuppressionEnabled = message.projectileSuppressionEnabled;
+            FirstAid.lowSuppressionEnabled = message.lowSuppressionEnabled;
             FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist));
         });
     }

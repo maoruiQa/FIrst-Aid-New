@@ -100,7 +100,9 @@ public final class HealingSoundController {
 
       SoundEvent soundEvent = stack.is((Item)RegistryObjects.DEFIBRILLATOR.get())
                ? (SoundEvent)RegistryObjects.DEFIBRILLATOR_USE.value()
-               : (SoundEvent)RegistryObjects.BANDAGE_USE.value();
+         : stack.is((Item)RegistryObjects.ADRENALINE_INJECTOR.get())
+         ? (SoundEvent)RegistryObjects.ADRENALINE_INJECTOR_USE.value()
+         : (SoundEvent)RegistryObjects.BANDAGE_USE.value();
       // Tracked instance so releasing the hold can hard-stop mid-clip.
       stopRescueInteractionSound(soundManager);
       SimpleSoundInstance instance = SimpleSoundInstance.forUI(soundEvent, 1.0F, 1.0F);

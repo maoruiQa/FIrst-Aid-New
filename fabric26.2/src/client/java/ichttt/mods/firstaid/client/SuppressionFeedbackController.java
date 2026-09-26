@@ -114,8 +114,7 @@ public final class SuppressionFeedbackController {
          boolean withdrawalActive = playerDamageModel != null && playerDamageModel.isWithdrawalEpisodeActive();
          float addictionNorm = playerDamageModel == null ? 0.0F : playerDamageModel.getAddictionNormalized();
          boolean audioMuted = this.localMuteTicks > 0 || (playerDamageModel != null && playerDamageModel.isAudioMuted());
-         boolean painSuppressed = player.hasEffect(RegistryObjects.PAINKILLER_EFFECT)
-            || player.hasEffect(RegistryObjects.MORPHINE_EFFECT);
+         boolean painSuppressed = playerDamageModel != null && playerDamageModel.isPainSuppressed(player);
          float targetPainFov = 0.0F;
          if (playerDamageModel != null && FirstAid.enablePainFovCompression) {
             float visual = playerDamageModel.getPainVisualStrength(painSuppressed);
@@ -127,20 +126,18 @@ public final class SuppressionFeedbackController {
             }
          }
          boolean holding = this.holdTicks > 0;
-         float targetMuffle = holding ? Math.max(0.35F, this.suppressionIntensity * 0.55F) : this.suppressionIntensity * 0.42F;
+         float targetMuffle = (holding ? 0.55F : 0.42F) * this.suppressionIntensity;
          float targetMusicDetune = 0.0F;
          if (withdrawalActive && addictionNorm >= 0.35F) {
             targetMusicDetune = 0.22F + (addictionNorm - 0.35F) / 0.65F * 0.55F;
          }
-         float targetTinnitus = 0.0F;
-         if (!audioMuted && this.suppressionIntensity >= 0.85F) {
-            targetTinnitus = 0.22F + (this.suppressionIntensity - 0.85F) / 0.15F * 0.35F;
-         }
-         if (withdrawalActive && !audioMuted) {
+         float tinnitusProgress = Mth.clamp((this.suppressionIntensity - 0.70F) / 0.30F, 0.0F, 1.0F);
+        float targetTinnitus = audioMuted ? 0.0F : 0.57F * tinnitusProgress;
+        if (withdrawalActive && !audioMuted) {
             targetTinnitus = Math.max(targetTinnitus, 0.10F + addictionNorm * 0.22F);
          }
-         float targetShake = holding ? 0.12F + this.suppressionIntensity * 0.18F : this.suppressionIntensity * 0.10F;
-         float targetFovCompression = holding ? 1.2F + this.suppressionIntensity * 2.0F : this.suppressionIntensity * 1.0F;
+         float targetShake = (holding ? 0.30F : 0.10F) * FirstAid.suppressionDisplayCurve(this.suppressionIntensity);
+         float targetFovCompression = (holding ? 3.2F : 1.0F) * FirstAid.suppressionDisplayCurve(this.suppressionIntensity);
          this.audioMuffleStrength = approach(this.audioMuffleStrength, targetMuffle, targetMuffle > this.audioMuffleStrength ? 0.18F : 0.020F);
          this.musicDetuneStrength = approach(this.musicDetuneStrength, targetMusicDetune, targetMusicDetune > this.musicDetuneStrength ? 0.10F : 0.03F);
          this.tinnitusStrength = approach(this.tinnitusStrength, targetTinnitus, targetTinnitus > this.tinnitusStrength ? 0.14F : 0.06F);
@@ -163,7 +160,7 @@ public final class SuppressionFeedbackController {
             boolean overpower = this.suppressionIntensity >= 0.85F;
             if (overpower && !this.wasOverpowerSuppression && level.getGameTime() >= this.soundCooldownUntilGameTime) {
                this.soundCooldownUntilGameTime = level.getGameTime() + 100L;
-               this.playTinnitusSound(0.28F + (this.suppressionIntensity - 0.85F) * 0.35F);
+               this.playTinnitusSound(0.57F * tinnitusProgress);
             }
             this.wasOverpowerSuppression = overpower;
          }
@@ -237,7 +234,7 @@ public final class SuppressionFeedbackController {
          float oscillation = cameraCarrier.oscillation();
          float newYaw = yaw + this.yawImpulse + oscillation * 0.2F;
          float newPitch = pitch + this.pitchImpulse + oscillation * 0.14F;
-         float newRoll = this.rollImpulse + oscillation * 0.8F + this.suppressionIntensity * 0.55F + this.shakeStrength * 0.18F;
+         float newRoll = this.rollImpulse + oscillation * 0.8F + FirstAid.suppressionDisplayCurve(this.suppressionIntensity) * 0.55F + this.shakeStrength * 0.18F;
          return new SuppressionFeedbackController.CameraAngles(newYaw, newPitch, newRoll);
       }
    }
@@ -280,6 +277,7 @@ public final class SuppressionFeedbackController {
    }
 
    private void playTinnitusSound(float severity) {
+        if (severity <= 0.01F) return;
       Minecraft client = Minecraft.getInstance();
       SoundManager soundManager = client.getSoundManager();
       SoundEvent tinnitus = (SoundEvent)BuiltInRegistries.SOUND_EVENT.getValue(TINNITUS_SOUND);
@@ -287,7 +285,7 @@ public final class SuppressionFeedbackController {
          return;
       }
       this.stopActiveTinnitusSound();
-      SimpleSoundInstance instance = SimpleSoundInstance.forUI(tinnitus, 0.14F + severity * 0.22F, 0.96F + severity * 0.08F);
+      SimpleSoundInstance instance = SimpleSoundInstance.forUI(tinnitus, 0.36F * severity, 0.96F + severity * 0.08F);
       this.activeTinnitusSound = instance;
       soundManager.play(instance);
    }
@@ -389,7 +387,7 @@ public final class SuppressionFeedbackController {
             float time = (float)(this.entity.tickCount + this.partialTick);
             float low = (float)Math.sin(time * 0.65F);
             float high = (float)Math.sin(time * 2.75F);
-            return (low * 0.35F + high * 0.65F) * (this.shakeStrength * 0.65F + this.suppressionIntensity * 0.18F);
+            return (low * 0.35F + high * 0.65F) * (this.shakeStrength * 0.65F + FirstAid.suppressionDisplayCurve(this.suppressionIntensity) * 0.18F);
          }
       }
    }

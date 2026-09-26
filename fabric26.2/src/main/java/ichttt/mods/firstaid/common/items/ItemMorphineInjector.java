@@ -71,7 +71,7 @@ public class ItemMorphineInjector extends ItemMedicine {
          Component.translatable(
                "firstaid.tooltip.morphine",
                StringUtil.formatTickDuration(FirstAidConfig.SERVER.morphineInjectorUseDuration.get(), 20.0F),
-               "18:45-21:15",
+               "15:56-18:04",
                StringUtil.formatTickDuration(PlayerDamageModel.MORPHINE_INJECTOR_REGEN_TICKS, 20.0F)
             )
             .withStyle(ChatFormatting.GRAY)

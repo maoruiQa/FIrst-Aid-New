@@ -46,7 +46,7 @@ public final class StatusSummaryRenderer {
         int lineY = baseY;
 
         if (damageModel.getPainLevel() > 0) {
-            boolean painSuppressed = player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
+            boolean painSuppressed = playerDamageModel != null && playerDamageModel.isPainSuppressed(player);
             Component painText = painSuppressed
                     ? Component.translatable("firstaid.gui.status.pain_suppressed")
                     : Component.translatable("firstaid.gui.status.pain", Component.translatable(getPainSeverityKey(damageModel.getPainLevel())));
@@ -67,6 +67,7 @@ public final class StatusSummaryRenderer {
         }
 
         for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(player)) {
+            if ("firstaid:adrenaline".equals(display.getStatusId().toString())) continue;
             lineY = MedicineStatusClientHelper.drawStatusLine(guiGraphics, font, display, baseX, lineY);
         }
 
@@ -78,6 +79,7 @@ public final class StatusSummaryRenderer {
         if (damageModel.getPainLevel() > 0) count++;
         if (damageModel.getAdrenalineLevel() > 0) count++;
         for (MedicineStatusDisplay display : MedicineStatusClientHelper.collect(player)) {
+            if ("firstaid:adrenaline".equals(display.getStatusId().toString())) continue;
             count++;
         }
         return count;

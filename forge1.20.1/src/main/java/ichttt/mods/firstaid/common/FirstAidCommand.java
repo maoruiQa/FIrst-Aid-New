@@ -46,6 +46,7 @@ public final class FirstAidCommand {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        MedicalSettingCommands.register(dispatcher);
         dispatcher.register(Commands.literal("firstaid")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("pain")
@@ -79,22 +80,8 @@ public final class FirstAidCommand {
                                                 .executes(context -> setPainAudioEffects(context.getSource(), true)))
                                         .then(Commands.literal("off")
                                                 .executes(context -> setPainAudioEffects(context.getSource(), false))))))
-                .then(Commands.literal("suppression")
-                        .then(Commands.literal("dynamic")
-                                .executes(context -> setLowSuppression(context.getSource(), false)))
-                        .then(Commands.literal("mild")
-                                .executes(context -> setLowSuppression(context.getSource(), true)))
-                        .then(Commands.literal("off")
-                                .executes(context -> setProjectileSuppression(context.getSource(), false)))
-                        .then(Commands.literal("blacklist")
-                                .then(Commands.literal("add")
-                                        .then(Commands.argument("entity", StringArgumentType.greedyString())
-                                                .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(BuiltInRegistries.ENTITY_TYPE.keySet(), builder))
-                                                .executes(context -> addSuppressionBlacklistEntry(context.getSource(), StringArgumentType.getString(context, "entity")))))
-                                .then(Commands.literal("remove")
-                                        .then(Commands.argument("entity", StringArgumentType.greedyString())
-                                                .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(FirstAid.suppressionEntityBlacklist, builder))
-                                                .executes(context -> removeSuppressionBlacklistEntry(context.getSource(), StringArgumentType.getString(context, "entity")))))))
+                .then(buildAdrenalineBranch("suppression"))
+            .then(buildAdrenalineBranch("adrenaline"))
                 .then(Commands.literal("naturalregen")
                         .then(Commands.literal("off")
                                 .executes(context -> setNaturalRegenMode(context.getSource(), FirstAid.NaturalRegenMode.OFF)))
@@ -220,6 +207,13 @@ public final class FirstAidCommand {
         return 1;
     }
 
+    private static int setSuppressionGain(CommandSourceStack source, double coefficient) {
+        FirstAid.suppressionGainMultiplier = (float) coefficient;
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.literal("Adrenaline gain coefficient set to " + coefficient), true);
+        return 1;
+    }
+
     private static int setLowSuppression(CommandSourceStack source, boolean enabled) {
         FirstAid.projectileSuppressionEnabled = true;
         FirstAid.lowSuppressionEnabled = enabled;
@@ -279,6 +273,62 @@ public final class FirstAidCommand {
             FirstAid.NETWORKING.send(PacketDistributor.PLAYER.with(() -> player), MessageSyncCommandSettings.current());
         }
     }
+    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> buildAdrenalineFatigueBranch() {
+        return Commands.literal("fatigue")
+            .then(Commands.literal("on").executes(context -> setAdrenalineFatigueEnabled(context.getSource(), true)))
+            .then(Commands.literal("off").executes(context -> setAdrenalineFatigueEnabled(context.getSource(), false)))
+            .then(Commands.literal("threshold")
+                .then(Commands.argument("seconds", IntegerArgumentType.integer(1, 3600))
+                    .executes(context -> setAdrenalineFatigueThreshold(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))
+            .then(Commands.literal("ratio")
+                .then(Commands.argument("percent", DoubleArgumentType.doubleArg(0.0D, 100.0D))
+                    .executes(context -> setAdrenalineFatigueRatio(context.getSource(), DoubleArgumentType.getDouble(context, "percent")))));
+    }
+
+    private static int setAdrenalineFatigueEnabled(CommandSourceStack source, boolean enabled) {
+        FirstAidConfig.SERVER.adrenalineFatigueEnabled.set(enabled);
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.translatable(enabled ? "firstaid.command.adrenaline.fatigue.on" : "firstaid.command.adrenaline.fatigue.off"), true);
+        return 1;
+    }
+
+    private static int setAdrenalineFatigueThreshold(CommandSourceStack source, int seconds) {
+        FirstAidConfig.SERVER.adrenalineFatigueThresholdSeconds.set(seconds);
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.fatigue.threshold", seconds), true);
+        return 1;
+    }
+
+    private static int setAdrenalineFatigueRatio(CommandSourceStack source, double percent) {
+        FirstAidConfig.SERVER.adrenalineFatigueDurationRatio.set(percent / 100.0D);
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.fatigue.ratio", percent), true);
+        return 1;
+    }
+
+    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> buildAdrenalineBranch(String literalName) {
+        return Commands.literal(literalName)
+                  .then(buildAdrenalineFatigueBranch())
+                  .then(Commands.literal("gain")
+                     .then(Commands.argument("coefficient", DoubleArgumentType.doubleArg(0.01D, 1.0D))
+                        .executes(context -> setSuppressionGain(context.getSource(), DoubleArgumentType.getDouble(context, "coefficient")))))
+                        .then(Commands.literal("dynamic")
+                                .executes(context -> setLowSuppression(context.getSource(), false)))
+                        .then(Commands.literal("mild")
+                                .executes(context -> setLowSuppression(context.getSource(), true)))
+                        .then(Commands.literal("off")
+                                .executes(context -> setProjectileSuppression(context.getSource(), false)))
+                        .then(Commands.literal("blacklist")
+                                .then(Commands.literal("add")
+                                        .then(Commands.argument("entity", StringArgumentType.greedyString())
+                                                .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(BuiltInRegistries.ENTITY_TYPE.keySet(), builder))
+                                                .executes(context -> addSuppressionBlacklistEntry(context.getSource(), StringArgumentType.getString(context, "entity")))))
+                                .then(Commands.literal("remove")
+                                        .then(Commands.argument("entity", StringArgumentType.greedyString())
+                                                .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(FirstAid.suppressionEntityBlacklist, builder))
+                                                .executes(context -> removeSuppressionBlacklistEntry(context.getSource(), StringArgumentType.getString(context, "entity"))))));
+    }
+
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildNaturalRegenBranch(String literal, FirstAid.NaturalRegenMode mode) {
         return Commands.literal(literal)

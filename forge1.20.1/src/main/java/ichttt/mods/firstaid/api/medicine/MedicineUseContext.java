@@ -86,8 +86,8 @@ public final class MedicineUseContext {
          playerDamageModel.applyMorphineInjection(this.player);
       } else {
          int basePainRelief = PlayerDamageModel.getRandMorphineDuration();
-         int painDuration = Math.round(basePainRelief * PlayerDamageModel.MORPHINE_INJECTOR_DURATION_MULTIPLIER);
-         this.player.addEffect(new MobEffectInstance(RegistryObjects.MORPHINE_EFFECT.get(), basePainRelief, 0, false, false));
+         int painDuration = Math.round(basePainRelief * PlayerDamageModel.MORPHINE_INJECTOR_DURATION_MULTIPLIER * PlayerDamageModel.MORPHINE_INJECTOR_EFFECT_DURATION_MULTIPLIER);
+         this.player.addEffect(new MobEffectInstance(RegistryObjects.MORPHINE_EFFECT.get(), Math.round(basePainRelief * PlayerDamageModel.MORPHINE_INJECTOR_EFFECT_DURATION_MULTIPLIER), 0, false, false));
          this.player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT.get(), painDuration, 0, false, false));
          this.player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, PlayerDamageModel.MORPHINE_INJECTOR_REGEN_TICKS, 0, false, false));
       }

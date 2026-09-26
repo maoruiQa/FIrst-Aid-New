@@ -143,7 +143,7 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
             float minHealth = minHealth(player, part);
             float damageMultiplier = getIncomingPartDamageMultiplier(damageModel, part);
             float scaledDamage = damage * damageMultiplier;
-            float scaledLeft = part.damage(scaledDamage, player, !player.hasEffect(RegistryObjects.PAINKILLER_EFFECT), minHealth);
+            float scaledLeft = part.damage(scaledDamage, player, !(CommonUtils.getDamageModel(player) instanceof PlayerDamageModel model && model.isPainSuppressed(player)), minHealth);
             float scaledDamageDone = scaledDamage - scaledLeft;
             float dmgConsumed = Math.min(damage, restoreOriginalDamageScale(scaledDamageDone, damageMultiplier));
             CommonUtils.syncDamageModel((ServerPlayer) player);

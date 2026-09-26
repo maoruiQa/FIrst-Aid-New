@@ -37,7 +37,7 @@ public class OnHitDebuff extends AbstractDebuff {
                   duration = this.scaleDurationForMode(duration);
                }
 
-               player.addEffect(new MobEffectInstance(this.effect, duration, 0, false, false));
+               this.applyInjuryEffect(player, new MobEffectInstance(effect, duration, 0, false, false));
             }
          }
       }

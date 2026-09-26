@@ -1,38 +1,44 @@
 # First Aid New
 
-First Aid New is a multi-loader port of ichttt’s classic **First Aid**, rebuilt for modern Minecraft. It replaces the single vanilla health bar with per-body-part damage, injury debuffs, timed medicine, unconsciousness and rescue, and a full client feedback layer—pain, suppression, heartbeat audio, and HUD overlays that make survival feel physical again.
+First Aid New is a multi-loader port of ichttt’s classic **First Aid**, rebuilt for modern Minecraft. It replaces the single vanilla health bar with per-body-part damage, injury debuffs, timed medicine, unconsciousness and rescue, and a full client feedback layer—pain, adrenaline, heartbeat audio, and HUD overlays that make survival feel physical again.
 
 Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft/mc-mods/first-aid)
 
 ---
 
-## 1.3.0 — *Deal with the Devil*
+## 1.3.3 — *The Rush and the Reckoning*
 
-![First Aid New 1.3.0 — Deal with the Devil](https://raw.githubusercontent.com/maoruiQa/FIrst-Aid-New/main/screenshots/1.3.0_poster.png)
+![First Aid New 1.3.3 — The Rush and the Reckoning concept poster](https://raw.githubusercontent.com/maoruiQa/FIrst-Aid-New/main/screenshots/1.3.3_poster.png)
 
-*Mercy has a meter. Every dose writes itself onto the glass of the screen.*
+*Danger brings the rush. Survival brings the reckoning.*
 
-**1.3.0** introduces a more immersive HUD feedback system that makes the screen feel like a nervous system. It builds on previous morphine and addiction features with enhanced visual effects, graded pain and suppression, and refined integration across the board.
+**1.3.3** turns adrenaline into a complete encounter cycle. Seeing a hostile creature, fighting, or narrowly avoiding a moving projectile can raise it; sustained pressure brings pain relief and combat boosts. Once the threat is gone, a long rush can give way to Fatigue. The Adrenaline Injector now delivers a full rush and can rescue a downed player. Recent releases also brought more responsive pain, self-defibrillator rescue on supported builds, and adjustable medicine and crafting.
 
-### Key new features in 1.3.0 compared to previous versions
+### What's new
 
-- **Dynamic morphine saturation and graded suppression**: Morphine saturation now fades smoothly with remaining duration; suppression provides stronger, tiered desaturation and blur effects that scale clearly between mild, medium, and high pressure.
-- **Advanced post-processing**: Composite pain/color processing with radial blur, continuous gray-white suppression rim/edge wash, and hit-frequency red pulse vignette.
-- **Seamless adrenaline integration**: Adrenaline rush blur now locks to moderate pain strength even under painkillers for better combat feedback.
-- **Improved morphine-milk interaction**: Milk fully and cleanly clears morphine model state without leftovers.
-- **Recipe update**: The Morphine Injector now requires two Morphine (in addition to iron, redstone, and a glass bottle).
+- **Adrenaline that follows danger:** Visible hostiles, nearby attackers, valid attacks, and moving projectile near misses can build pressure. Feedback now scales linearly, while medium and high adrenaline grant Haste I and Strength I respectively.
+- **Relief with an aftermath:** Adrenaline pain relief clears First Aid injury debuffs while active. After 60 continuous seconds of adrenaline, leaving danger can trigger a short Fatigue episode; server owners can configure it.
+- **A stronger last resort:** Adrenaline Injectors fill the meter, have four uses by default, and can revive a downed player. On builds other than 26.1, Defibrillators can also be used for self-revival while downed.
+- **Medicine and crafting controls:** 1.3.2 added commands for addiction gain, recipe yields, and newly crafted device uses on supported modules; Bandages and Plaster now craft four by default there.
+- **Clearer pain and audio:** Recent hits create a short pain spike over ongoing injury pain, while rescue and respawn clear lingering heartbeat and ringing sounds.
 
-### Supported builds (1.3.0)
+### Supported builds (1.3.3)
 
 | Artifact | Loader | Minecraft |
 |----------|--------|-----------|
-| `firstaid-1.3.0+forge1.20.1` | Forge | 1.20.1 |
-| `firstaid-1.3.0+fabric1.21.1` | Fabric | 1.21.1 |
-| `firstaid-1.3.0+neoforge1.21.1` | NeoForge | 1.21.1 |
-| `firstaid-1.3.0+fabric26.2` | Fabric | 26.2 |
-| `firstaid-1.3.0+neoforge26.2` | NeoForge | 26.2 |
+| `firstaid-1.3.3+forge1.20.1` | Forge | 1.20.1 |
+| `firstaid-1.3.3+fabric1.21.1` | Fabric | 1.21.1 |
+| `firstaid-1.3.3+neoforge1.21.1` | NeoForge | 1.21.1 |
+| `firstaid-1.3.3+fabric26.1` | Fabric | 26.1 |
+| `firstaid-1.3.3+neoforge26.1` | NeoForge | 26.1 |
+| `firstaid-1.3.3+fabric26.2` | Fabric | 26.2 |
+| `firstaid-1.3.3+neoforge26.2` | NeoForge | 26.2 |
+| `firstaid-1.3.3+fabric26.3` | Fabric | 26.3 |
+| `firstaid-1.3.3+neoforge26.3` | NeoForge | 26.3 |
 
-Full notes: [1.3.0changelog.md](https://github.com/maoruiQa/FIrst-Aid-New/blob/main/1.3.0changelog.md)
+The 1.21.11 modules are legacy-only. The 26.1 builds do not include the 1.3.2 crafting changes, Morphine Injector, or self-defibrillator rescue; see the release notes for details.
+
+Full notes: [1.3.3](https://github.com/maoruiQa/FIrst-Aid-New/blob/main/1.3.3changelog.md) · [1.3.2](https://github.com/maoruiQa/FIrst-Aid-New/blob/main/1.3.2changelog.md) · [1.3.1](https://github.com/maoruiQa/FIrst-Aid-New/blob/main/1.3.1changelog.md)
 
 ---
 
@@ -41,8 +47,8 @@ Full notes: [1.3.0changelog.md](https://github.com/maoruiQa/FIrst-Aid-New/blob/m
 - **Locational health** — head, body, arms, legs, feet; each with its own pool and overflow rules  
 - **Injury debuffs** — limb damage that changes how you move, dig, and fight  
 - **Medicine with pacing** — bandages, plaster, painkillers, morphine, injectors; activation delay and heal-over-time  
-- **Unconsciousness & rescue** — critical downs, give-up flow, revive windows  
-- **Suppression** — projectile near-miss pressure: desaturation, blur, vignette, optional tinnitus  
+- **Unconsciousness & rescue** — critical downs, give-up flow, Adrenaline Injector rescue, and self-revival with a defibrillator on builds other than 26.1
+- **Adrenaline** — encounters, attacks, and moving projectile near misses drive combat feedback, pain relief, and post-combat Fatigue
 - **Opioid addiction** — hidden addiction value, withdrawal episodes, status icons  
 - **Client feedback** — pain blur, hit red pulse, morphine color grade, adrenaline rush blur, heartbeat audio  
 - **Public extension API** — third-party treatment items and medicines  
@@ -83,12 +89,12 @@ Players with OP (or sufficient permission) receive a compact First Aid command t
 
 ```mcfunction
 /firstaid pain dynamic
-/firstaid suppression mild
+/firstaid adrenaline mild
 /firstaid medicineeffect assisted
 ```
 
 - `pain dynamic` — pain feedback follows injury severity  
-- `suppression mild` — default; softer near-miss suppression (use `dynamic` for full pressure)  
+- `adrenaline mild` — softer adrenaline feedback (`dynamic` is the default)
 - `medicineeffect assisted` — paced medicine without full realistic harshness  
 
 ### Common commands
@@ -100,12 +106,21 @@ Players with OP (or sufficient permission) receive a compact First Aid command t
 /firstaid pain mild
 ```
 
-#### Suppression
+#### Adrenaline
 
 ```mcfunction
-/firstaid suppression dynamic
-/firstaid suppression mild
-/firstaid suppression off
+/firstaid adrenaline dynamic
+/firstaid adrenaline mild
+/firstaid adrenaline off
+```
+
+Legacy `/firstaid suppression` commands remain available for existing server scripts.
+
+```mcfunction
+/firstaid adrenaline fatigue on
+/firstaid adrenaline fatigue threshold 60
+/firstaid adrenaline fatigue ratio 10
+/firstaid adrenaline gain 0.15
 ```
 
 #### Random damage
@@ -147,23 +162,31 @@ Players with OP (or sufficient permission) receive a compact First Aid command t
 
 Querying another player’s addiction is admin-only; operators can set values for balance testing.
 
+#### Medicine and crafting (admin; not available on 26.1)
+
+```mcfunction
+/firstaid addiction gain morphine
+/firstaid crafting yield bandage 4
+/firstaid crafting durability adrenaline_injector 4
+```
+
 ### Recommended presets
 
 **Survival-oriented**
 
 ```mcfunction
 /firstaid pain dynamic
-/firstaid suppression dynamic
+/firstaid adrenaline dynamic
 /firstaid medicineeffect realistic
 /firstaid revivewakeup on 15
 /firstaid injurydebuff normal
 ```
 
-**Balanced** (matches shipped defaults for suppression)
+**Balanced**
 
 ```mcfunction
 /firstaid pain dynamic
-/firstaid suppression mild
+/firstaid adrenaline mild
 /firstaid medicineeffect assisted
 /firstaid revivewakeup on 15
 /firstaid injurydebuff low
@@ -173,7 +196,7 @@ Querying another player’s addiction is admin-only; operators can set values fo
 
 ```mcfunction
 /firstaid pain mild
-/firstaid suppression mild
+/firstaid adrenaline mild
 /firstaid medicineeffect casual
 /firstaid revivewakeup off
 /firstaid injurydebuff low
@@ -190,7 +213,7 @@ Querying another player’s addiction is admin-only; operators can set values fo
 
 ---
 
-## Morphine Injector craft (1.3.0)
+## Morphine Injector craft
 
 ```
 M M I
@@ -205,25 +228,31 @@ R B I
 
 → Morphine Injector (2 uses)
 
+The 26.1 modules do not include the Morphine Injector.
+
 ---
 
 ## Building
 
-Each loader folder under the repository is its own Gradle project. From a module root (example: `forge1.20.1`):
+Each loader folder under this repository is its own Gradle project. From a module root (example: `forge1.20.1`):
 
 ```powershell
 .\gradlew.bat build
 ```
+
+Runnable jars are written to that module’s `build/libs/` and, for releases, collected under [`release/`](https://github.com/maoruiQa/FIrst-Aid-New/tree/main/release/).
 
 Maintained module roots:
 
 - `forge1.20.1`
 - `fabric1.21.1`
 - `neoforge1.21.1`
+- `fabric26.1`
+- `neoforge26.1`
 - `fabric26.2`
 - `neoforge26.2`
-
-Source repository: [maoruiQa/FIrst-Aid-New](https://github.com/maoruiQa/FIrst-Aid-New)
+- `fabric26.3`
+- `neoforge26.3`
 
 ---
 
@@ -231,3 +260,5 @@ Source repository: [maoruiQa/FIrst-Aid-New](https://github.com/maoruiQa/FIrst-Ai
 
 - Based on **First Aid** by ichttt  
 - This port is distributed under **GPL-3.0**, consistent with the original project  
+
+Repository: [maoruiQa/FIrst-Aid-New](https://github.com/maoruiQa/FIrst-Aid-New)

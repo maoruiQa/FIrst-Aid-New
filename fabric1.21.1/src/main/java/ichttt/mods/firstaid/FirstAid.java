@@ -53,9 +53,14 @@ public final class FirstAid {
     public static boolean isSynced = false;
     public static boolean dynamicPainEnabled = true;
     public static int mildPainLevel = 1;
-    public static boolean lowSuppressionEnabled = true;
+    public static boolean lowSuppressionEnabled = false;
     public static boolean projectileSuppressionEnabled = true;
     public static float lowSuppressionMultiplier = 0.4F;
+    public static float suppressionGainMultiplier = 0.15F;
+
+    public static float suppressionDisplayCurve(float scaledIntensity) {
+        return Math.max(0.0F, Math.min(1.0F, scaledIntensity));
+    }
     /** Hit-frequency red edge pulse. */
     public static boolean enablePainVignette = true;
     /** Radial pain / weak suppression warp. */

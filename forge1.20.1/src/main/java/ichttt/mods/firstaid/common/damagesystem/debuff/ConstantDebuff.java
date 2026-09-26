@@ -72,7 +72,7 @@ public class ConstantDebuff extends AbstractDebuff {
                 syncMultiplier(healthFraction); //There are apparently some cases where the multiplier does not sync up right... fix this
             }
             if (activeMultiplier != 0) {
-                player.addEffect(new MobEffectInstance(effect, 169, activeMultiplier - 1, false, false));
+                this.applyInjuryEffect(player, new MobEffectInstance(effect, 169, activeMultiplier - 1, false, false));
             }
         }
         ticks++;

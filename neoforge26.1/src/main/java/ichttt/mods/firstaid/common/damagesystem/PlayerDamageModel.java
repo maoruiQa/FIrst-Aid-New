@@ -36,6 +36,7 @@ import ichttt.mods.firstaid.common.registries.FirstAidRegistryLookups;
 import ichttt.mods.firstaid.common.registries.LookupReloadListener;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -73,7 +74,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private static final int ADRENALINE_STRENGTH_AMPLIFIER = 0;
     private static final int ADRENALINE_SPEED_AMPLIFIER = 0;
     private static final float ADRENALINE_INJECTION_SUPPRESSION_STRENGTH = 0.35F;
-    private static final float SUPPRESSION_GAIN_MULTIPLIER = 0.48F;
+
     private static final int SUPPRESSION_HOLD_TICKS = 20 * 4;
     private static final float SUPPRESSION_DECAY_STEP = 0.03F;
     private static final int SUPPRESSION_DECAY_INTERVAL = 4;
@@ -113,6 +114,26 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     private float suppressionIntensity = 0.0F;
     private int suppressionHoldTicks = 0;
     private int suppressionDecayTicker = 0;
+    private int suppressionPainReliefTicks = 0;
+    private int adrenalineExposureTicks = 0;
+    private boolean adrenalineFatiguePending = false;
+    private boolean adrenalineFatigueTriggered = false;
+    private int adrenalineFatigueTicksLeft = 0;
+    private final Map<String, OwnedInjuryEffect> ownedInjuryEffects = new HashMap<>();
+    private boolean applyingInjuryEffect;
+    private static final class OwnedInjuryEffect {
+        int amplifier;
+        int duration;
+        long appliedAt;
+        boolean ambiguous;
+
+        OwnedInjuryEffect(int amplifier, int duration, long appliedAt, boolean ambiguous) {
+            this.amplifier = amplifier;
+            this.duration = duration;
+            this.appliedAt = appliedAt;
+            this.ambiguous = ambiguous;
+        }
+    }
     private int unconsciousTicks = 0;
     private boolean criticalConditionActive = false;
     private boolean unconsciousAllowsGiveUp = false;
@@ -157,6 +178,21 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         tagCompound.putFloat("suppressionIntensity", suppressionIntensity);
         tagCompound.putInt("suppressionHoldTicks", suppressionHoldTicks);
         tagCompound.putInt("suppressionDecayTicker", suppressionDecayTicker);
+        tagCompound.putInt("suppressionPainReliefTicks", this.suppressionPainReliefTicks);
+        tagCompound.putInt("adrenalineExposureTicks", this.adrenalineExposureTicks);
+        tagCompound.putBoolean("adrenalineFatiguePending", this.adrenalineFatiguePending);
+        tagCompound.putBoolean("adrenalineFatigueTriggered", this.adrenalineFatigueTriggered);
+        tagCompound.putInt("adrenalineFatigueTicksLeft", this.adrenalineFatigueTicksLeft);
+        CompoundTag ownedTag = new CompoundTag();
+        this.ownedInjuryEffects.forEach((id, owned) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putInt("amplifier", owned.amplifier);
+            entry.putInt("duration", owned.duration);
+            entry.putLong("appliedAt", owned.appliedAt);
+            entry.putBoolean("ambiguous", owned.ambiguous);
+            ownedTag.put(id, entry);
+        });
+        tagCompound.put("ownedInjuryEffects", ownedTag);
         tagCompound.putInt("unconsciousTicks", unconsciousTicks);
         tagCompound.putBoolean("criticalConditionActive", criticalConditionActive);
         tagCompound.putBoolean("unconsciousAllowsGiveUp", unconsciousAllowsGiveUp);
@@ -198,6 +234,17 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                 : Mth.clamp(adrenalineTicks / (float) MAX_ADRENALINE_TICKS, 0.0F, MAX_SUPPRESSION_INTENSITY);
         suppressionHoldTicks = nbt.getIntOr("suppressionHoldTicks", 0);
         suppressionDecayTicker = nbt.getIntOr("suppressionDecayTicker", 0);
+        this.suppressionPainReliefTicks = Math.max(0, nbt.getIntOr("suppressionPainReliefTicks", 0));
+        this.adrenalineExposureTicks = Math.max(0, nbt.getIntOr("adrenalineExposureTicks", 0));
+        this.adrenalineFatiguePending = nbt.getBooleanOr("adrenalineFatiguePending", false);
+        this.adrenalineFatigueTriggered = nbt.getBooleanOr("adrenalineFatigueTriggered", false);
+        this.adrenalineFatigueTicksLeft = Math.max(0, Math.min(600, nbt.getIntOr("adrenalineFatigueTicksLeft", 0)));
+        this.ownedInjuryEffects.clear();
+        CompoundTag ownedTag = nbt.getCompoundOrEmpty("ownedInjuryEffects");
+        for (String id : ownedTag.keySet()) {
+            CompoundTag entry = ownedTag.getCompoundOrEmpty(id);
+            this.ownedInjuryEffects.put(id, new OwnedInjuryEffect(entry.getIntOr("amplifier", 0), entry.getIntOr("duration", 0), entry.getLongOr("appliedAt", 0), entry.getBooleanOr("ambiguous", true)));
+        }
         unconsciousTicks = nbt.getIntOr("unconsciousTicks", 0);
         criticalConditionActive = nbt.getBooleanOr("criticalConditionActive", false);
         unconsciousAllowsGiveUp = nbt.getBooleanOr("unconsciousAllowsGiveUp", criticalConditionActive);
@@ -288,7 +335,11 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
             }
         }
 
-        boolean painSuppressed = morphine != null || painkiller != null;
+        boolean painSuppressed = this.isPainSuppressed(player);
+                if (painSuppressed && !world.isClientSide()) {
+                    if (!this.ownedInjuryEffects.isEmpty()) this.clearOwnedInjuryEffects(player);
+                    this.sharedDebuffs.forEach(SharedDebuff::clearPending);
+                }
         boolean healingStateChanged = false;
         for (AbstractDamageablePart part : this) {
             float previousHealth = part.currentHealth;
@@ -409,6 +460,62 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return suppressionIntensity;
     }
 
+    public int getSuppressionPainReliefTicks() {
+        return this.suppressionPainReliefTicks;
+    }
+
+    public void applyTrackedInjuryEffect(Player player, String effectId, MobEffectInstance effect) {
+        if (this.isPainSuppressed(player)) {
+            return;
+        }
+        OwnedInjuryEffect owned = this.ownedInjuryEffects.get(effectId);
+        if (owned != null && owned.ambiguous || owned == null && player.hasEffect(effect.getEffect())) {
+            return;
+        }
+        this.applyingInjuryEffect = true;
+        try {
+            player.addEffect(effect);
+        } finally {
+            this.applyingInjuryEffect = false;
+        }
+        MobEffectInstance active = player.getEffect(effect.getEffect());
+        if (active != null) {
+            this.ownedInjuryEffects.put(effectId, new OwnedInjuryEffect(active.getAmplifier(), active.getDuration(), player.level().getGameTime(), false));
+        }
+    }
+
+    public void onEffectAdded(Player player, MobEffectInstance effect) {
+        if (effect.getEffect().equals(RegistryObjects.PAINKILLER_EFFECT) || effect.getEffect().equals(RegistryObjects.MORPHINE_EFFECT)) {
+            this.clearOwnedInjuryEffects(player);
+        } else if (!this.applyingInjuryEffect) {
+            OwnedInjuryEffect owned = this.ownedInjuryEffects.get(BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect().value()).toString());
+            if (owned != null) {
+                owned.ambiguous = true;
+            }
+        }
+    }
+
+    private void startSuppressionPainRelief(Player player) {
+        this.suppressionPainReliefTicks = 20;
+        this.clearOwnedInjuryEffects(player);
+    }
+
+    private void clearOwnedInjuryEffects(Player player) {
+        long now = player.level().getGameTime();
+        for (MobEffectInstance active : new ArrayList<>(player.getActiveEffects())) {
+            String id = BuiltInRegistries.MOB_EFFECT.getKey(active.getEffect().value()).toString();
+            OwnedInjuryEffect owned = this.ownedInjuryEffects.get(id);
+            if (owned != null && !owned.ambiguous && active.getAmplifier() == owned.amplifier
+                    && Math.abs(active.getDuration() - Math.max(0, owned.duration - (now - owned.appliedAt))) <= 2) {
+                player.removeEffect(active.getEffect());
+            }
+        }
+        this.ownedInjuryEffects.clear();
+        this.sharedDebuffs.forEach(SharedDebuff::clearPending);
+    }
+
+
+
     public int getSuppressionHoldTicks() {
         return suppressionHoldTicks;
     }
@@ -435,6 +542,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         player.addEffect(new MobEffectInstance(MobEffects.SPEED, speedDuration, speedAmplifier, false, false));
         player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 140, 0, false, false));
         registerAdrenalineNearMiss(player, ADRENALINE_INJECTION_SUPPRESSION_STRENGTH, getAdrenalineDuration());
+        this.ensureEncounterAdrenaline(player, 1.0F);
         adrenalineHeartbeatTriggerId++;
         scheduleResync();
         if (!player.level().isClientSide() && player instanceof ServerPlayer serverPlayer) {
@@ -539,6 +647,20 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         float progress = 1.0F - (remaining / CRITICAL_UNCONSCIOUS_TICKS);
         return Math.max(0.0F, Math.min(1.0F, progress));
     }
+    public void ensureEncounterAdrenaline(Player player, float floor) {
+        float previous = this.suppressionIntensity;
+        this.suppressionIntensity = Math.max(previous, Mth.clamp(floor, 0.0f, 1.0f));
+        if (this.suppressionIntensity <= 0.0f) return;
+        this.suppressionHoldTicks = Math.max(this.suppressionHoldTicks, 40);
+        this.suppressionDecayTicker = 0;
+        if (previous < this.suppressionIntensity) {
+            this.startSuppressionPainRelief(player);
+            this.refreshSuppressionSnapshot();
+            this.scheduleResync();
+        }
+    }
+
+
 
     public void registerAdrenalineNearMiss(Player player, float strength) {
         registerAdrenalineNearMiss(player, strength, SUPPRESSION_HOLD_TICKS);
@@ -550,15 +672,14 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         int previousHoldTicks = suppressionHoldTicks;
         int previousAdrenalineTicks = adrenalineTicks;
         float baseIntensity = 0.28F + clampedStrength * 0.24F;
-        float addedIntensity = Mth.clamp(baseIntensity * SUPPRESSION_GAIN_MULTIPLIER,
-                0.36F * SUPPRESSION_GAIN_MULTIPLIER,
-                0.62F * SUPPRESSION_GAIN_MULTIPLIER);
+        float addedIntensity = Mth.clamp(baseIntensity * FirstAid.suppressionGainMultiplier,
+                0.36F * FirstAid.suppressionGainMultiplier,
+                0.62F * FirstAid.suppressionGainMultiplier);
         suppressionIntensity = Mth.clamp(suppressionIntensity + addedIntensity, 0.0F, MAX_SUPPRESSION_INTENSITY);
         suppressionHoldTicks = Math.max(suppressionHoldTicks, holdTicks);
         suppressionDecayTicker = 0;
-        MobEffectInstance activePainkiller = player.getEffect(RegistryObjects.PAINKILLER_EFFECT);
-        int painkillerDuration = Math.max(holdTicks, activePainkiller == null ? 0 : activePainkiller.getDuration());
-        player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, painkillerDuration, 0, false, false));
+
+        this.startSuppressionPainRelief(player);
         refreshSuppressionSnapshot();
         if (previousIntensity != suppressionIntensity || previousHoldTicks != suppressionHoldTicks || previousAdrenalineTicks != adrenalineTicks) {
             scheduleResync();
@@ -576,6 +697,12 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         suppressionIntensity = 0.0F;
         suppressionHoldTicks = 0;
         suppressionDecayTicker = 0;
+        this.suppressionPainReliefTicks = 0;
+        this.adrenalineExposureTicks = 0;
+        this.adrenalineFatiguePending = false;
+      this.adrenalineFatigueTriggered = false;
+        this.adrenalineFatigueTicksLeft = 0;
+        this.ownedInjuryEffects.clear();
         unconsciousTicks = 0;
         criticalConditionActive = false;
         unconsciousAllowsGiveUp = false;
@@ -626,22 +753,29 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     public boolean rescueFromCriticalState(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay) {
-        return performCriticalRescue(player, healer, keepWakeUpDelay, 0.0F, 1.0F);
+        return performCriticalRescue(player, healer, keepWakeUpDelay, 0.0f, 1.0f, keepWakeUpDelay ? 1.0f : 2.0f);
     }
 
     public boolean defibrillatorRescueFromCriticalState(Player player, boolean keepWakeUpDelay) {
-        boolean rescued = performCriticalRescue(player, null, keepWakeUpDelay, 2.0F, 0.4F);
+        boolean rescued = performCriticalRescue(player, null, keepWakeUpDelay, 2.0f, 0.4f, keepWakeUpDelay ? 1.0f : 2.0f);
         if (rescued) {
             player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 20 * 20, 0, false, false));
         }
         return rescued;
     }
+    public boolean adrenalineRescueFromCriticalState(Player player, boolean keepWakeUpDelay) {
+        boolean rescued = this.performCriticalRescue(player, null, keepWakeUpDelay, 0.0f, 0.4f, 1.0f);
+        if (rescued) this.applyAdrenalineInjection(player);
+        return rescued;
+    }
 
-    private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth, float wakeUpDelayMultiplier) {
+
+
+    private boolean performCriticalRescue(Player player, @Nullable AbstractPartHealer healer, boolean keepWakeUpDelay, float extraCriticalHealth, float wakeUpDelayMultiplier, float restoredCriticalHealth) {
         if (!canBeRescued()) {
             return false;
         }
-        rescueCriticalParts(keepWakeUpDelay ? 1.0F : 2.0F);
+        rescueCriticalParts(restoredCriticalHealth);
         if (extraCriticalHealth > 0.0F) {
             restoreDamagedCriticalParts(extraCriticalHealth);
         }
@@ -986,8 +1120,8 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         return this.noCritical;
     }
 
-    private boolean isPainSuppressed(Player player) {
-        return morphineTicksLeft > 0
+    public boolean isPainSuppressed(Player player) {
+        return this.suppressionPainReliefTicks > 0 || morphineTicksLeft > 0
                 || player.hasEffect(RegistryObjects.MORPHINE_EFFECT)
                 || player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
     }
@@ -1034,7 +1168,10 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
 
         painLevel = calculatePainLevel();
 
-        tickSuppressionState();
+        int previousPainReliefTicks = this.suppressionPainReliefTicks;
+        this.tickSuppressionState();
+        this.tickAdrenalineFatigue(player);
+        this.tickAdrenalineCombatEffects(player);
 
         if (criticalConditionActive && !hasCriticalPartCollapsed()) {
             criticalConditionActive = false;
@@ -1067,6 +1204,7 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
                 || previousAdrenalineTicks != adrenalineTicks
                 || Float.compare(previousSuppressionIntensity, suppressionIntensity) != 0
                 || previousSuppressionHoldTicks != suppressionHoldTicks
+            || previousPainReliefTicks > 0 && this.suppressionPainReliefTicks == 0
                 || previousUnconsciousTicks != unconsciousTicks
                 || previousCriticalCondition != criticalConditionActive
                 || previousGiveUpState != unconsciousAllowsGiveUp
@@ -1174,6 +1312,19 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
     }
 
     private void tickSuppressionState() {
+        float previousIntensity = this.suppressionIntensity;
+        if (FirstAidConfig.SERVER.adrenalineFatigueEnabled.get()) {
+            if (previousIntensity > 0.0F && !this.adrenalineFatigueTriggered) {
+                if (this.adrenalineExposureTicks < Integer.MAX_VALUE) ++this.adrenalineExposureTicks;
+                if (this.adrenalineExposureTicks >= FirstAidConfig.SERVER.adrenalineFatigueThresholdSeconds.get() * 20) {
+                    this.adrenalineFatiguePending = true;
+                }
+            }
+        } else {
+            this.adrenalineExposureTicks = 0;
+            this.adrenalineFatiguePending = false;
+            this.adrenalineFatigueTriggered = false;
+        }
         if (suppressionHoldTicks > 0) {
             suppressionHoldTicks--;
             suppressionDecayTicker = 0;
@@ -1186,8 +1337,73 @@ public class PlayerDamageModel extends AbstractPlayerDamageModel implements Look
         } else {
             suppressionDecayTicker = 0;
         }
+        if (this.suppressionIntensity > 0.0F || previousIntensity > 0.0F) {
+            this.suppressionPainReliefTicks = 20;
+        } else if (this.suppressionPainReliefTicks > 0) {
+            --this.suppressionPainReliefTicks;
+        }
+        if (this.suppressionIntensity <= 0.0F
+            && (this.adrenalineFatigueTriggered
+                || !this.adrenalineFatiguePending)) {
+            this.adrenalineExposureTicks = 0;
+            this.adrenalineFatiguePending = false;
+            this.adrenalineFatigueTriggered = false;
+        }
         refreshSuppressionSnapshot();
     }
+    public boolean isAdrenalineFatigueReady() {
+        return FirstAidConfig.SERVER.adrenalineFatigueEnabled.get()
+            && !this.adrenalineFatigueTriggered
+            && this.adrenalineFatiguePending;
+    }
+
+    public void applyAdrenalineFatigue(Player player) {
+        if (!this.isAdrenalineFatigueReady()) return;
+        this.adrenalineFatiguePending = false;
+        this.adrenalineFatigueTriggered = true;
+        int duration = (int)Math.min(600L, Math.round(this.adrenalineExposureTicks
+            * FirstAidConfig.SERVER.adrenalineFatigueDurationRatio.get()));
+        if (this.suppressionIntensity <= 0.0F) this.adrenalineExposureTicks = 0;
+        if (duration > 0) {
+            this.adrenalineFatigueTicksLeft = Math.max(this.adrenalineFatigueTicksLeft, duration);
+            this.ensureAdrenalineFatigueEffects(player);
+        }
+        this.scheduleResync();
+    }
+
+    private void tickAdrenalineFatigue(Player player) {
+        if (this.adrenalineFatigueTicksLeft <= 0) return;
+        this.ensureAdrenalineFatigueEffects(player);
+        --this.adrenalineFatigueTicksLeft;
+    }
+
+    private void ensureAdrenalineFatigueEffects(Player player) {
+        for (var effect : java.util.List.of(MobEffects.DARKNESS, MobEffects.NAUSEA,
+            MobEffects.MINING_FATIGUE, MobEffects.WEAKNESS)) {
+            MobEffectInstance active = player.getEffect(effect);
+            if (active == null || active.getAmplifier() == 0
+                && active.getDuration() < this.adrenalineFatigueTicksLeft - 1) {
+                player.addEffect(new MobEffectInstance(effect, this.adrenalineFatigueTicksLeft, 0, false, false));
+            }
+        }
+    }
+
+    private void tickAdrenalineCombatEffects(Player player) {
+        if (this.adrenalineLevel >= 2) {
+            MobEffectInstance haste = player.getEffect(MobEffects.HASTE);
+            if (haste == null || haste.getAmplifier() == 0 && haste.getDuration() <= 20) {
+                player.addEffect(new MobEffectInstance(MobEffects.HASTE, 40, 0, false, false));
+            }
+        }
+        if (this.adrenalineLevel >= 3) {
+            MobEffectInstance strength = player.getEffect(MobEffects.STRENGTH);
+            if (strength == null || strength.getAmplifier() == 0 && strength.getDuration() <= 20) {
+                player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, 40, 0, false, false));
+            }
+        }
+    }
+
+
 
     private void refreshSuppressionSnapshot() {
         adrenalineTicks = Math.round(Mth.clamp(suppressionIntensity, 0.0F, MAX_SUPPRESSION_INTENSITY) * MAX_ADRENALINE_TICKS);

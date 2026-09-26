@@ -70,6 +70,8 @@ import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.player.Player;
@@ -113,6 +115,7 @@ public final class EventHandler {
 
     public static final Map<Player, ProjectileHitContext> hitList = new WeakHashMap<>();
     private static final Map<UUID, RescueProgress> rescueProgress = new HashMap<>();
+    private static final Map<Player, Map<UUID, Long>> recentPlayerAttackers = new WeakHashMap<>();
     private static final Map<UUID, ExecutionProgress> executionProgress = new HashMap<>();
     private static final IDamageDistributionAlgorithm FOOT_ONLY_DAMAGE_DISTRIBUTION = new StandardDamageDistributionAlgorithm(
             Collections.singletonMap(EquipmentSlot.FEET, CommonUtils.getPartListForSlot(EquipmentSlot.FEET)),
@@ -124,6 +127,12 @@ public final class EventHandler {
     }
 
     public static void registerServerEvents() {
+      ServerLivingEntityEvents.AFTER_DAMAGE.register((victim, source, baseDamage, damage, blocked) -> {
+         if (!(victim instanceof Player) && !blocked && damage > 0.0F) onOffensiveDamage(victim, source);
+      });
+      ServerLivingEntityEvents.AFTER_DEATH.register((victim, source) -> {
+            if (!(victim instanceof Player)) onOffensiveDamage(victim, source);
+        });
         ServerTickEvents.END_WORLD_TICK.register(EventHandler::tickPlayers);
         EntitySleepEvents.STOP_SLEEPING.register(EventHandler::onStopSleeping);
         LootTableEvents.MODIFY.register(EventHandler::onLootTableModify);
@@ -254,8 +263,18 @@ public final class EventHandler {
         IDamageDistributionAlgorithm finalDamageDistribution = damageDistribution;
         float finalAmount = amount;
         boolean redistributeLeftoverDamage = shouldRedistributeLeftoverDamage(source);
+        boolean playerAttack = source.getEntity() instanceof ServerPlayer attacker && attacker != player;
+        float previousPartHealth = playerAttack ? totalPartHealth(damageModel) : 0.0f;
         CommonUtils.runWithoutSetHealthInterception(
                 () -> DamageDistribution.handleDamageTaken(finalDamageDistribution, damageModel, finalAmount, player, source, addStat, redistributeLeftoverDamage));
+        if (playerAttack) {
+            float appliedPartDamage = previousPartHealth - totalPartHealth(damageModel);
+            if (appliedPartDamage > 0.0f && onOffensiveDamage(player, source)) {
+                if (damageModel instanceof PlayerDamageModel victimModel && !victimModel.isUnconscious()) {
+                    victimModel.registerAdrenalineNearMiss(player, 0.35f, 40);
+                }
+            }
+        }
         hitList.remove(player);
         return true;
     }
@@ -291,6 +310,7 @@ public final class EventHandler {
                     if (nearMissStrength > 0.0F) {
                         playerDamageModel.registerAdrenalineNearMiss(player, nearMissStrength);
                     }
+                    if (player instanceof ServerPlayer serverPlayer) tickEncounterAdrenaline(serverPlayer, playerDamageModel);
                     if (playerDamageModel.isUnconscious()) {
                         clearAttackTargetsAround(player, 24.0D);
                         restrictUnconsciousMovement(player, playerDamageModel);
@@ -407,7 +427,19 @@ public final class EventHandler {
         return cancelIfUnconscious(player);
     }
 
-    private static void onLogin(ServerPlayer player) {
+   private static boolean onOffensiveDamage(LivingEntity victim, DamageSource source) {
+      if (!FirstAid.projectileSuppressionEnabled || !(victim instanceof Enemy || victim instanceof NeutralMob || victim instanceof Player && victim != source.getEntity())
+         || !(source.getEntity() instanceof ServerPlayer attacker) || !attacker.isAlive() || attacker.isSpectator()) return false;
+      Entity direct = source.getDirectEntity();
+      if (direct != attacker && !(direct instanceof Projectile projectile && projectile.getOwner() == attacker)) return false;
+        recordRecentPlayerAttack(victim, attacker);
+      if (CommonUtils.getDamageModel(attacker) instanceof PlayerDamageModel model && !model.isUnconscious()) {
+         model.registerAdrenalineNearMiss(attacker, 0.35F, 40);
+      }
+      return true;
+   }
+
+   private static void onLogin(ServerPlayer player) {
         if (player.level().isClientSide()) {
             return;
         }
@@ -495,9 +527,10 @@ public final class EventHandler {
         FirstAid.LOGGER.debug("Cleaning up");
         FirstAid.dynamicPainEnabled = false;
         FirstAid.mildPainLevel = 1;
-        FirstAid.lowSuppressionEnabled = true;
+        FirstAid.lowSuppressionEnabled = false;
         FirstAid.projectileSuppressionEnabled = true;
         FirstAid.lowSuppressionMultiplier = 0.4F;
+        FirstAid.suppressionGainMultiplier = 0.15F;
         FirstAid.enablePainVignette = true;
         FirstAid.enablePainBlur = true;
         FirstAid.enablePainFovCompression = true;
@@ -525,6 +558,84 @@ public final class EventHandler {
         FirstAidRegistryLookups.reset();
     }
 
+    private static float totalPartHealth(AbstractPlayerDamageModel model) {
+        float health = 0.0f;
+        for (var part : model) health += part.currentHealth;
+        return health;
+    }
+
+    private static void recordRecentPlayerAttack(LivingEntity victim, ServerPlayer attacker) {
+        if (victim instanceof ServerPlayer target && target != attacker) {
+            recentPlayerAttackers.computeIfAbsent(target, ignored -> new HashMap<>())
+                .put(attacker.getUUID(), target.level().getGameTime());
+        }
+    }
+
+    private static void tickEncounterAdrenaline(ServerPlayer player, PlayerDamageModel model) {
+        if (model.isUnconscious() || player.level().getGameTime() % 20L != 0L) return;
+        double threatRange = FirstAidConfig.SERVER.encounterThreatRange.get();
+        if (FirstAid.projectileSuppressionEnabled) {
+            double sightRange = FirstAidConfig.SERVER.encounterSightRange.get();
+            boolean encounter = model.getSuppressionIntensity() <= 0.0f
+                ? hasVisibleHostile(player, sightRange)
+                : hasTargetingMob(player, threatRange) || hasRecentPlayerThreat(player, threatRange);
+            if (encounter) model.ensureEncounterAdrenaline(player, FirstAidConfig.SERVER.encounterBaseIntensity.get().floatValue());
+        }
+        if (model.isAdrenalineFatigueReady() && !hasAdrenalineFatigueThreat(player, threatRange)) {
+            model.applyAdrenalineFatigue(player);
+        }
+    }
+
+    public static boolean hasAdrenalineFatigueThreat(ServerPlayer player, double range) {
+        if (hasRecentPlayerThreat(player, range)) return true;
+        for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(range))) {
+            if (mob.isAlive() && mob.distanceToSqr(player) <= range * range
+                && (mob instanceof Enemy || mob instanceof NeutralMob && mob.getTarget() == player)) return true;
+        }
+        return false;
+    }
+
+    public static boolean hasVisibleHostile(ServerPlayer player, double range) {
+        Vec3 eye = player.getEyePosition();
+        Vec3 view = player.getViewVector(1.0f);
+        for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(range))) {
+            if (!(mob instanceof Enemy) || !mob.isAlive() || mob.isInvisibleTo(player)) continue;
+            Vec3 toward = mob.getEyePosition().subtract(eye);
+            if (toward.lengthSqr() > range * range || toward.lengthSqr() < 1.0E-6D) continue;
+            if (view.dot(toward.normalize()) >= Math.cos(Math.toRadians(50.0D)) && player.hasLineOfSight(mob)) return true;
+        }
+        return false;
+    }
+
+    private static boolean hasTargetingMob(ServerPlayer player, double range) {
+        for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(range))) {
+            if (mob.isAlive() && mob.getTarget() == player && mob.distanceToSqr(player) <= range * range) return true;
+        }
+        return false;
+    }
+
+    private static boolean hasRecentPlayerThreat(ServerPlayer player, double range) {
+        Map<UUID, Long> attacks = recentPlayerAttackers.get(player);
+        if (attacks == null) return false;
+        long now = player.level().getGameTime();
+        int memory = FirstAidConfig.SERVER.encounterRecentAttackerTicks.get();
+        attacks.entrySet().removeIf(entry -> now < entry.getValue() || now - entry.getValue() > memory);
+        if (attacks.isEmpty()) {
+            recentPlayerAttackers.remove(player);
+            return false;
+        }
+        for (Player other : player.level().players()) {
+            if (other != player && other.isAlive() && attacks.containsKey(other.getUUID())
+                && other.distanceToSqr(player) <= range * range) return true;
+        }
+        return false;
+    }
+
+    public static boolean isMovingProjectile(Projectile projectile) {
+        return projectile.getDeltaMovement().lengthSqr() >= 0.02D
+            && projectile.position().distanceToSqr(new Vec3(projectile.xo, projectile.yo, projectile.zo)) >= 0.02D;
+    }
+
     private static float getNearbyProjectileStrength(Player player) {
         if (!FirstAid.projectileSuppressionEnabled) {
             return 0.0F;
@@ -542,7 +653,7 @@ public final class EventHandler {
             if (FirstAid.isSuppressionBlacklisted(projectile)) {
                 return false;
             }
-            return projectile.getDeltaMovement().lengthSqr() >= 0.02D;
+            return isMovingProjectile(projectile);
         });
         for (Projectile projectile : projectiles) {
             Vec3 currentPosition = projectile.position();
@@ -692,7 +803,7 @@ public final class EventHandler {
         player.displayClientMessage(buildCommandTipLine(
                 "firstaid.tip.commands.group.core",
                 buildCommandTipChip("firstaid.tip.commands.pain.label", "firstaid.tip.commands.pain.detail", "/firstaid pain mild", ChatFormatting.AQUA),
-                buildCommandTipChip("firstaid.tip.commands.suppression.label", "firstaid.tip.commands.suppression.detail", "/firstaid suppression dynamic", ChatFormatting.AQUA),
+                buildCommandTipChip("firstaid.tip.commands.suppression.label", "firstaid.tip.commands.suppression.detail", "/firstaid adrenaline dynamic", ChatFormatting.AQUA),
                 buildCommandTipChip("firstaid.tip.commands.commandtips.label", "firstaid.tip.commands.commandtips.detail", "/firstaid commandtips off", ChatFormatting.GRAY),
                 buildCommandTipChip("firstaid.tip.commands.medicineeffect.label", "firstaid.tip.commands.medicineeffect.detail", "/firstaid medicineeffect assisted", ChatFormatting.YELLOW)
         ), false);
@@ -806,7 +917,8 @@ public final class EventHandler {
         }
 
         boolean usingDefibrillator = isDefibrillator(stack);
-        if (usingDefibrillator) {
+        boolean usingAdrenaline = isAdrenalineInjector(stack);
+        if (usingDefibrillator || usingAdrenaline && stack.isDamageableItem()) {
             stack.hurtAndBreak(1, rescuer, getEquipmentSlot(rescueTarget.hand()));
         } else {
             stack.shrink(1);
@@ -814,6 +926,8 @@ public final class EventHandler {
 
         boolean rescued = usingDefibrillator
                 ? playerDamageModel.defibrillatorRescueFromCriticalState(rescueTarget.target(), FirstAid.rescueWakeUpEnabled)
+                : usingAdrenaline
+                ? playerDamageModel.adrenalineRescueFromCriticalState(rescueTarget.target(), FirstAid.rescueWakeUpEnabled)
                 : playerDamageModel.rescueFromCriticalState(rescueTarget.target(), null, FirstAid.rescueWakeUpEnabled);
         if (rescued) {
             rescuer.displayClientMessage(Component.translatable("firstaid.gui.rescue_other", rescueTarget.target().getDisplayName()).withStyle(ChatFormatting.GREEN), true);
@@ -917,15 +1031,19 @@ public final class EventHandler {
     }
 
     private static boolean isRescueItem(ItemStack stack) {
-        return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get()) || isDefibrillator(stack);
+        return stack.is(RegistryObjects.BANDAGE.get()) || stack.is(RegistryObjects.PLASTER.get()) || isDefibrillator(stack) || isAdrenalineInjector(stack);
     }
+    private static boolean isAdrenalineInjector(ItemStack stack) {
+        return stack.is(RegistryObjects.ADRENALINE_INJECTOR.get());
+    }
+
 
     private static boolean isDefibrillator(ItemStack stack) {
         return stack.is(RegistryObjects.DEFIBRILLATOR.get());
     }
 
     private static int getRescueDurationTicks(ItemStack stack) {
-        return isDefibrillator(stack) ? DEFIBRILLATOR_RESCUE_DURATION_TICKS : RESCUE_DURATION_TICKS;
+        return isDefibrillator(stack) || isAdrenalineInjector(stack) ? DEFIBRILLATOR_RESCUE_DURATION_TICKS : RESCUE_DURATION_TICKS;
     }
 
     private static EquipmentSlot getEquipmentSlot(InteractionHand hand) {

@@ -21,6 +21,7 @@ package ichttt.mods.firstaid.mixin;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import ichttt.mods.firstaid.FirstAid;
+import ichttt.mods.firstaid.common.CraftingSettings;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
@@ -40,6 +41,14 @@ import java.util.Map;
 @Mixin(RecipeManager.class)
 public abstract class RecipeManagerMixin {
     private static final FileToIdConverter FIRSTAID_RECIPE_LISTER = FileToIdConverter.json("recipe");
+
+    @Inject(method = "apply", at = @At("TAIL"))
+    private void firstaid$adjustResults(Map<ResourceLocation, JsonElement> jsons,
+                                        ResourceManager resourceManager, ProfilerFiller profiler, CallbackInfo ci) {
+        for (var holder : ((RecipeManager) (Object) this).getRecipes()) {
+            CraftingSettings.adjust(holder.id().getNamespace(), holder.id().getPath(), holder.value());
+        }
+    }
 
     @Inject(method = "apply", at = @At("HEAD"))
     private void firstaid$loadCustomRecipes(Map<ResourceLocation, JsonElement> jsons,

@@ -14,6 +14,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,6 +26,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityHealthMixin {
+   @Inject(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z", at = @At("RETURN"))
+   private void firstaid$effectAdded(MobEffectInstance effect, Entity source, CallbackInfoReturnable<Boolean> cir) {
+      if (cir.getReturnValue() && (Object)this instanceof ServerPlayer player
+         && CommonUtils.getExistingDamageModel(player) instanceof PlayerDamageModel model) {
+         model.onEffectAdded(player, effect);
+      }
+   }
    @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
    private void firstaid$hurtServer(ServerLevel world, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
       if ((Object)this instanceof Player) {

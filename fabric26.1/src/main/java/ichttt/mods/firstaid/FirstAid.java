@@ -39,6 +39,11 @@ public final class FirstAid {
    public static boolean lowSuppressionEnabled = false;
    public static boolean projectileSuppressionEnabled = true;
    public static float lowSuppressionMultiplier = 0.4F;
+    public static float suppressionGainMultiplier = 0.15F;
+
+    public static float suppressionDisplayCurve(float scaledIntensity) {
+        return Math.max(0.0F, Math.min(1.0F, scaledIntensity));
+    }
    public static boolean rescueWakeUpEnabled = true;
    public static double rescueWakeUpDelaySeconds = DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
    public static FirstAid.NaturalRegenMode naturalRegenMode = FirstAid.NaturalRegenMode.LIMITED;

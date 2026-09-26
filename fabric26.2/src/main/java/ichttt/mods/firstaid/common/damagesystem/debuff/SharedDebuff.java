@@ -66,4 +66,11 @@ public class SharedDebuff implements IDebuff {
          }
       }
    }
+
+    public void clearPending() {
+        this.healingDone = 0.0F;
+        this.damage = 0.0F;
+        this.damageCount = 0;
+        this.healingCount = 0;
+    }
 }

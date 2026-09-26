@@ -104,9 +104,7 @@ public final class ProjectileNearMissDetector {
 
         Vec3 currentPosition = projectile.position();
         Vec3 previousPosition = trackedProjectile.lastPosition;
-        if (previousPosition.distanceToSqr(currentPosition) < 1.0E-6D) {
-            previousPosition = currentPosition.subtract(projectile.getDeltaMovement());
-        }
+        if (previousPosition.distanceToSqr(currentPosition) < 0.02D) return false;
         Vec3 endPosition = currentPosition.add(projectile.getDeltaMovement());
         Vec3 segment = endPosition.subtract(previousPosition);
         double speed = segment.length();

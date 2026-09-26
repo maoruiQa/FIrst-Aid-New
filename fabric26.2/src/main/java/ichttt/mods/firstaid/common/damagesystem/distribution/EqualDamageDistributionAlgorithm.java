@@ -1,5 +1,7 @@
 package ichttt.mods.firstaid.common.damagesystem.distribution;
 
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -102,7 +104,7 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
             if (part.currentHealth > 0.0F) {
                float damageMultiplier = DamageDistribution.getIncomingPartDamageMultiplier(damageModel, part);
                float scaledDamage = toDamage * damageMultiplier;
-               float scaledLeft = part.damage(scaledDamage, player, !player.hasEffect(RegistryObjects.PAINKILLER_EFFECT), tryNoKillThisRound ? 1.0F : 0.0F);
+               float scaledLeft = part.damage(scaledDamage, player, !(CommonUtils.getDamageModel(player) instanceof PlayerDamageModel model && model.isPainSuppressed(player)), tryNoKillThisRound ? 1.0F : 0.0F);
                effectiveDamageDone += scaledDamage - scaledLeft;
                damageLeft += Math.min(toDamage, DamageDistribution.restoreOriginalDamageScale(scaledLeft, damageMultiplier));
                divCount++;

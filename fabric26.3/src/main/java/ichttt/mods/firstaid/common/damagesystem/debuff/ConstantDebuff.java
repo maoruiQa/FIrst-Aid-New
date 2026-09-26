@@ -65,7 +65,7 @@ public class ConstantDebuff extends AbstractDebuff {
                   amplifier = this.scaleAmplifierForMode(amplifier);
                }
 
-               player.addEffect(new MobEffectInstance(this.effect, 60, amplifier, false, false));
+               this.applyInjuryEffect(player, new MobEffectInstance(this.effect, 60, amplifier, false, false));
             }
          }
 

@@ -109,7 +109,7 @@ public final class RegistryObjects {
          )
       );
       DEFIBRILLATOR = registerItem("defibrillator", new Item(itemProperties("defibrillator").durability(3)));
-      ADRENALINE_INJECTOR = registerItem("adrenaline_injector", new ItemAdrenalineInjector(itemProperties("adrenaline_injector").durability(2)));
+      ADRENALINE_INJECTOR = registerItem("adrenaline_injector", new ItemAdrenalineInjector(itemProperties("adrenaline_injector").durability(4)));
       MORPHINE_INJECTOR = registerItem("morphine_injector", new ItemMorphineInjector(itemProperties("morphine_injector").durability(2)));
       CREATIVE_TAB = Registry.registerForHolder(
          BuiltInRegistries.CREATIVE_MODE_TAB,

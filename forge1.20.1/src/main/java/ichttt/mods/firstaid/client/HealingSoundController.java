@@ -128,6 +128,8 @@ public final class HealingSoundController {
 
        SoundEvent soundEvent = stack.is((Item)RegistryObjects.DEFIBRILLATOR.get())
           ? (SoundEvent)RegistryObjects.DEFIBRILLATOR_USE.get()
+          : stack.is((Item)RegistryObjects.ADRENALINE_INJECTOR.get())
+          ? (SoundEvent)RegistryObjects.ADRENALINE_INJECTOR_USE.get()
           : (SoundEvent)RegistryObjects.BANDAGE_USE.get();
        // Tracked instance so releasing the hold can hard-stop mid-clip.
        stopRescueInteractionSound(soundManager);

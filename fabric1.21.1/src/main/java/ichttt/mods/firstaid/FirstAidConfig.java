@@ -96,6 +96,7 @@ public final class FirstAidConfig {
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.projectileSuppressionEnabled = SERVER.projectileSuppressionEnabled.get();
         FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
+        FirstAid.suppressionGainMultiplier = SERVER.suppressionGainMultiplier.get().floatValue();
         FirstAid.enablePainVignette = SERVER.enablePainVignette.get();
         FirstAid.enablePainBlur = SERVER.enablePainBlur.get();
 
@@ -128,6 +129,7 @@ public final class FirstAidConfig {
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.projectileSuppressionEnabled.set(FirstAid.projectileSuppressionEnabled);
         SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
+        SERVER.suppressionGainMultiplier.set((double) FirstAid.suppressionGainMultiplier);
         SERVER.enablePainVignette.set(FirstAid.enablePainVignette);
         SERVER.enablePainBlur.set(FirstAid.enablePainBlur);
         SERVER.enablePainFovCompression.set(FirstAid.enablePainFovCompression);
@@ -269,6 +271,14 @@ public final class FirstAidConfig {
         public final ConfigValue<Boolean> lowSuppressionEnabled;
         public final ConfigValue<Boolean> projectileSuppressionEnabled;
         public final ConfigValue<Double> lowSuppressionMultiplier;
+        public final ConfigValue<Double> suppressionGainMultiplier;
+        public final ConfigValue<Double> encounterSightRange;
+        public final ConfigValue<Double> encounterThreatRange;
+        public final ConfigValue<Integer> encounterRecentAttackerTicks;
+        public final ConfigValue<Boolean> adrenalineFatigueEnabled;
+        public final ConfigValue<Integer> adrenalineFatigueThresholdSeconds;
+        public final ConfigValue<Double> adrenalineFatigueDurationRatio;
+        public final ConfigValue<Double> encounterBaseIntensity;
         public final ConfigValue<Boolean> enablePainVignette;
         public final ConfigValue<Boolean> enablePainBlur;
         public final ConfigValue<Boolean> enablePainFovCompression;
@@ -287,6 +297,15 @@ public final class FirstAidConfig {
         public final ConfigValue<Integer> morphineInjectorUseDuration;
         public final ConfigValue<Boolean> criticalCrawlEnabled;
         public final ConfigValue<Boolean> addictionEnabled;
+        public final FirstAidConfig.ConfigValue<Double> morphineAddictionGain;
+        public final FirstAidConfig.ConfigValue<Double> morphineInjectorAddictionGain;
+        public final FirstAidConfig.ConfigValue<Integer> bandageCraftYield;
+        public final FirstAidConfig.ConfigValue<Integer> plasterCraftYield;
+        public final FirstAidConfig.ConfigValue<Integer> painkillersCraftYield;
+        public final FirstAidConfig.ConfigValue<Integer> morphineCraftYield;
+        public final FirstAidConfig.ConfigValue<Integer> morphineInjectorCraftUses;
+        public final FirstAidConfig.ConfigValue<Integer> adrenalineInjectorCraftUses;
+        public final FirstAidConfig.ConfigValue<Integer> defibrillatorCraftUses;
         public final ConfigValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
         public final ConfigValue<Double> lowInjuryDebuffDamageScale;
         public final ConfigValue<Double> lowInjuryDebuffAmplifierScale;
@@ -352,9 +371,17 @@ public final class FirstAidConfig {
 
             dynamicPainEnabled = define(boolValue("dynamicPainEnabled", true));
             mildPainLevel = define(intValue("mildPainLevel", 1, 1, 5));
-            lowSuppressionEnabled = define(boolValue("lowSuppressionEnabled", true));
+            lowSuppressionEnabled = define(boolValue("lowSuppressionEnabled", false));
             projectileSuppressionEnabled = define(boolValue("projectileSuppressionEnabled", true));
             lowSuppressionMultiplier = define(doubleValue("lowSuppressionMultiplier", 0.4D, 0D, 1D));
+            suppressionGainMultiplier = define(doubleValue("suppressionGainMultiplier", 0.15D, 0.01D, 1D));
+            encounterSightRange = define(doubleValue("encounterSightRange", 16.0D, 1.0D, 128.0D));
+            encounterThreatRange = define(doubleValue("encounterThreatRange", 12.0D, 1.0D, 128.0D));
+            encounterRecentAttackerTicks = define(intValue("encounterRecentAttackerTicks", 600, 1, 72000));
+            adrenalineFatigueEnabled = define(FirstAidConfig.boolValue("adrenalineFatigueEnabled", true));
+            adrenalineFatigueThresholdSeconds = define(FirstAidConfig.intValue("adrenalineFatigueThresholdSeconds", 60, 1, 3600));
+            adrenalineFatigueDurationRatio = define(FirstAidConfig.doubleValue("adrenalineFatigueDurationRatio", 0.10, 0.0, 1.0));
+            encounterBaseIntensity = define(doubleValue("encounterBaseIntensity", 0.20D, 0.0D, 1.0D));
             enablePainVignette = define(boolValue("enablePainVignette", true));
             enablePainBlur = define(boolValue("enablePainBlur", true));
             enablePainFovCompression = define(boolValue("enablePainFovCompression", true));
@@ -373,6 +400,15 @@ public final class FirstAidConfig {
             morphineInjectorUseDuration = define(intValue("morphineInjectorUseDuration", 40, 1, 72000));
             criticalCrawlEnabled = define(boolValue("criticalCrawlEnabled", true));
             addictionEnabled = define(boolValue("addictionEnabled", true));
+            morphineAddictionGain = define(FirstAidConfig.doubleValue("morphineAddictionGain", 7.8, 0, 100));
+            morphineInjectorAddictionGain = define(FirstAidConfig.doubleValue("morphineInjectorAddictionGain", 20, 0, 100));
+            bandageCraftYield = define(FirstAidConfig.intValue("bandageCraftYield", 4, 1, 16));
+            plasterCraftYield = define(FirstAidConfig.intValue("plasterCraftYield", 4, 1, 16));
+            painkillersCraftYield = define(FirstAidConfig.intValue("painkillersCraftYield", 2, 1, 16));
+            morphineCraftYield = define(FirstAidConfig.intValue("morphineCraftYield", 1, 1, 16));
+            morphineInjectorCraftUses = define(FirstAidConfig.intValue("morphineInjectorCraftUses", 2, 1, 1000));
+            adrenalineInjectorCraftUses = define(FirstAidConfig.intValue("adrenalineInjectorCraftUses", 4, 1, 1000));
+            defibrillatorCraftUses = define(FirstAidConfig.intValue("defibrillatorCraftUses", 3, 1, 1000));
             injuryDebuffMode = define(enumValue("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL, FirstAid.InjuryDebuffMode.class));
             lowInjuryDebuffDamageScale = define(doubleValue("lowInjuryDebuffDamageScale", 0.4D, 0D, 1D));
             lowInjuryDebuffAmplifierScale = define(doubleValue("lowInjuryDebuffAmplifierScale", 0.5D, 0D, 1D));

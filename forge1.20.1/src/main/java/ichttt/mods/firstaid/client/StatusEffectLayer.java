@@ -73,8 +73,7 @@ public class StatusEffectLayer implements IGuiOverlay {
         }
 
         float deathDanger = getDeathDangerProgress(damageModel);
-        boolean painSuppressed = minecraft.player.hasEffect(RegistryObjects.MORPHINE_EFFECT.get())
-                || minecraft.player.hasEffect(RegistryObjects.PAINKILLER_EFFECT.get());
+        boolean painSuppressed = damageModel.isPainSuppressed(minecraft.player);
         float basePain;
         if (damageModel instanceof PlayerDamageModel) {
             basePain = ((PlayerDamageModel) damageModel).getPainVisualStrength(painSuppressed);
@@ -85,7 +84,7 @@ public class StatusEffectLayer implements IGuiOverlay {
         float targetPain = Math.max(basePain, dangerPain);
         SuppressionFeedbackController suppressionFeedbackController = ClientEventHandler.getSuppressionFeedbackController();
         float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
-        float targetSuppression = Math.max(damageModel.getSuppressionIntensity(), suppressionFeedbackController.getVisualStrength()) * suppressionScale;
+        float targetSuppression = FirstAid.suppressionDisplayCurve(Math.max(damageModel.getSuppressionIntensity(), suppressionFeedbackController.getVisualStrength()) * suppressionScale);
 
         tickStrengths(targetPain, targetSuppression);
         float smoothPain = Mth.lerp(partialTick, lastPainStrength, painStrength);

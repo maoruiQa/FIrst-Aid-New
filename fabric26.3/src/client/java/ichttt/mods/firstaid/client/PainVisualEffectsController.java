@@ -6,6 +6,7 @@ import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
+import ichttt.mods.firstaid.mixin.client.GameRendererAccessor;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -74,6 +75,7 @@ public final class PainVisualEffectsController {
     private float lastMissingHealth = -1.0F;
     private int lastHurtTime = -1;
     private ActiveEffect active = ActiveEffect.NONE;
+    private boolean reloadSuspended;
     /** Client peak of current firstaid:morphine effect (not painkiller). */
     private int morphineEffectPeakTicks;
     private int lastMorphineEffectTicks;
@@ -96,7 +98,7 @@ public final class PainVisualEffectsController {
         // Saturation ONLY while firstaid:morphine is active — never painkiller / model lag.
         boolean hasMorphineEffect = player.hasEffect(RegistryObjects.MORPHINE_EFFECT);
         boolean hasPainkiller = player.hasEffect(RegistryObjects.PAINKILLER_EFFECT);
-        boolean painSuppressed = hasMorphineEffect || hasPainkiller;
+        boolean painSuppressed = model != null && model.isPainSuppressed(player);
 
         tickHitPulse(player, model, painSuppressed);
 
@@ -134,7 +136,7 @@ public final class PainVisualEffectsController {
         float modelSuppression = model == null ? 0.0F : model.getSuppressionIntensity();
         float feedbackSuppression = ClientEventHandler.getSuppressionFeedbackController().getVisualStrength();
         float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
-        float targetSuppression = Math.max(modelSuppression, feedbackSuppression) * suppressionScale;
+        float targetSuppression = FirstAid.suppressionDisplayCurve(Math.max(modelSuppression, feedbackSuppression) * suppressionScale);
 
         painStrength = approach(painStrength, targetPain, targetPain > painStrength ? PAIN_APPROACH_UP : PAIN_APPROACH_DOWN);
         if (hasMorphineEffect) {
@@ -187,6 +189,7 @@ public final class PainVisualEffectsController {
     }
 
     public void clear(Minecraft client) {
+        reloadSuspended = false;
         painStrength = 0.0F;
         morphineStrength = 0.0F;
         suppressionStrength = 0.0F;
@@ -260,17 +263,17 @@ public final class PainVisualEffectsController {
         }
     }
 
-    private void updatePostEffect(Minecraft client) {
-        if (client.gameRenderer == null) {
+    public void updatePostEffect(Minecraft client) {
+        if (reloadSuspended || client.gameRenderer == null) {
             return;
         }
         ActiveEffect desired = resolveDesiredEffect();
-        if (desired == active) {
-            return;
-        }
         try {
             Identifier id = effectId(desired);
             List<Identifier> requested = client.gameRenderer.getRequestedPostEffects();
+            if (desired == active && (id == null || requested.contains(id))) {
+                return;
+            }
             requested.removeIf(effect -> FirstAid.MODID.equals(effect.getNamespace()));
             if (id != null) {
                 requested.add(id);
@@ -280,6 +283,20 @@ public final class PainVisualEffectsController {
             FirstAid.LOGGER.warn("Failed to set firstaid post effect {}", desired, e);
             active = ActiveEffect.NONE;
         }
+    }
+
+    public void suspendForReload(Minecraft client) {
+        reloadSuspended = true;
+        if (client.gameRenderer != null) {
+            shutdown(client);
+            ((GameRendererAccessor) client.gameRenderer).firstaid$preparePostEffects(List.of());
+        }
+    }
+
+    public void resumeAfterReload(Minecraft client) {
+        reloadSuspended = false;
+        active = ActiveEffect.NONE;
+        updatePostEffect(client);
     }
 
     private ActiveEffect resolveDesiredEffect() {
@@ -402,7 +419,7 @@ public final class PainVisualEffectsController {
             float progress = (layer + 1) / (float) layers;
             float falloff = 1.0F - progress;
             int thickness = Math.max(4, Math.round(baseThickness * (0.28F + progress * (1.15F + intensity * 1.05F))));
-            int alpha = Math.round((14.0F + 130.0F * intensity) * falloff * falloff);
+            int alpha = Math.round((144.0F * intensity) * falloff * falloff);
             if (alpha > 0) {
                 int r = 188 + Math.round(28.0F * s);
                 int g = 192 + Math.round(30.0F * s);
@@ -410,7 +427,7 @@ public final class PainVisualEffectsController {
                 fillEdge(guiGraphics, width, height, color(Math.min(220, alpha), r, g, b), thickness);
             }
         }
-        int wash = Math.round(6.0F + 42.0F * s * s);
+        int wash = Math.round(48.0F * s);
         if (wash > 0) {
             guiGraphics.fill(0, 0, width, height, color(wash, 200, 204, 210));
         }

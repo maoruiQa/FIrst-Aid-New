@@ -1,6 +1,19 @@
 /*
  * FirstAid
  * Copyright (C) 2017-2024
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package ichttt.mods.firstaid.client;
@@ -83,7 +96,7 @@ public final class PainVisualEffectsController {
         // Saturation is bound ONLY to firstaid:morphine — never painkiller.
         boolean hasMorphineEffect = player.hasEffect(RegistryObjects.MORPHINE_EFFECT.get());
         boolean hasPainkiller = player.hasEffect(RegistryObjects.PAINKILLER_EFFECT.get());
-        boolean painSuppressed = hasMorphineEffect || hasPainkiller;
+        boolean painSuppressed = model != null && model.isPainSuppressed(player);
 
         tickHitPulse(player, model, painSuppressed);
 
@@ -121,7 +134,7 @@ public final class PainVisualEffectsController {
         float modelSuppression = model == null ? 0.0F : model.getSuppressionIntensity();
         float feedbackSuppression = ClientEventHandler.getSuppressionFeedbackController().getVisualStrength();
         float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
-        float targetSuppression = Math.max(modelSuppression, feedbackSuppression) * suppressionScale;
+        float targetSuppression = FirstAid.suppressionDisplayCurve(Math.max(modelSuppression, feedbackSuppression) * suppressionScale);
 
         painStrength = approach(painStrength, targetPain, targetPain > painStrength ? PAIN_APPROACH_UP : PAIN_APPROACH_DOWN);
         if (hasMorphineEffect) {
@@ -327,7 +340,7 @@ public final class PainVisualEffectsController {
             }
             if (suppressionStrength > 0.03F) {
                 float s = Mth.clamp(suppressionStrength, 0.0F, 1.0F);
-                blur = Math.max(blur, SUPPRESSION_BLUR_PEAK * (0.35F + s * 0.65F));
+                blur = Math.max(blur, SUPPRESSION_BLUR_PEAK * s);
             }
         }
         PostChainUniforms.setFloat(chain, "Strength", blur);
@@ -434,7 +447,7 @@ public final class PainVisualEffectsController {
             float progress = (layer + 1) / (float) layers;
             float falloff = 1.0F - progress;
             int thickness = Math.max(4, Math.round(baseThickness * (0.28F + progress * (1.15F + intensity * 1.05F))));
-            int alpha = Math.round((14.0F + 130.0F * intensity) * falloff * falloff);
+            int alpha = Math.round((144.0F * intensity) * falloff * falloff);
             if (alpha > 0) {
                 int r = 188 + Math.round(28.0F * s);
                 int g = 192 + Math.round(30.0F * s);
@@ -442,7 +455,7 @@ public final class PainVisualEffectsController {
                 fillEdge(guiGraphics, width, height, color(Math.min(220, alpha), r, g, b), thickness);
             }
         }
-        int wash = Math.round(6.0F + 42.0F * s * s);
+        int wash = Math.round(48.0F * s);
         if (wash > 0) {
             guiGraphics.fill(0, 0, width, height, color(wash, 200, 204, 210));
         }

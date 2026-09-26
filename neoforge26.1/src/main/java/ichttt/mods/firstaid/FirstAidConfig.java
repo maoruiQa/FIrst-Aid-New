@@ -68,6 +68,7 @@ public class FirstAidConfig {
         FirstAid.lowSuppressionEnabled = SERVER.lowSuppressionEnabled.get();
         FirstAid.projectileSuppressionEnabled = SERVER.projectileSuppressionEnabled.get();
         FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
+        FirstAid.suppressionGainMultiplier = SERVER.suppressionGainMultiplier.get().floatValue();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.morphineActivationDelaySeconds = SERVER.morphineActivationDelaySeconds.get();
@@ -98,6 +99,7 @@ public class FirstAidConfig {
         SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
         SERVER.projectileSuppressionEnabled.set(FirstAid.projectileSuppressionEnabled);
         SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
+        SERVER.suppressionGainMultiplier.set((double) FirstAid.suppressionGainMultiplier);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.morphineActivationDelaySeconds.set(FirstAid.morphineActivationDelaySeconds);
@@ -352,14 +354,27 @@ public class FirstAidConfig {
                     .comment("Enable severe pain audio effects (tinnitus sound)")
                     .define("enablePainAudioEffects", true);
             lowSuppressionEnabled = builder
-                    .comment("Persistent toggle for /firstaid suppression (dynamic vs mild)")
+                    .comment("Persistent toggle for /firstaid adrenaline (dynamic vs mild)")
                     .define("lowSuppressionEnabled", false);
             projectileSuppressionEnabled = builder
-                    .comment("Persistent toggle for projectile near-miss suppression")
+                    .comment("Persistent toggle for projectile near-miss adrenaline")
                     .define("projectileSuppressionEnabled", true);
             lowSuppressionMultiplier = builder
-                    .comment("Visual suppression intensity multiplier used when /firstaid suppression mild is active")
+                    .comment("Visual adrenaline intensity multiplier used when /firstaid adrenaline mild is active")
                     .defineInRange("lowSuppressionMultiplier", 0.4D, 0D, 1D);
+
+            suppressionGainMultiplier = builder
+
+                    .comment("Per-hit adrenaline gain multiplier; also set by /firstaid adrenaline gain")
+
+                    .defineInRange("suppressionGainMultiplier", 0.15D, 0.01D, 1D);
+            encounterSightRange = builder.comment("Visible hostile encounter range in blocks").defineInRange("encounterSightRange", 16.0D, 1.0D, 128.0D);
+            encounterThreatRange = builder.comment("Current threat range in blocks").defineInRange("encounterThreatRange", 12.0D, 1.0D, 128.0D);
+            encounterRecentAttackerTicks = builder.comment("Recent player attacker memory in ticks").defineInRange("encounterRecentAttackerTicks", 600, 1, 72000);
+            adrenalineFatigueEnabled = builder.comment("Apply fatigue after prolonged adrenaline when no threats remain").define("adrenalineFatigueEnabled", true);
+            adrenalineFatigueThresholdSeconds = builder.comment("Continuous adrenaline seconds before fatigue can occur").defineInRange("adrenalineFatigueThresholdSeconds", 60, 1, 3600);
+            adrenalineFatigueDurationRatio = builder.comment("Fatigue duration as a fraction of adrenaline duration").defineInRange("adrenalineFatigueDurationRatio", 0.10D, 0.0D, 1.0D);
+            encounterBaseIntensity = builder.comment("Minimum adrenaline intensity on encounter").defineInRange("encounterBaseIntensity", 0.20D, 0.0D, 1.0D);
             rescueWakeUpEnabled = builder
                     .comment("Persistent toggle for /firstaid revivewakeup (on vs off)")
                     .define("rescueWakeUpEnabled", true);
@@ -409,7 +424,7 @@ public class FirstAidConfig {
                     .comment("Per-effect overrides for /firstaid injurydebuff. Format: modid:effect=normal|low|off")
                     .defineList("injuryDebuffOverrides", Collections.emptyList(), o -> o != null && !o.toString().isBlank());
             suppressionEntityBlacklist = builder
-                    .comment("Entity type ids that cannot trigger suppression near-miss effects")
+                    .comment("Entity type ids that cannot trigger adrenaline near-miss effects")
                     .defineList("suppressionEntityBlacklist", serializeResourceLocationList(FirstAid.getDefaultSuppressionEntityBlacklist()), o -> o != null && Identifier.tryParse(o.toString()) != null);
             commandTipsEnabled = builder
                     .comment("If true, operators receive the FirstAid admin command tip when joining a world")
@@ -509,6 +524,14 @@ public class FirstAidConfig {
         public final ModConfigSpec.BooleanValue lowSuppressionEnabled;
         public final ModConfigSpec.BooleanValue projectileSuppressionEnabled;
         public final ModConfigSpec.DoubleValue lowSuppressionMultiplier;
+        public final ModConfigSpec.DoubleValue suppressionGainMultiplier;
+        public final ModConfigSpec.DoubleValue encounterSightRange;
+        public final ModConfigSpec.DoubleValue encounterThreatRange;
+        public final ModConfigSpec.IntValue encounterRecentAttackerTicks;
+        public final ModConfigSpec.BooleanValue adrenalineFatigueEnabled;
+        public final ModConfigSpec.IntValue adrenalineFatigueThresholdSeconds;
+        public final ModConfigSpec.DoubleValue adrenalineFatigueDurationRatio;
+        public final ModConfigSpec.DoubleValue encounterBaseIntensity;
         public final ModConfigSpec.BooleanValue rescueWakeUpEnabled;
         public final ModConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
         public final ModConfigSpec.DoubleValue morphineActivationDelaySeconds;

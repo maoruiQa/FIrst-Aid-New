@@ -56,7 +56,7 @@ public class OnHitDebuff extends AbstractDebuff {
                 if (mode == FirstAid.InjuryDebuffMode.LOW) {
                     duration = scaleDurationForMode(duration);
                 }
-                player.addEffect(new MobEffectInstance(effect, duration, 0, false, false));
+                this.applyInjuryEffect(player, new MobEffectInstance(effect, duration, 0, false, false));
             }
         }
     }

@@ -19,6 +19,10 @@
 package ichttt.mods.firstaid.common.damagesystem.debuff;
 
 import ichttt.mods.firstaid.api.debuff.IDebuff;
+import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
+import ichttt.mods.firstaid.common.util.CommonUtils;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -32,5 +36,11 @@ public abstract class AbstractDebuff implements IDebuff {
 
     public AbstractDebuff(@Nonnull ResourceLocation potionName) {
         this.effect = Objects.requireNonNull(ForgeRegistries.MOB_EFFECTS.getValue(potionName));
+    }
+
+    protected final void applyInjuryEffect(Player player, MobEffectInstance instance) {
+        if (CommonUtils.getDamageModel(player) instanceof PlayerDamageModel model) {
+            model.applyTrackedInjuryEffect(player, ForgeRegistries.MOB_EFFECTS.getKey(this.effect).toString(), instance);
+        }
     }
 }

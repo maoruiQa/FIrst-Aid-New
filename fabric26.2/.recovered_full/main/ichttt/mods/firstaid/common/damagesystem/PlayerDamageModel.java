@@ -109,6 +109,7 @@ implements LookupReloadListener {
     private static final String UNCONSCIOUS_REASON_RECOVERING = "firstaid.gui.stabilizing";
     private final Set<SharedDebuff> sharedDebuffs = new HashSet<SharedDebuff>();
     private int morphineTicksLeft = 0;
+    private int morphineMaxTicks = 0;
     private int pendingPainkillerTicks = 0;
     private int pendingMorphineDelayTicks = 0;
     private int pendingMorphineEffectTicks = 0;
@@ -150,6 +151,8 @@ implements LookupReloadListener {
         tagCompound.put("rightLeg", (Tag)this.RIGHT_LEG.serializeNBT());
         tagCompound.put("rightFoot", (Tag)this.RIGHT_FOOT.serializeNBT());
         tagCompound.putBoolean("hasTutorial", this.hasTutorial);
+        tagCompound.putInt("morphineTicks", this.morphineTicksLeft);
+        tagCompound.putInt("morphineMaxTicks", this.morphineMaxTicks);
         tagCompound.putInt("pendingPainkillerTicks", this.pendingPainkillerTicks);
         tagCompound.putInt("pendingMorphineDelayTicks", this.pendingMorphineDelayTicks);
         tagCompound.putInt("pendingMorphineEffectTicks", this.pendingMorphineEffectTicks);
@@ -182,6 +185,7 @@ implements LookupReloadListener {
         this.RIGHT_FOOT.deserializeNBT(nbt.getCompoundOrEmpty("rightFoot"));
         if (nbt.contains("morphineTicks")) {
             this.morphineTicksLeft = nbt.getIntOr("morphineTicks", 0);
+        this.morphineMaxTicks = nbt.getIntOr("morphineMaxTicks", Math.max(this.morphineMaxTicks, this.morphineTicksLeft));
             this.needsMorphineUpdate = true;
         }
         this.pendingPainkillerTicks = nbt.getIntOr("pendingPainkillerTicks", 0);
@@ -350,6 +354,35 @@ implements LookupReloadListener {
         return this.morphineTicksLeft;
     }
 
+    public int getMorphineMaxTicks() {
+        return this.morphineMaxTicks;
+    }
+
+    public float getMorphineRemainingRatio() {
+        if (this.morphineTicksLeft <= 0 || this.morphineMaxTicks <= 0) {
+            return 0.0F;
+        }
+        return Mth.clamp(this.morphineTicksLeft / (float) this.morphineMaxTicks, 0.0F, 1.0F);
+    }
+
+    private void setMorphineDuration(int duration) {
+        this.morphineTicksLeft = Math.max(0, duration);
+        if (this.morphineTicksLeft <= 0) {
+            this.morphineMaxTicks = 0;
+        } else {
+            this.morphineMaxTicks = Math.max(this.morphineMaxTicks, this.morphineTicksLeft);
+        }
+    }
+
+    private void trackMorphineMaxDuration() {
+        if (this.morphineTicksLeft <= 0) {
+            this.morphineMaxTicks = 0;
+        } else if (this.morphineTicksLeft > this.morphineMaxTicks) {
+            this.morphineMaxTicks = this.morphineTicksLeft;
+        }
+    }
+
+
     @Override
     public int getPainLevel() {
         return this.painLevel;
@@ -456,6 +489,7 @@ implements LookupReloadListener {
 
     public void clearStatusEffects() {
         this.morphineTicksLeft = 0;
+        this.morphineMaxTicks = 0;
         this.pendingPainkillerTicks = 0;
         this.pendingMorphineDelayTicks = 0;
         this.pendingMorphineEffectTicks = 0;
