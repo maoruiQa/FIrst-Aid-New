@@ -21,6 +21,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
 
 public final class SuppressionFeedbackController {
@@ -46,6 +47,8 @@ public final class SuppressionFeedbackController {
    private float fovImpulse;
    private long soundCooldownUntilGameTime;
    private int lastPainLevel;
+   private boolean poisonEffectActive;
+   private boolean witherEffectActive;
    @Nullable
    private Level trackedLevel;
 
@@ -93,6 +96,7 @@ public final class SuppressionFeedbackController {
             this.playTinnitusSound(0.52F + 0.12F * Math.min(2, painLevel - 4));
          }
 
+         this.tickDotTinnitusState(player, level);
          this.lastPainLevel = painLevel;
       } else {
          this.clear(level);
@@ -221,10 +225,34 @@ public final class SuppressionFeedbackController {
       this.fovImpulse = 0.0F;
       this.soundCooldownUntilGameTime = 0L;
       this.lastPainLevel = 0;
+      this.poisonEffectActive = false;
+      this.witherEffectActive = false;
    }
 
    private static float approach(float current, float target, float delta) {
       return current < target ? Math.min(target, current + delta) : Math.max(target, current - delta);
+   }
+
+   private void tickDotTinnitusState(Player player, Level level) {
+      boolean poisoned = player.hasEffect(MobEffects.POISON);
+      if (!poisoned) {
+         this.poisonEffectActive = false;
+      } else if (!this.poisonEffectActive && level.getGameTime() >= this.soundCooldownUntilGameTime
+         && (Boolean)FirstAidConfig.CLIENT.enableSounds.get() && FirstAid.enablePainAudioEffects) {
+         this.poisonEffectActive = true;
+         this.soundCooldownUntilGameTime = level.getGameTime() + 20L;
+         this.playTinnitusSound(0.45F);
+      }
+
+      boolean withering = player.hasEffect(MobEffects.WITHER);
+      if (!withering) {
+         this.witherEffectActive = false;
+      } else if (!this.witherEffectActive && level.getGameTime() >= this.soundCooldownUntilGameTime
+         && (Boolean)FirstAidConfig.CLIENT.enableSounds.get() && FirstAid.enablePainAudioEffects) {
+         this.witherEffectActive = true;
+         this.soundCooldownUntilGameTime = level.getGameTime() + 20L;
+         this.playTinnitusSound(0.45F);
+      }
    }
 
    public record CameraAngles(float yaw, float pitch, float roll) {

@@ -36,6 +36,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
@@ -67,6 +68,8 @@ public final class SuppressionFeedbackController {
     private float fovImpulse;
     private long soundCooldownUntilGameTime;
     private int lastPainLevel;
+    private boolean poisonEffectActive;
+    private boolean witherEffectActive;
     private @Nullable Level trackedLevel;
 
     public void tick(Minecraft client) {
@@ -116,6 +119,7 @@ public final class SuppressionFeedbackController {
             playTinnitusSound(0.52F + 0.12F * Math.min(2, painLevel - SEVERE_PAIN_LEVEL));
         }
 
+        tickDotTinnitusState(player, level);
         lastPainLevel = painLevel;
     }
 
@@ -235,6 +239,8 @@ public final class SuppressionFeedbackController {
         fovImpulse = 0.0F;
         soundCooldownUntilGameTime = 0L;
         lastPainLevel = 0;
+        poisonEffectActive = false;
+        witherEffectActive = false;
     }
 
     private static float approach(float current, float target, float delta) {
@@ -242,6 +248,28 @@ public final class SuppressionFeedbackController {
             return Math.min(target, current + delta);
         }
         return Math.max(target, current - delta);
+    }
+
+    private void tickDotTinnitusState(Player player, Level level) {
+        boolean poisoned = player.hasEffect(MobEffects.POISON);
+        if (!poisoned) {
+            poisonEffectActive = false;
+        } else if (!poisonEffectActive && level.getGameTime() >= soundCooldownUntilGameTime
+                && FirstAidConfig.CLIENT.enableSounds.get() && FirstAid.enablePainAudioEffects) {
+            poisonEffectActive = true;
+            soundCooldownUntilGameTime = level.getGameTime() + 20L;
+            playTinnitusSound(0.45F);
+        }
+
+        boolean withering = player.hasEffect(MobEffects.WITHER);
+        if (!withering) {
+            witherEffectActive = false;
+        } else if (!witherEffectActive && level.getGameTime() >= soundCooldownUntilGameTime
+                && FirstAidConfig.CLIENT.enableSounds.get() && FirstAid.enablePainAudioEffects) {
+            witherEffectActive = true;
+            soundCooldownUntilGameTime = level.getGameTime() + 20L;
+            playTinnitusSound(0.45F);
+        }
     }
 
     private record CameraCarrier(double partialTick, net.minecraft.world.entity.Entity entity, float suppressionIntensity, float shakeStrength) {

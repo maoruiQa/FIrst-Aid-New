@@ -1,7 +1,5 @@
 #version 330
 
-#moj_import <minecraft:dynamictransforms.glsl>
-
 uniform sampler2D InSampler;
 in vec2 texCoord;
 

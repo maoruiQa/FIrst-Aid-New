@@ -246,6 +246,8 @@ implements LookupReloadListener {
     private float tinnitusCueSeverity = 0.0f;
     /** After rescue/respawn, suppress feedback audio until this reaches 0. */
     private int audioMuteTicks = 0;
+    private boolean poisonEffectActive = false;
+    private boolean witherEffectActive = false;
 
     public PlayerDamageModel() {
         super(new DamageablePart((Integer)FirstAidConfig.SERVER.maxHealthHead.get(), (Boolean)FirstAidConfig.SERVER.causeDeathHead.get(), EnumPlayerPart.HEAD), new DamageablePart((Integer)FirstAidConfig.SERVER.maxHealthLeftArm.get(), false, EnumPlayerPart.LEFT_ARM), new DamageablePart((Integer)FirstAidConfig.SERVER.maxHealthLeftLeg.get(), false, EnumPlayerPart.LEFT_LEG), new DamageablePart((Integer)FirstAidConfig.SERVER.maxHealthLeftFoot.get(), false, EnumPlayerPart.LEFT_FOOT), new DamageablePart((Integer)FirstAidConfig.SERVER.maxHealthBody.get(), (Boolean)FirstAidConfig.SERVER.causeDeathBody.get(), EnumPlayerPart.BODY), new DamageablePart((Integer)FirstAidConfig.SERVER.maxHealthRightArm.get(), false, EnumPlayerPart.RIGHT_ARM), new DamageablePart((Integer)FirstAidConfig.SERVER.maxHealthRightLeg.get(), false, EnumPlayerPart.RIGHT_LEG), new DamageablePart((Integer)FirstAidConfig.SERVER.maxHealthRightFoot.get(), false, EnumPlayerPart.RIGHT_FOOT));
@@ -1685,7 +1687,28 @@ implements LookupReloadListener {
         }
     }
 
+    private void tickDotTinnitusState(Player player) {
+        boolean poisoned = player.hasEffect(MobEffects.POISON);
+        if (!poisoned) {
+            this.poisonEffectActive = false;
+        } else if (!this.poisonEffectActive && this.audioMuteTicks <= 0) {
+            this.poisonEffectActive = true;
+            this.registerTinnitusCue(0.45f);
+        }
+
+        boolean withering = player.hasEffect(MobEffects.WITHER);
+        if (!withering) {
+            this.witherEffectActive = false;
+        } else if (!this.witherEffectActive && this.audioMuteTicks <= 0) {
+            this.witherEffectActive = true;
+            this.registerTinnitusCue(0.45f);
+        }
+    }
+
     private void updateMedicalState(Player player) {
+        if (!player.level().isClientSide()) {
+            this.tickDotTinnitusState(player);
+        }
         boolean previousUnconsciousState = this.isUnconscious();
         int previousPainLevel = this.painLevel;
         int previousAdrenalineLevel = this.adrenalineLevel;
