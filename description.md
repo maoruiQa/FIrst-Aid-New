@@ -21,6 +21,7 @@ Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft
 - **A stronger last resort:** Adrenaline Injectors fill the meter, have four uses by default, and can revive a downed player. On builds other than 26.1, Defibrillators can also be used for self-revival while downed.
 - **Medicine and crafting controls:** 1.3.2 added commands for addiction gain, recipe yields, and newly crafted device uses on supported modules; Bandages and Plaster now craft four by default there.
 - **Clearer pain and audio:** Recent hits create a short pain spike over ongoing injury pain, while rescue and respawn clear lingering heartbeat and ringing sounds.
+- **Maintenance fixes:** 26.2 post-processing shaders no longer import an unused uniform block; poison and Wither each trigger tinnitus once per effect episode; and medicine-use loops are cleaned up across the maintained loaders.
 
 ### Supported builds (1.3.3)
 
