@@ -18,7 +18,7 @@ Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft
 
 - **Adrenaline that follows danger:** Visible hostiles, nearby attackers, valid attacks, and moving projectile near misses can build pressure. Feedback now scales linearly, while medium and high adrenaline grant Haste I and Strength I respectively.
 - **Relief with an aftermath:** Adrenaline pain relief clears First Aid injury debuffs while active. After 60 continuous seconds of adrenaline, leaving danger can trigger a short Fatigue episode; server owners can configure it.
-- **A stronger last resort:** Adrenaline Injectors fill the meter, have four uses by default, and can revive a downed player. On builds other than 26.1, Defibrillators can also be used for self-revival while downed.
+- **A stronger last resort:** Adrenaline Injectors fill the meter, have four uses by default, and can revive a downed player. Defibrillators can also be used for self-revival while downed.
 - **Medicine and crafting controls:** 1.3.2 added commands for addiction gain, recipe yields, and newly crafted device uses on supported modules; Bandages and Plaster now craft four by default there.
 - **Clearer pain and audio:** Recent hits create a short pain spike over ongoing injury pain, while rescue and respawn clear lingering heartbeat and ringing sounds.
 - **Maintenance fixes:** 26.2 post-processing shaders no longer import an unused uniform block; poison and Wither each trigger tinnitus once per effect episode; and medicine-use loops are cleaned up across the maintained loaders.
@@ -30,14 +30,12 @@ Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft
 | `firstaid-1.3.3+forge1.20.1` | Forge | 1.20.1 |
 | `firstaid-1.3.3+fabric1.21.1` | Fabric | 1.21.1 |
 | `firstaid-1.3.3+neoforge1.21.1` | NeoForge | 1.21.1 |
-| `firstaid-1.3.3+fabric26.1` | Fabric | 26.1 |
-| `firstaid-1.3.3+neoforge26.1` | NeoForge | 26.1 |
 | `firstaid-1.3.3+fabric26.2` | Fabric | 26.2 |
 | `firstaid-1.3.3+neoforge26.2` | NeoForge | 26.2 |
 | `firstaid-1.3.3+fabric26.3` | Fabric | 26.3 |
 | `firstaid-1.3.3+neoforge26.3` | NeoForge | 26.3 |
 
-The 1.21.11 modules are legacy-only. The 26.1 builds do not include the 1.3.2 crafting changes, Morphine Injector, or self-defibrillator rescue; see the release notes for details.
+The 1.21.11 and 26.1 modules are legacy-only and no longer supported.
 
 Full notes: [1.3.3](https://github.com/maoruiQa/FIrst-Aid-New/blob/main/1.3.3changelog.md) · [1.3.2](https://github.com/maoruiQa/FIrst-Aid-New/blob/main/1.3.2changelog.md) · [1.3.1](https://github.com/maoruiQa/FIrst-Aid-New/blob/main/1.3.1changelog.md)
 
@@ -48,7 +46,7 @@ Full notes: [1.3.3](https://github.com/maoruiQa/FIrst-Aid-New/blob/main/1.3.3cha
 - **Locational health** — head, body, arms, legs, feet; each with its own pool and overflow rules  
 - **Injury debuffs** — limb damage that changes how you move, dig, and fight  
 - **Medicine with pacing** — bandages, plaster, painkillers, morphine, injectors; activation delay and heal-over-time  
-- **Unconsciousness & rescue** — critical downs, give-up flow, Adrenaline Injector rescue, and self-revival with a defibrillator on builds other than 26.1
+- **Unconsciousness & rescue** — critical downs, give-up flow, Adrenaline Injector rescue, and self-revival with a defibrillator
 - **Adrenaline** — encounters, attacks, and moving projectile near misses drive combat feedback, pain relief, and post-combat Fatigue
 - **Opioid addiction** — hidden addiction value, withdrawal episodes, status icons  
 - **Client feedback** — pain blur, hit red pulse, morphine color grade, adrenaline rush blur, heartbeat audio  
@@ -163,7 +161,7 @@ Legacy `/firstaid suppression` commands remain available for existing server scr
 
 Querying another player’s addiction is admin-only; operators can set values for balance testing.
 
-#### Medicine and crafting (admin; not available on 26.1)
+#### Medicine and crafting (admin)
 
 ```mcfunction
 /firstaid addiction gain morphine
@@ -229,8 +227,6 @@ R B I
 
 → Morphine Injector (2 uses)
 
-The 26.1 modules do not include the Morphine Injector.
-
 ---
 
 ## Building
@@ -248,8 +244,6 @@ Maintained module roots:
 - `forge1.20.1`
 - `fabric1.21.1`
 - `neoforge1.21.1`
-- `fabric26.1`
-- `neoforge26.1`
 - `fabric26.2`
 - `neoforge26.2`
 - `fabric26.3`
