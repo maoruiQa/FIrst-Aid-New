@@ -2,6 +2,7 @@ package ichttt.mods.firstaid.client;
 
 import com.mojang.blaze3d.platform.InputConstants.Type;
 import ichttt.mods.firstaid.FirstAid;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
@@ -33,6 +34,7 @@ public final class ClientHooks {
       HudRenderCallback.EVENT.register(HUDHandler.INSTANCE);
       ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(HUDHandler.INSTANCE);
       ClientEventHandler.register();
+      ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> TinnitusCommands.register(dispatcher));
       EventCalendar.checkDate();
    }
 

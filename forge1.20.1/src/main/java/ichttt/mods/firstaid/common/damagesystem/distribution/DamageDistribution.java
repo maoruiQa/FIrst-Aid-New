@@ -55,6 +55,7 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
             FirstAid.LOGGER.info(LoggingMarkers.DAMAGE_DISTRIBUTION, "--- Damaging {} using {} for dmg source {}, redistribute {}, addStat {} ---", damage, damageDistribution.toString(), source.type().msgId(), redistributeIfLeft, addStat);
         }
         CompoundTag beforeCache = damageModel.serializeNBT();
+        float absorptionBefore = player.getAbsorptionAmount();
         if (!damageDistribution.skipGlobalPotionModifiers())
             damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
         //VANILLA COPY - combat tracker and exhaustion
@@ -76,6 +77,10 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
         before.deserializeNBT(beforeCache);
         if (MinecraftForge.EVENT_BUS.post(new FirstAidLivingDamageEvent(player, damageModel, before, source, left))) {
             damageModel.deserializeNBT(beforeCache); //restore prev state
+            player.setAbsorptionAmount(absorptionBefore);
+            if (player instanceof ServerPlayer serverPlayer) {
+                CommonUtils.syncDamageModel(serverPlayer);
+            }
             if (FirstAidConfig.GENERAL.debug.get()) {
                 FirstAid.LOGGER.info(LoggingMarkers.DAMAGE_DISTRIBUTION, "--- DONE! Event got canceled ---");
             }
@@ -83,6 +88,7 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
         }
 
         if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+            playerDamageModel.registerAdrenalineDamage(player, before);
             playerDamageModel.registerDamageFeedback(player, source, before);
             playerDamageModel.handlePostDamage(player, source);
             playerDamageModel.syncVanillaHealth(player);
@@ -102,6 +108,22 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
 
     protected float minHealth(@Nonnull Player player, @Nonnull AbstractDamageablePart part) {
         return 0F;
+    }
+
+    static float consumeGlobalAbsorption(Player player, float damage) {
+        if (damage <= 0.0F) {
+            return 0.0F;
+        }
+        float absorption = player.getAbsorptionAmount();
+        if (absorption <= 0.0F) {
+            return damage;
+        }
+        if (absorption >= damage) {
+            player.setAbsorptionAmount(absorption - damage);
+            return 0.0F;
+        }
+        player.setAbsorptionAmount(0.0F);
+        return damage - absorption;
     }
 
     protected float distributeDamageOnParts(float damage, @Nonnull AbstractPlayerDamageModel damageModel, @Nonnull EnumPlayerPart[] enumParts, @Nonnull Player player, boolean addStat) {
@@ -137,6 +159,11 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
         if (damageModel == null) return 0F;
         if (FirstAidConfig.GENERAL.debug.get()) {
             FirstAid.LOGGER.info(LoggingMarkers.DAMAGE_DISTRIBUTION, "Starting distribution of {} damage...", damage);
+        }
+        damage = consumeGlobalAbsorption(player, damage);
+        if (damage <= 0.0F) {
+            CommonUtils.syncDamageModel((ServerPlayer) player);
+            return 0.0F;
         }
         for (Pair<EquipmentSlot, EnumPlayerPart[]> pair : getPartList()) {
             EquipmentSlot slot = pair.getLeft();

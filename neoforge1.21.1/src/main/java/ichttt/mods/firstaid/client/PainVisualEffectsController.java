@@ -95,12 +95,12 @@ public final class PainVisualEffectsController {
             }
             if (!painSuppressed) {
                 if (model.isUnconscious()) {
-                    targetPain = Math.max(targetPain, 0.55F);
+                    targetPain = Math.max(targetPain, 0.55F * (1.0F - 0.70F * model.getAdrenalinePainRelief()));
                 }
                 if (model.isWithdrawalEpisodeActive()) {
-                    targetPain = Math.max(targetPain, 0.75F);
+                    targetPain = Math.max(targetPain, 0.75F * (1.0F - 0.70F * model.getAdrenalinePainRelief()));
                 }
-                targetPain = Math.max(targetPain, Mth.clamp(hitPulse * 0.85F, 0.0F, 1.0F));
+                targetPain = Math.max(targetPain, Mth.clamp(hitPulse * 0.85F * (1.0F - 0.35F * model.getAdrenalinePainRelief()), 0.0F, 1.0F));
             } else {
                 targetPain = Math.max(targetPain, Mth.clamp(hitPulse * 0.35F * PlayerDamageModel.ACUTE_BREAKTHROUGH, 0.0F, 0.55F));
             }
@@ -120,7 +120,7 @@ public final class PainVisualEffectsController {
 
         float modelSuppression = model == null ? 0.0F : model.getSuppressionIntensity();
         float feedbackSuppression = ClientEventHandler.getSuppressionFeedbackController().getVisualStrength();
-        float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
+        float suppressionScale = FirstAid.getSuppressionDisplayMultiplier();
         float targetSuppression = FirstAid.suppressionDisplayCurve(Math.max(modelSuppression, feedbackSuppression) * suppressionScale);
 
         painStrength = approach(painStrength, targetPain, targetPain > painStrength ? PAIN_APPROACH_UP : PAIN_APPROACH_DOWN);

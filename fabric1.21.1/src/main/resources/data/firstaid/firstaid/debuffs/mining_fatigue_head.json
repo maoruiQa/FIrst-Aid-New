@@ -1,0 +1,17 @@
+{
+  "type": "firstaid:on_hit",
+  "debuffSlot": "head",
+  "potionName": "mining_fatigue",
+  "timeBoundaries": [
+    {
+      "damageTakenThreshold": 4,
+      "effectDuration": 60,
+      "healthFractionThreshold": 0.2
+    },
+    {
+      "damageTakenThreshold": 2,
+      "effectDuration": 40,
+      "healthFractionThreshold": 0.4
+    }
+  ]
+}

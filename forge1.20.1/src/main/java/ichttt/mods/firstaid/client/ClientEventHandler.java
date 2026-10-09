@@ -20,6 +20,7 @@ package ichttt.mods.firstaid.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import ichttt.mods.firstaid.FirstAid;
+import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPartHealer;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
@@ -83,6 +84,11 @@ import java.util.Locale;
 import java.util.Map;
 
 public class ClientEventHandler {
+    @SubscribeEvent
+    public static void registerClientCommands(RegisterClientCommandsEvent event) {
+        TinnitusCommands.register(event.getDispatcher());
+    }
+
     private static final DecimalFormat FORMAT = new DecimalFormat("#.##");
     private static final NamedGuiOverlay PLAYER_HEALTH_LAYER = VanillaGuiOverlay.PLAYER_HEALTH.type();
     private static final int GIVE_UP_HOLD_TICKS = 20 * 3;
@@ -279,26 +285,12 @@ public class ClientEventHandler {
         if (!PLAYER_HEALTH_LAYER.equals(event.getOverlay())) {
             return;
         }
-
-        FirstAidConfig.Client.VanillaHealthbarMode vanillaHealthBarMode = FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
-        if (vanillaHealthBarMode == FirstAidConfig.Client.VanillaHealthbarMode.NORMAL) {
-            return;
-        }
-
+        event.setCanceled(true);
         Minecraft mc = Minecraft.getInstance();
         if (mc.gameMode == null || !mc.gameMode.canHurtPlayer() || mc.options.hideGui || mc.player == null) {
             return;
         }
-
-        event.setCanceled(true);
-        if (vanillaHealthBarMode == FirstAidConfig.Client.VanillaHealthbarMode.HIDE) {
-            FirstaidIngameGui.renderHealth((net.minecraftforge.client.gui.overlay.ForgeGui) mc.gui, event.getWindow().getGuiScaledWidth(), event.getWindow().getGuiScaledHeight(), event.getGuiGraphics());
-            return;
-        }
-
-        if (FirstAidConfig.SERVER.vanillaHealthCalculation.get() == FirstAidConfig.Server.VanillaHealthCalculationMode.AVERAGE_ALL) {
-            FirstaidIngameGui.renderHealth((net.minecraftforge.client.gui.overlay.ForgeGui) mc.gui, event.getWindow().getGuiScaledWidth(), event.getWindow().getGuiScaledHeight(), event.getGuiGraphics());
-        }
+        FirstaidIngameGui.renderHealth((net.minecraftforge.client.gui.overlay.ForgeGui) mc.gui, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), event.getGuiGraphics());
     }
 
     @SubscribeEvent
@@ -483,7 +475,9 @@ public class ClientEventHandler {
                 .append(Component.literal("[First Aid] ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
                 .append(Component.literal("Press ").withStyle(ChatFormatting.YELLOW))
                 .append(Component.literal(ClientHooks.SHOW_WOUNDS.getTranslatedKeyMessage().getString()).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD, ChatFormatting.UNDERLINE))
-                .append(Component.literal(" to open the health UI and inspect or treat body parts.").withStyle(ChatFormatting.WHITE));
+                .append(Component.literal(" to open the health UI and inspect or treat body parts.").withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(" ").withStyle(ChatFormatting.WHITE))
+                .append(Component.translatable("firstaid.login.tinnitus").withStyle(ChatFormatting.LIGHT_PURPLE));
         mc.player.sendSystemMessage(message);
     }
 

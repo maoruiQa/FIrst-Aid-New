@@ -16,9 +16,9 @@ Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft
 
 ### What's new
 
-- **Adrenaline that follows danger:** Visible hostiles, nearby attackers, valid attacks, and moving projectile near misses can build pressure. Feedback now scales linearly, while medium and high adrenaline grant Haste I and Strength I respectively.
-- **Relief with an aftermath:** Adrenaline pain relief clears First Aid injury debuffs while active. After 60 continuous seconds of adrenaline, leaving danger can trigger a short Fatigue episode; server owners can configure it.
-- **A stronger last resort:** Adrenaline Injectors fill the meter, have four uses by default, and can revive a downed player. Defibrillators can also be used for self-revival while downed.
+- **Adrenaline that follows danger:** Visible hostiles, nearby attackers, valid attacks, and moving projectile near misses can build pressure. Gains diminish as the meter fills, near misses grant half their previous gain, and actual injuries lower pressure. Movement and attack-speed bonuses follow current pressure continuously: levels I–V begin at 20%, 35%, 50%, 65% and 80%, adding 4%, 8%, 12%, 16% and 20%. Full natural pressure matches the injector’s movement and attack-speed gains without stacking.
+- **Relief with an aftermath:** Adrenaline provides partial pain relief. At 35% pressure, Slowness, Mining Fatigue and Weakness begin at 50% aggregate health and are capped at level I; ordinary injury rules remain unchanged below 20%. After 60 continuous seconds of adrenaline, leaving danger can trigger a short Fatigue episode; server owners can configure it.
+- **A stronger last resort:** Adrenaline Injectors fill the meter, have four uses by default, and can revive a downed player. They retain their other buffs but no longer grant or extend Painkiller. Defibrillators can also be used for self-revival while downed.
 - **Medicine and crafting controls:** 1.3.2 added commands for addiction gain, recipe yields, and newly crafted device uses on supported modules; Bandages and Plaster now craft four by default there.
 - **Clearer pain and audio:** Recent hits create a short pain spike over ongoing injury pain, while rescue and respawn clear lingering heartbeat and ringing sounds.
 
@@ -78,7 +78,7 @@ Third-party mods can register custom treatment items and direct-use medicines:
 
 ## Command Setup Guide
 
-Players with OP (or sufficient permission) receive a compact First Aid command tip on join. In the tip:
+Players with OP (or sufficient permission) receive a compact First Aid command tip on join; it now includes a clickable personal tinnitus entry. In the tip:
 
 - **Click** a bracketed command to prefill chat  
 - **Hover** for what it changes and a starter syntax  
@@ -103,6 +103,101 @@ Players with OP (or sufficient permission) receive a compact First Aid command t
 /firstaid pain dynamic
 /firstaid pain mild
 ```
+
+#### Personal tinnitus
+
+Available to every player without OP permission; changes affect only your own client. The login message shows the full syntax, and operator command tips include a clickable entry.
+
+```mcfunction
+/firstaid tinnitus
+/firstaid tinnitus off
+/firstaid tinnitus on
+/firstaid tinnitus duration 75
+```
+
+The client config contains `tinnitusEnabled` (default `true`) and `tinnitusDurationPercent`
+(default `75`, integer range `1`–`400`). Fabric stores these in
+`config/firstaid/firstaid-client.json`; Forge and NeoForge use `config/firstaid-client.toml`
+under `[Misc]`. Commands save immediately; file edits take effect after restarting the client.
+Disabling tinnitus immediately stops injury and morphine ringing. Duration changes apply to
+new sounds; values above 100 loop the clip without changing its pitch. At pitch 1, the default
+75% lasts about 7.94 seconds. Suppression itself no longer triggers tinnitus.
+Body-part injury triggers tinnitus on a new head hit if it removes more than 4 health points
+after mitigation, or if the head's remaining health is at or below 40%. Small repeated head
+hits therefore count once the injury is serious; damage to other parts cannot trigger it.
+Head-injury ringing has a 10-second cooldown, reduced volume, and a base duration of
+3–5 seconds depending on hit strength (2.25–3.75 seconds at the default 75%).
+Explosion, poison, wither and morphine triggers remain available.
+
+Head and torso injury feedback uses short effects instead of recurring nausea:
+
+| Injury feedback | Hit strength or remaining part health | Duration |
+| --- | --- | --- |
+| Head coordination loss (Mining Fatigue I) | At least 2 damage or at most 40% health; at least 4 damage or at most 20% health | 2 / 3 seconds |
+| Head vision blackout (Blindness) | At least 4 damage or at most 20% health; at least 6 damage or at most 10% health | 1 / 1.5 seconds |
+| Head dimmed vision (Darkness) | At least 2 damage or at most 40% health; at least 4 damage or at most 20% health | 2 / 2.5 seconds |
+| Torso breath interruption (Slowness I) | At least 2 damage or at most 35% health; at least 4 damage or at most 15% health | 1 / 1.5 seconds |
+| Torso dimmed vision (Darkness) | At least 4 damage or at most 20% health | 2 seconds |
+| Torso weakness (Weakness I) | Below 30% health | While injured; clears on healing to 30% |
+
+The on-hit effects require new damage to that part and have a 4-second cooldown per part and effect.
+The strongest matching tier applies once per hit. Fully absorbed hits do not count.
+Injury darkness expires on its own; low health alone does not keep refreshing it.
+Datapacks may add `healthFractionThreshold` (0–1) to on-hit boundaries; omitted values
+keep the previous damage-only behavior. Existing nausea from poison or withdrawal remains.
+
+Feedback regression checks (run from the repository root with Python and a JDK on PATH):
+
+```powershell
+python tools/check_tinnitus.py
+python tools/check_tinnitus_runtime.py
+```
+
+Suppression camera feedback is identical across all seven maintained modules. Horizontal
+and vertical sway and near-miss kicks are about 40% of the previous amplitudes.
+Vertical sway is subtle (about a quarter of the horizontal amplitude). A centered roll rocks
+the horizon around the view axis at about 7.13 Hz (1.6 times the previous frequency)
+without changing the facing direction. Its amplitude scales directly with suppression,
+up to ±1.36° in dynamic mode or ±0.88° with default mild settings at full suppression, and is
+zero without suppression; it has no constant tilt or accumulated directional roll. Near-miss kicks are
+reduced, decay as before, and are capped at ±0.22° horizontally and ±0.06° vertically.
+Adrenaline feedback uses a shared multiplier for the screen overlay, sustained camera sway
+and FOV: dynamic is 0.85, while mild is 1.375 times its configured base multiplier
+(0.55 at the default base of 0.4), capped at 1.0. These display modes do not change combat
+benefits. Near misses do not add a separate FOV reduction; pain FOV reduction is unchanged.
+Adrenaline injection immediately sets suppression to 100%, holds it for 15 seconds,
+and synchronizes the level to the client. It retains Absorption II, brief regeneration and rescue. Movement and attack speed
+come from pressure alone, with visible Adrenaline Speed, Adrenaline Attack Speed and Adrenaline Strength effects
+at levels I–V. Movement and attack speed gain 4% per level, up to 20%; Strength adds
+0.6 attack damage per level, up to +3. External Speed or Strength suppresses the corresponding
+pressure bonus to avoid stacking. It does not separately grant or extend Speed, Haste,
+Strength or Painkiller. Existing external
+effects remain intact. Severe relevant limb injuries still block their natural combat bonus;
+critical head/torso injury or unconsciousness blocks both natural bonuses.
+Melee hit pressure gain is about 10% higher than ranged-hit gain (6% versus 5.46% at
+zero pressure with the default coefficient). Nearby mobs targeting you and recent player
+attackers slowly replenish pressure once per second. Each additional threat adds 0.4
+percentage points to the base recovery rate and 6 points to its ceiling, capped at six threats:
+1–3% per second before diminishing returns, with default ceilings from 20% to 50%.
+Recovery is scaled by remaining pressure headroom, respects the two-second post-injury delay,
+and does not prolong higher attack- or injection-generated pressure. Initial visible-hostile
+encounter activation remains unchanged; the configured base ceiling remains effective.
+Suppression heartbeat starts above 5% intensity, follows the suppression decay, and
+smoothly increases volume from 0.4 to 1.0 and playback speed from 0.95 to 1.20.
+It fades out over 3 seconds after suppression ends; critical head or torso health still
+triggers it. Rescue, death and disconnect retain immediate sound cleanup.
+
+The first check executes the production injury trigger, debuff tiers, cooldowns, heartbeat,
+injection, duration, lifecycle, camera and FOV code against minimal game API stubs.
+It covers gradual head injury, strong hits, absorption, healing, immediate injection
+synchronization, sustained suppression, repeated same-side shots, and recovery.
+The runtime check launches each maintained module with its Gradle wrapper,
+tests the real sound engine, permission-free command tree, camera event/Mixin hooks, FOV
+calculations, heartbeat curves, injury JSON codecs and injection/head-injury sync data,
+restores the client settings,
+and exits the test client. Pass module names to check a subset, for example
+`python tools/check_tinnitus_runtime.py fabric26.2 neoforge26.3`.
+Runtime logs and results are written under each module's `build/` directory.
 
 #### Adrenaline
 

@@ -62,8 +62,8 @@ public class FirstAid {
     private static final ResourceLocation SPLASH_POTION_ENTITY_ID = new ResourceLocation("minecraft", "splash_potion");
     private static final ResourceLocation LINGERING_POTION_ENTITY_ID = new ResourceLocation("minecraft", "lingering_potion");
 
-    private static final String NETWORKING_MAJOR = "4.";
-    private static final String NETWORKING_MINOR = "1";
+    private static final String NETWORKING_MAJOR = "5.";
+    private static final String NETWORKING_MINOR = "0";
 
     private static final String NETWORKING_VERSION = NETWORKING_MAJOR + NETWORKING_MINOR;
     public static final SimpleChannel NETWORKING = NetworkRegistry.newSimpleChannel(
@@ -84,6 +84,10 @@ public class FirstAid {
     public static boolean projectileSuppressionEnabled = true;
     public static float lowSuppressionMultiplier = 0.4F;
     public static float suppressionGainMultiplier = 0.15F;
+
+    public static float getSuppressionDisplayMultiplier() {
+        return lowSuppressionEnabled ? Math.max(0.0F, Math.min(1.0F, lowSuppressionMultiplier * 1.375F)) : 0.85F;
+    }
 
     public static float suppressionDisplayCurve(float scaledIntensity) {
         return Math.max(0.0F, Math.min(1.0F, scaledIntensity));

@@ -91,6 +91,10 @@ public class FirstAidConfig {
         FirstAid.setSuppressionEntityBlacklist(parseResourceLocationList(SERVER.suppressionEntityBlacklist.get()));
     }
 
+    public static void saveClient() {
+        clientSpec.save();
+    }
+
     public static void persistCommandSettings() {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
         SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
@@ -672,6 +676,8 @@ public class FirstAidConfig {
         public final ModConfigSpec.IntValue yOffset;
         public final ModConfigSpec.IntValue alpha;
         public final ModConfigSpec.BooleanValue enableSounds;
+        public final ModConfigSpec.BooleanValue tinnitusEnabled;
+        public final ModConfigSpec.IntValue tinnitusDurationPercent;
         public final ModConfigSpec.BooleanValue enableEasterEggs;
         public final ModConfigSpec.IntValue visibleDurationTicks;
         public final ModConfigSpec.BooleanValue flash;
@@ -680,10 +686,8 @@ public class FirstAidConfig {
         public Client(ModConfigSpec.Builder builder) {
             builder.comment("Client only configuration settings").push("Overlay");
             vanillaHealthBarMode = builder
-                    .comment("The mode how to show the mc vanilla health bar.",
-                            "NORMAL shows the vanilla health value that calculated the way vanillaHealthCalculation is specified (server config)",
-                            "HIGHLIGHT_CRITICAL_PATH show the vanilla health value and highlights the health value of the most damaged critical limb (by default head or body) using the hardcore-styled hearts for them and the normal hearts for the rest of the health. Only works if vanillaHealthCalculation is set to AVERAGE_ALL",
-                            "HIDE just doesn't display the vanilla health bar at all.")
+                    .comment("Legacy setting retained for existing configs.",
+                            "All values hide normal health hearts and display only absorption hearts.")
                     .translation("firstaid.config.vanillahealthbarmode")
                     .defineEnum("vanillaHealthBarMode", VanillaHealthbarMode.HIDE);
 
@@ -734,6 +738,14 @@ public class FirstAidConfig {
 
 
             builder.push("Misc");
+            tinnitusEnabled = builder
+                    .comment("Enable tinnitus sounds from injuries and morphine. Suppression never triggers tinnitus.")
+                    .translation("firstaid.config.tinnitusenabled")
+                    .define("tinnitusEnabled", true);
+            tinnitusDurationPercent = builder
+                    .comment("Tinnitus duration as a percentage of the original clip (1-400). Values above 100 loop the clip.")
+                    .translation("firstaid.config.tinnitusdurationpercent")
+                    .defineInRange("tinnitusDurationPercent", 75, 1, 400);
             enableSounds = builder
                     .comment("Set to true to enable the debuff sounds. Only matters when debuffs are enabled")
                     .translation("firstaid.config.enablesoundsystem")

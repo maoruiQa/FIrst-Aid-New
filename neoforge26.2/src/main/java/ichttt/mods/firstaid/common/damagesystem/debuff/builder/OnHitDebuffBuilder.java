@@ -65,7 +65,8 @@ public class OnHitDebuffBuilder implements IDebuffBuilder {
 
     @Override
     public IDebuff build() {
-        return new OnHitDebuff(this.effect, this.timeBoundaries, this.sound);
+        return new OnHitDebuff(this.effect, this.timeBoundaries, this.sound,
+                this.debuffSlot == EnumDebuffSlot.HEAD || this.debuffSlot == EnumDebuffSlot.BODY ? 80 : 0);
     }
 }
 

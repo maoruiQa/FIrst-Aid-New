@@ -14,12 +14,14 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 
 public abstract class AbstractDebuff implements IDebuff {
+    protected final String injuryEffectId;
    @Nonnull
    public final Holder<MobEffect> effect;
    @Nonnull
    private final Identifier effectId;
 
    public AbstractDebuff(@Nonnull Identifier potionName) {
+        this.injuryEffectId = potionName.toString();
       this.effectId = Objects.requireNonNull(potionName);
       this.effect = BuiltInRegistries.MOB_EFFECT.wrapAsHolder((MobEffect)Objects.requireNonNull((MobEffect)BuiltInRegistries.MOB_EFFECT.getValue(potionName)));
    }

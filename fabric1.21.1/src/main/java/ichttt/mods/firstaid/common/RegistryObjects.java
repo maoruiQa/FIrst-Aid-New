@@ -34,6 +34,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffects;
@@ -59,6 +61,9 @@ public final class RegistryObjects {
 
     public static final Holder<MobEffect> MORPHINE_EFFECT;
     public static final Holder<MobEffect> PAINKILLER_EFFECT;
+    public static final Holder<MobEffect> ADRENALINE_SPEED_EFFECT;
+    public static final Holder<MobEffect> ADRENALINE_ATTACK_SPEED_EFFECT;
+    public static final Holder<MobEffect> ADRENALINE_STRENGTH_EFFECT;
     public static final Holder<MobEffect> ADDICTION_INCREASE_EFFECT;
     public static final Holder<MobEffect> ADDICTION_ULTRA_INCREASE_EFFECT;
     public static final Holder<MobEffect> ADDICTION_DECREASE_EFFECT;
@@ -109,6 +114,12 @@ public final class RegistryObjects {
 
         MORPHINE_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("morphine"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0xDDD));
         PAINKILLER_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("painkiller"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0x6EC5FF));
+        ADRENALINE_SPEED_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("adrenaline_speed"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0x7CD8B4)
+                .addAttributeModifier(Attributes.MOVEMENT_SPEED, id("adrenaline_speed"), 0.04D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        ADRENALINE_ATTACK_SPEED_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("adrenaline_attack_speed"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0xFFD27F)
+                .addAttributeModifier(Attributes.ATTACK_SPEED, id("adrenaline_attack_speed"), 0.04D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        ADRENALINE_STRENGTH_EFFECT = Registry.registerForHolder(BuiltInRegistries.MOB_EFFECT, id("adrenaline_strength"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0xEE6B61)
+                .addAttributeModifier(Attributes.ATTACK_DAMAGE, id("adrenaline_strength"), 0.6D, AttributeModifier.Operation.ADD_VALUE));
         ADDICTION_INCREASE_EFFECT = Registry.registerForHolder(
                 BuiltInRegistries.MOB_EFFECT, id("addiction_increase"), new FirstAidPotion(MobEffectCategory.HARMFUL, 0xE8A0A0)
         );

@@ -48,6 +48,10 @@ public class DirectDamageDistributionAlgorithm implements IDamageDistributionAlg
     public float distributeDamage(float damage, @Nonnull Player player, @Nonnull DamageSource source, boolean addStat) {
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
         if (damageModel == null) return 0F;
+        damage = DamageDistribution.consumeGlobalAbsorption(player, damage);
+        if (damage <= 0.0F) {
+            return 0.0F;
+        }
         return damageModel.getFromEnum(part).damage(damage, player, debuff);
     }
 

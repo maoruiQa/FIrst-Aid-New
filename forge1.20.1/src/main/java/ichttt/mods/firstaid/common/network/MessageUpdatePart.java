@@ -49,7 +49,7 @@ public class MessageUpdatePart {
         this.entityId = entityId;
         this.id = (byte) part.part.ordinal();
         this.maxHealth = part.getMaxHealth();
-        this.absorption = part.getAbsorption();
+        this.absorption = 0.0F; // Retain the legacy wire field; absorption is player data.
         this.currentHealth = part.currentHealth;
     }
 
@@ -93,7 +93,6 @@ public class MessageUpdatePart {
                 if (damageModel == null) return;
                 AbstractDamageablePart damageablePart = damageModel.getFromEnum(EnumPlayerPart.VALUES[message.id]);
                 damageablePart.setMaxHealth(message.maxHealth);
-                damageablePart.setAbsorption(message.absorption);
                 damageablePart.currentHealth = message.currentHealth;
             });
         }

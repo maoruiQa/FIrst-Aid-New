@@ -43,7 +43,6 @@ public class DamageablePart extends AbstractDamageablePart {
     private int maxHealth;
     @Nullable
     private IDebuff[] debuffs;
-    private float absorption;
 
     public DamageablePart(int maxHealth, boolean canCauseDeath, @Nonnull EnumPlayerPart playerPart) {
         super(maxHealth, canCauseDeath, playerPart);
@@ -88,17 +87,12 @@ public class DamageablePart extends AbstractDamageablePart {
             return 0F;
         if (minHealth > maxHealth)
             throw new IllegalArgumentException("Cannot damage part with minHealth " + minHealth + " while he has more max health (" + maxHealth + ")");
-        float origAmount = amount;
-        if (absorption > 0) {
-            amount = Math.abs(Math.min(0, absorption - origAmount));
-            absorption = Math.max(0, absorption - origAmount);
-        }
         float notFitting = Math.abs(Math.min(minHealth, currentHealth - amount) - minHealth);
         currentHealth = Math.max(minHealth, currentHealth - amount);
         if (applyDebuff && debuffs != null) {
             Objects.requireNonNull(player, "Got null player with applyDebuff = true");
             for (IDebuff debuff : debuffs) {
-                debuff.handleDamageTaken(origAmount - notFitting, currentHealth / maxHealth, (ServerPlayer) player);
+                debuff.handleDamageTaken(amount - notFitting, currentHealth / maxHealth, (ServerPlayer) player);
             }
         }
         return notFitting;
@@ -130,8 +124,6 @@ public class DamageablePart extends AbstractDamageablePart {
         compound.putFloat("health", currentHealth);
         if (FirstAidConfig.SERVER.scaleMaxHealth.get())
             compound.putInt("maxHealth", maxHealth);
-        if (absorption > 0F)
-            compound.putFloat("absorption", absorption);
         if (activeHealer != null) {
             compound.put("healer", activeHealer.stack.serializeNBT());
             compound.putInt("itemTicks", activeHealer.getTicksPassed());
@@ -166,8 +158,7 @@ public class DamageablePart extends AbstractDamageablePart {
                 activeHealer = healer.loadNBT(nbt.getInt("itemTicks"), nbt.getInt("itemHeals"));
             }
         }
-        if (nbt.contains("absorption"))
-            absorption = nbt.getFloat("absorption");
+        // Legacy limb absorption duplicates the saved player pool; do not restore it.
         //kick constant debuffs active
         if (debuffs != null) {
             for (IDebuff debuff : debuffs) {
@@ -177,17 +168,14 @@ public class DamageablePart extends AbstractDamageablePart {
     }
 
     @Override
+    @Deprecated
     public void setAbsorption(float absorption) {
-        if (absorption > 4F && FirstAidConfig.SERVER.capMaxHealth.get())
-            absorption = 4F;
-        if (absorption > 32F) absorption = 32F;
-        this.absorption = absorption;
-        currentHealth = Math.min(maxHealth + absorption, currentHealth);
     }
 
     @Override
+    @Deprecated
     public float getAbsorption() {
-        return absorption;
+        return 0.0F;
     }
 
     @Override

@@ -47,6 +47,7 @@ Do not take a hard dependency on `ichttt.mods.firstaid.common.*`.
 `queuePainkillerActivation()`
 `queueMorphineActivation()`
 `applyAdrenalineInjection()`
+- The injector fills adrenaline for partial stress relief and preserves absorption, regeneration and rescue. It does not separately grant or extend Speed, Haste, Strength or Painkiller, and leaves existing external effects intact. `getAdrenalineLevel()` now reports 0–5; levels I–V begin at 20%, 35%, 50%, 65% and 80% pressure and provide sustained movement/attack-speed bonuses capped at 20%. These pressure gains appear as Adrenaline Speed, Adrenaline Attack Speed and Adrenaline Strength in the standard effect list and HUD; Strength adds 0.6 attack damage per tier, capped at +3, and yields to existing vanilla Strength. `recoverEncounterAdrenaline(player, threatCount)` provides slow, bounded count-dependent recovery; the existing `ensureEncounterAdrenaline(player, floor)` API retains its immediate floor behavior.
 
 `ichttt.mods.firstaid.api.medicine.MedicineStatusContext`
 - Exposes `Player`, `Level`, and nullable `AbstractPlayerDamageModel`.
@@ -202,3 +203,17 @@ Then return the corresponding `SoundEvent` from the medicine hooks.
 - Fabric: [firstaid-extension-fabric.md](./firstaid-extension-fabric.md)
 - NeoForge: [firstaid-extension-neoforge.md](./firstaid-extension-neoforge.md)
 - Forge 1.20.1: [firstaid-extension-forge1.20.1.md](./firstaid-extension-forge1.20.1.md)
+
+## Shared absorption
+
+All maintained modules show only absorption hearts in the bottom player health bar.
+`vanillaHealthBarMode` is retained for existing configs; all three values have this behavior.
+Normal limb health remains visible in the First Aid HUD and treatment screen.
+
+On Forge 1.20.1, use `Player.getAbsorptionAmount()` and `Player.setAbsorptionAmount(float)`
+on the server for a shared shield. The deprecated absorption getters/setters on the limb
+and player damage models remain for binary compatibility, return zero, and do not store values.
+Damage distribution consumes the player shield before damaging limbs; direct calls to
+`AbstractDamageablePart.damage(...)` modify limb health without consuming that shield.
+Existing player `AbsorptionAmount` saves are preserved; legacy limb absorption copies are ignored.
+Forge 1.20.1 requires matching client/server protocol 5.0; upgrade both together.

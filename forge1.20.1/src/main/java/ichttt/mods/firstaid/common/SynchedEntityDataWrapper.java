@@ -18,14 +18,12 @@
 
 package ichttt.mods.firstaid.common;
 
-import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.damagesystem.distribution.DamageDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.HealthDistribution;
 import ichttt.mods.firstaid.common.damagesystem.distribution.RandomDamageDistributionAlgorithm;
-import ichttt.mods.firstaid.common.network.MessageApplyAbsorption;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -33,15 +31,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.network.PacketDistributor;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * This is a hack to intervene all calls to absorption. It's not optimal but it's the best I could come up with without a coremod
- * This should be compatible with other mods which do so as I respect the parent in any other case.
+ * Intercepts vanilla health changes for the limb damage model.
+ * All other entity data, including shared absorption, is delegated to the parent.
  */
 public class SynchedEntityDataWrapper extends SynchedEntityData {
     private final Player player;
@@ -55,16 +52,9 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
         this.parent = parent;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     @Nonnull
     public <T> T get(@Nonnull EntityDataAccessor<T> key) {
-        if (key == Player.DATA_PLAYER_ABSORPTION_ID && player.isAlive()) {
-            AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-            if (damageModel != null) {
-                parent.set(key, (T) damageModel.getAbsorption());
-            }
-        }
         return parent.get(key);
     }
 
@@ -80,18 +70,7 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
             return;
         }
 
-        if (key == Player.DATA_PLAYER_ABSORPTION_ID) {
-            float floatValue = (Float) value;
-            if (player instanceof ServerPlayer) { //may be EntityOtherPlayerMP as well
-                ServerPlayer playerMP = (ServerPlayer) player;
-                if (playerMP.connection != null) //also fired when connecting, ignore(otherwise the net handler would crash)
-                    FirstAid.NETWORKING.send(PacketDistributor.PLAYER.with(() -> playerMP), new MessageApplyAbsorption(floatValue));
-            }
-            AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
-            if (damageModel != null) {
-                damageModel.setAbsorption(floatValue);
-            }
-        } else if (key == LivingEntity.DATA_HEALTH_ID) {
+        if (key == LivingEntity.DATA_HEALTH_ID) {
             // AVERT YOUR EYES - this code is barely readable and very hacky
             if (value instanceof Float && !player.level().isClientSide) {
                 float aFloat = (Float) value;
@@ -142,7 +121,6 @@ public class SynchedEntityDataWrapper extends SynchedEntityData {
         }
         set_impl(key, value);
     }
-
 
     public void toggleTracking(boolean status) {
         if (FirstAidConfig.GENERAL.debug.get())

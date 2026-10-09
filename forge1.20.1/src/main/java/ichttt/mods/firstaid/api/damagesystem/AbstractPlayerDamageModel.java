@@ -103,8 +103,12 @@ public abstract class AbstractPlayerDamageModel implements Iterable<AbstractDama
      */
     public abstract boolean isDead(@Nullable Player player);
 
+    /** @deprecated Absorption is shared; use Player.getAbsorptionAmount(). Always returns zero. */
+    @Deprecated
     public abstract Float getAbsorption();
 
+    /** @deprecated Use Player.setAbsorptionAmount(float). This compatibility method does nothing. */
+    @Deprecated
     public abstract void setAbsorption(float absorption);
 
     public abstract int getCurrentMaxHealth();

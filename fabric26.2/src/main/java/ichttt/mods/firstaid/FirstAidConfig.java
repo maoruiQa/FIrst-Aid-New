@@ -46,6 +46,10 @@ public final class FirstAidConfig {
       loadSection(GENERAL, "firstaid-general.json");
    }
 
+   public static void saveClient() {
+      writeJson(CONFIG_DIR.resolve("firstaid-client.json"), CLIENT.write());
+   }
+
    public static void loadClient() {
       loadSection(CLIENT, "firstaid-client.json");
    }
@@ -346,6 +350,7 @@ public final class FirstAidConfig {
    }
 
    public static final class Client extends FirstAidConfig.ConfigSection {
+      /** Legacy setting: all values hide normal hearts and display only absorption. */
       public final FirstAidConfig.ConfigValue<FirstAidConfig.Client.VanillaHealthbarMode> vanillaHealthBarMode = this.define(
          FirstAidConfig.enumValue("vanillaHealthBarMode", FirstAidConfig.Client.VanillaHealthbarMode.HIDE, FirstAidConfig.Client.VanillaHealthbarMode.class)
       );
@@ -362,6 +367,8 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Integer> yOffset = this.define(FirstAidConfig.intValue("yOffset", 1, -32768, 32767));
       public final FirstAidConfig.ConfigValue<Integer> alpha = this.define(FirstAidConfig.intValue("alpha", 50, 0, 200));
       public final FirstAidConfig.ConfigValue<Boolean> enableSounds;
+      public final FirstAidConfig.ConfigValue<Boolean> tinnitusEnabled;
+      public final FirstAidConfig.ConfigValue<Integer> tinnitusDurationPercent;
       public final FirstAidConfig.ConfigValue<Boolean> enableEasterEggs;
       public final FirstAidConfig.ConfigValue<Integer> visibleDurationTicks = this.define(FirstAidConfig.intValue("visibleDurationTicks", -1, -1, 600));
       public final FirstAidConfig.ConfigValue<Boolean> flash = this.define(FirstAidConfig.boolValue("flash", true));
@@ -369,6 +376,8 @@ public final class FirstAidConfig {
 
       public Client() {
          this.enableSounds = this.define(FirstAidConfig.boolValue("enableSoundSystem", true));
+         this.tinnitusEnabled = this.define(FirstAidConfig.boolValue("tinnitusEnabled", true));
+         this.tinnitusDurationPercent = this.define(FirstAidConfig.intValue("tinnitusDurationPercent", 75, 1, 400));
          this.enableEasterEggs = this.define(FirstAidConfig.boolValue("enableEasterEggs", true));
       }
 

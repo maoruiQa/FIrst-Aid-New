@@ -51,17 +51,7 @@ public class HealthRenderUtils {
     }
 
     public static void drawHealthString(GuiGraphics guiGraphics, Font font, AbstractDamageablePart damageablePart, int xTranslation, int yTranslation, boolean allowSecondLine) {
-        float absorption = damageablePart.getAbsorption();
         String text = TEXT_FORMAT.format(damageablePart.currentHealth) + "/" + damageablePart.getMaxHealth();
-        if (absorption > 0) {
-            String line2 = "+ " + TEXT_FORMAT.format(absorption);
-            if (allowSecondLine) {
-                guiGraphics.drawString(font, line2, xTranslation, yTranslation + 5, 0xFFFFFF);
-                yTranslation -= 5;
-            } else {
-                text += " " + line2;
-            }
-        }
         guiGraphics.drawString(font, text, xTranslation, yTranslation, 0xFFFFFF);
     }
 
@@ -91,94 +81,47 @@ public class HealthRenderUtils {
 
     public static boolean drawAsString(AbstractDamageablePart damageablePart, boolean allowSecondLine) {
         int maxHealth = getMaxHearts(damageablePart.getMaxHealth());
-        int maxExtraHealth = getMaxHearts(damageablePart.getAbsorption());
-        return (maxHealth + maxExtraHealth > 8 && allowSecondLine) || ((maxHealth + maxExtraHealth) > 12);
+        return (maxHealth > 8 && allowSecondLine) || maxHealth > 12;
     }
 
     public static void drawHealth(GuiGraphics guiGraphics, Font font, AbstractDamageablePart damageablePart, int xTranslation, int yTranslation, boolean allowSecondLine) {
-        int maxHealth = getMaxHearts(damageablePart.getMaxHealth());
-        int maxExtraHealth = getMaxHearts(damageablePart.getAbsorption());
-        int current = (int) Math.ceil(damageablePart.currentHealth);
-        FlashStateManager activeFlashState = Objects.requireNonNull(flashStates.get(damageablePart.part));
-
         if (drawAsString(damageablePart, allowSecondLine)) {
             drawHealthString(guiGraphics, font, damageablePart, xTranslation, yTranslation, allowSecondLine);
             return;
         }
-
+        int maxHealth = getMaxHearts(damageablePart.getMaxHealth());
+        int current = (int) Math.ceil(damageablePart.currentHealth);
         int yTexture = damageablePart.canCauseDeath ? 45 : 0;
-        int absorption = (int) Math.ceil(damageablePart.getAbsorption());
-        boolean highlight = activeFlashState.update(Util.getMillis());
-
+        boolean highlight = Objects.requireNonNull(flashStates.get(damageablePart.part)).update(Util.getMillis());
         Minecraft mc = Minecraft.getInstance();
+        int regen = FirstAidConfig.SERVER.allowOtherHealingItems.get() && mc.player.hasEffect(MobEffects.REGENERATION)
+                ? (mc.gui.getGuiTicks() / 2) % 15 : -1;
         PoseStack stack = guiGraphics.pose();
-        int regen = -1;
-        if (FirstAidConfig.SERVER.allowOtherHealingItems.get() && mc.player.hasEffect(MobEffects.REGENERATION))
-            regen = (int) ((mc.gui.getGuiTicks() / 2) % 15);
-        boolean low = (current + absorption) < 1.25F;
-
         stack.pushPose();
         stack.translate(xTranslation, yTranslation, 0);
-        boolean drawSecondLine = allowSecondLine;
-        if (allowSecondLine) drawSecondLine = (maxHealth + maxExtraHealth) > 4;
-
-        if (drawSecondLine) {
-            int maxHealth2 = 0;
-            if (maxHealth > 4) {
-                maxHealth2 = maxHealth - 4;
-                maxHealth = 4;
-            }
-
-            int maxExtraHealth2 = Math.max(0, maxExtraHealth - (4 - maxHealth));
-            maxExtraHealth -= maxExtraHealth2;
-
-            int current2 = 0;
-            if (current > 8) {
-                current2 = current - 8;
-                current = 8;
-            }
-
-            int absorption2 = absorption - maxExtraHealth * 2;
-            absorption -= absorption2;
-
-            stack.translate(0F, 5F, 0F);
+        if (allowSecondLine && maxHealth > 4) {
             stack.pushPose();
-            renderLine(stack, regen, low, yTexture, maxHealth2, maxExtraHealth2, current2, absorption2, guiGraphics, highlight);
-            regen -= (maxHealth2 + maxExtraHealth);
+            stack.translate(0F, 5F, 0F);
+            renderLine(stack, regen, current < 1.25F, yTexture, maxHealth - 4, Math.max(0, current - 8), guiGraphics, highlight);
+            regen -= maxHealth - 4;
             stack.popPose();
-            stack.translate(0F, -10F, 0F);
+            stack.translate(0F, -5F, 0F);
+            maxHealth = 4;
+            current = Math.min(current, 8);
         }
-        renderLine(stack, regen, low, yTexture, maxHealth, maxExtraHealth, current, absorption, guiGraphics, highlight);
-
+        renderLine(stack, regen, current < 1.25F, yTexture, maxHealth, current, guiGraphics, highlight);
         stack.popPose();
     }
 
-    private static void renderLine(PoseStack stack, int regen, boolean low, int yTexture, int maxHealth, int maxExtraHearts, int current, int absorption, GuiGraphics guiGraphics, boolean highlight) {
-        stack.pushPose();
-        int[] lowOffsets = new int[maxHealth + maxExtraHearts];
+    private static void renderLine(PoseStack stack, int regen, boolean low, int yTexture, int maxHealth, int current, GuiGraphics guiGraphics, boolean highlight) {
+        int[] lowOffsets = new int[maxHealth];
         if (low) {
             for (int i = 0; i < lowOffsets.length; i++) {
                 lowOffsets[i] = EventHandler.RAND.nextInt(2);
             }
         }
-
         renderMax(regen, lowOffsets, maxHealth, yTexture, guiGraphics, highlight);
-        if (maxExtraHearts > 0) { //for absorption
-            if (maxHealth != 0) {
-                stack.translate(2 + 9 * maxHealth, 0, 0);
-            }
-            renderMax(regen - maxHealth, lowOffsets, maxExtraHearts, yTexture, guiGraphics, false); //Do not highlight absorption
-        }
-        stack.popPose();
-        stack.translate(0, 0, 1);
-
         renderCurrentHealth(regen, lowOffsets, current, yTexture, guiGraphics);
-
-        if (absorption > 0) {
-            int offset = maxHealth * 9 + (maxHealth == 0 ? 0 : 2);
-            stack.translate(offset, 0, 0);
-            renderAbsorption(regen - maxHealth, lowOffsets, absorption, yTexture, guiGraphics);
-        }
     }
 
     public static int getMaxHearts(float value) {
@@ -204,17 +147,6 @@ public class HealthRenderUtils {
             render++;
         }
         renderTexturedModalRects(regen, lowOffsets, render, renderLastHalf, 61, 52, yTexture, guiGraphics);
-    }
-
-    private static void renderAbsorption(int regen, int[] lowOffsets, int absorption, int yTexture, GuiGraphics guiGraphics) {
-        boolean renderLastHalf = false;
-        int render = absorption >> 1;
-        if (absorption % 2 != 0) {
-            renderLastHalf = true;
-            render++;
-        }
-
-        if (render > 0) renderTexturedModalRects(regen, lowOffsets, render, renderLastHalf, 169, 160, yTexture, guiGraphics);
     }
 
     private static void renderTexturedModalRects(int regen, int[] lowOffsets, int toDraw, boolean lastOneHalf, int halfTextureX, int textureX, int textureY, GuiGraphics guiGraphics) {

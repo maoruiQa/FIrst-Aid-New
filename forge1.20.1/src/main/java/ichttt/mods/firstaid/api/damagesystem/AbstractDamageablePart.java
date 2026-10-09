@@ -81,8 +81,12 @@ public abstract class AbstractDamageablePart implements INBTSerializable<Compoun
      */
     public abstract void tick(Level world, Player player, boolean tickDebuffs);
 
+    /** @deprecated Use Player.setAbsorptionAmount(float). This compatibility method does nothing. */
+    @Deprecated
     public abstract void setAbsorption(float absorption);
 
+    /** @deprecated Absorption is shared; use Player.getAbsorptionAmount(). Always returns zero. */
+    @Deprecated
     public abstract float getAbsorption();
 
     public abstract void setMaxHealth(int maxHealth);

@@ -1,4 +1,8 @@
 {
+  "effect.firstaid.adrenaline_strength": "应激力量",
+  "effect.firstaid.adrenaline_speed": "应激迅捷",
+  "effect.firstaid.adrenaline_attack_speed": "应激攻速",
+
   "itemGroup.firstaid": "急救",
   "item.firstaid.bandage": "绷带",
   "item.firstaid.plaster": "石膏",
@@ -23,7 +27,7 @@
   "firstaid.gui.healthscreen": "急救生命界面",
   "firstaid.tooltip.morphine": "%s 后生效，止痛持续 %s，并获得 %s 的再生 I",
   "firstaid.tooltip.morphine_injector": "%s 后注射，强效止痛持续 %s，瞬时满档肾上腺素，并获得 %s 的再生 I（可用 2 次）",
-  "firstaid.tooltip.adrenaline_injector": "%s 后注射，立即将肾上腺素提升至最高，获得急迫、力量与迅捷，止痛持续 %s 并提供高额伤害吸收；可救起倒地玩家",
+  "firstaid.tooltip.adrenaline_injector": "肾上腺素（压制值）立即拉满，提供部分镇痛及应激迅捷、攻速和力量；保留伤害吸收II（%2$s）、短暂生命恢复及救援。不会额外给予迅捷、力量、急迫或止痛药效果。",
   "firstaid.tooltip.healer": "恢复总计 %s 颗心,每半颗心需要 %s 时间",
   "firstaid.tutorial.notice": "教程 - 没有真正的价值",
   "firstaid.tutorial.hint": "按%s查看教程",
@@ -76,8 +80,8 @@
   "firstaid.config.otherregenmultiplier.tooltip": "外部治疗健康值将成倍增长，如果\"Allow other healing items\" 被禁用，则不起作用。",
   "firstaid.config.naturalregenmultiplier": "成倍自我修补",
   "firstaid.config.naturalregenmultiplier.tooltip": "原版的自然恢复健康值将成倍增长，如果\"Allow natural items\"被禁用，则不起作用。",
-  "firstaid.config.showvanillahealthbar": "显示原版生命值",
-  "firstaid.config.showvanillahealthbar.tooltip": "如果设置为ture,则原版的生命值将显示各部位的健康平均值。",
+  "firstaid.config.showvanillahealthbar": "伤害吸收黄心",
+  "firstaid.config.showvanillahealthbar.tooltip": "隐藏普通生命值红心，仅显示共享伤害吸收黄心。",
   "firstaid.config.hideonnochange": "显示生命值变化",
   "firstaid.config.hideonnochange.tooltip": "如果设置为true,当生命值没有变化时会自动隐藏. 他会在连接和任何生命值变化时显示",
   "firstaid.config.position": "位置",
@@ -138,6 +142,7 @@
   "firstaid.gui.status.addiction_ultra_increase": "成瘾急剧上升",
   "firstaid.gui.status.addiction_decrease": "成瘾下降",
   "firstaid.gui.status.withdrawal_pain": "戒断：无来源疼痛",
+  "firstaid.gui.status.pain_relieved": "疼痛：%s（应激缓解）",
   "firstaid.gui.status.withdrawal_darkness": "戒断：黑暗",
   "firstaid.gui.status.withdrawal_nausea": "戒断：反胃",
   "firstaid.gui.status.withdrawal_weakness": "戒断：虚弱",
@@ -194,6 +199,8 @@
   "firstaid.tip.commands.group.core": "核心",
   "firstaid.tip.commands.group.rescue": "救援",
   "firstaid.tip.commands.group.advanced": "进阶",
+  "firstaid.tip.commands.tinnitus.label": "耳鸣",
+  "firstaid.tip.commands.tinnitus.detail": "个人耳鸣设置；点击填入 /firstaid tinnitus",
   "firstaid.tip.commands.pain.label": "疼痛",
   "firstaid.tip.commands.pain.detail": "疼痛强度与显示\n动态：随伤势变化 + 命中叠层红脉冲\n轻度：保持较轻疼痛\n显示：hitpulse/vignette、blur、FOV、音频\n示例：/firstaid pain display blur off\n点击填入：/firstaid pain mild",
   "firstaid.tip.commands.suppression.label": "肾上腺素",
@@ -227,5 +234,11 @@
   "firstaid.command.pain.display.blur.off": "已关闭疼痛径向模糊",
   "firstaid.tip.commands.addiction.label": "成瘾",
   "firstaid.tip.commands.addiction.detail": "仅管理员可查询/设置成瘾值\n查询：/firstaid addiction <玩家>\n设置：/firstaid addiction set <玩家> <0-100>\n普通玩家不能查看自己的成瘾值\n点击填入：/firstaid addiction set @s 0",
-  "firstaid.config.hideplayermodelindicators": "隐藏人形HUD状态指示文字"
+  "firstaid.config.hideplayermodelindicators": "隐藏人形HUD状态指示文字",
+  "firstaid.login.tinnitus": "耳鸣设置：/firstaid tinnitus [on|off|duration <1-400>]",
+  "firstaid.command.tinnitus.on": "开启",
+  "firstaid.command.tinnitus.off": "关闭",
+  "firstaid.command.tinnitus.settings": "个人耳鸣：%s；时长：%s%%",
+  "firstaid.config.tinnitusenabled": "启用耳鸣",
+  "firstaid.config.tinnitusdurationpercent": "耳鸣时长（%）"
 }

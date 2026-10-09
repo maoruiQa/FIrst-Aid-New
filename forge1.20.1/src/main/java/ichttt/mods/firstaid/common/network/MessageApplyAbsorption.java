@@ -18,7 +18,6 @@
 
 package ichttt.mods.firstaid.common.network;
 
-import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
@@ -30,10 +29,13 @@ public class MessageApplyAbsorption {
     private final float amount;
 
     public MessageApplyAbsorption(FriendlyByteBuf buffer) {
-        amount = buffer.readFloat();
+        this(buffer.readFloat());
     }
 
     public MessageApplyAbsorption(float amount) {
+        if (!Float.isFinite(amount) || amount < 0.0F) {
+            throw new IllegalArgumentException("Invalid absorption amount: " + amount);
+        }
         this.amount = amount;
     }
 
@@ -47,9 +49,10 @@ public class MessageApplyAbsorption {
             NetworkEvent.Context ctx = supplier.get();
             CommonUtils.checkClient(ctx);
             ctx.enqueueWork(() -> {
-                AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(Minecraft.getInstance().player);
-                if (damageModel == null) return;
-                damageModel.setAbsorption(message.amount);
+                var player = Minecraft.getInstance().player;
+                if (player != null) {
+                    player.setAbsorptionAmount(message.amount);
+                }
             });
         }
     }

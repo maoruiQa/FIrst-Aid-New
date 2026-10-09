@@ -31,10 +31,12 @@ import javax.annotation.Nonnull;
 import java.util.Objects;
 
 public abstract class AbstractDebuff implements IDebuff {
+    protected final String injuryEffectId;
     @Nonnull
     public final MobEffect effect;
 
     public AbstractDebuff(@Nonnull ResourceLocation potionName) {
+        this.injuryEffectId = potionName.toString();
         this.effect = Objects.requireNonNull(ForgeRegistries.MOB_EFFECTS.getValue(potionName));
     }
 

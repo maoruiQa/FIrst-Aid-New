@@ -30,6 +30,13 @@ loom {
 		}
 	}
 
+	runs {
+		client {
+			// Match 26.3's launcher argument to prevent native shader compiler stack crashes.
+			getJvmArguments().add('-XX:StackShadowPages=32')
+		}
+	}
+
 }
 
 dependencies {

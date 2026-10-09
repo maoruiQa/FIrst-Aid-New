@@ -18,6 +18,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffects;
@@ -48,6 +50,18 @@ public final class RegistryObjects {
    );
    public static final Holder<MobEffect> PAINKILLER_EFFECT = Registry.registerForHolder(
       BuiltInRegistries.MOB_EFFECT, id("painkiller"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 7259647)
+   );
+   public static final Holder<MobEffect> ADRENALINE_SPEED_EFFECT = Registry.registerForHolder(
+      BuiltInRegistries.MOB_EFFECT, id("adrenaline_speed"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0x7CD8B4)
+                .addAttributeModifier(Attributes.MOVEMENT_SPEED, id("adrenaline_speed"), 0.04D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
+   );
+   public static final Holder<MobEffect> ADRENALINE_ATTACK_SPEED_EFFECT = Registry.registerForHolder(
+      BuiltInRegistries.MOB_EFFECT, id("adrenaline_attack_speed"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0xFFD27F)
+                .addAttributeModifier(Attributes.ATTACK_SPEED, id("adrenaline_attack_speed"), 0.04D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
+   );
+   public static final Holder<MobEffect> ADRENALINE_STRENGTH_EFFECT = Registry.registerForHolder(
+      BuiltInRegistries.MOB_EFFECT, id("adrenaline_strength"), new FirstAidPotion(MobEffectCategory.BENEFICIAL, 0xEE6B61)
+                .addAttributeModifier(Attributes.ATTACK_DAMAGE, id("adrenaline_strength"), 0.6D, AttributeModifier.Operation.ADD_VALUE)
    );
    public static final Holder<MobEffect> ADDICTION_INCREASE_EFFECT = Registry.registerForHolder(
       BuiltInRegistries.MOB_EFFECT, id("addiction_increase"), new FirstAidPotion(MobEffectCategory.HARMFUL, 0xE8A0A0)

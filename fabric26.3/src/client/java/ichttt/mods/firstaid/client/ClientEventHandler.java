@@ -256,7 +256,9 @@ public final class ClientEventHandler {
                   .withStyle(new ChatFormatting[]{ChatFormatting.GREEN, ChatFormatting.BOLD, ChatFormatting.UNDERLINE})
             )
             .append(Component.literal(" to open the health UI ").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal("and inspect or treat body parts.").withStyle(ChatFormatting.WHITE));
+            .append(Component.literal("and inspect or treat body parts.").withStyle(ChatFormatting.WHITE))
+                .append(Component.literal(" ").withStyle(ChatFormatting.WHITE))
+                .append(Component.translatable("firstaid.login.tinnitus").withStyle(ChatFormatting.LIGHT_PURPLE));
          mc.player.sendSystemMessage(message);
       }
    }

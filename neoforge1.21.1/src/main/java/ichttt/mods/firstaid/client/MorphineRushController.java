@@ -134,6 +134,11 @@ public final class MorphineRushController {
         }
         volume = Mth.clamp(volume, 0.05F, 0.55F);
         pitch = Mth.clamp(pitch, 0.70F, 1.40F);
+        if (id.equals(ResourceLocation.fromNamespaceAndPath(FirstAid.MODID, "debuff.tinnitus"))) {
+            TinnitusSoundController.playAt(event, volume, pitch,
+                    player.getX(), player.getY() + player.getEyeHeight() * 0.5D, player.getZ());
+            return;
+        }
         level.playLocalSound(
                 player.getX(),
                 player.getY() + player.getEyeHeight() * 0.5D,

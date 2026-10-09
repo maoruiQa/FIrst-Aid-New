@@ -54,7 +54,8 @@ public final class StatusSummaryRenderer {
             boolean painSuppressed = playerDamageModel != null && playerDamageModel.isPainSuppressed(player);
             Component painText = painSuppressed
                     ? Component.translatable("firstaid.gui.status.pain_suppressed")
-                    : Component.translatable("firstaid.gui.status.pain", Component.translatable(getPainSeverityKey(painLevel)));
+                    : Component.translatable(PlayerDamageModel.getPainStatusKey(damageModel), Component.translatable(getPainSeverityKey(playerDamageModel != null && playerDamageModel.getAdrenalinePainRelief() > 0.0F
+                        ? PlayerDamageModel.getPerceivedPainLevel(damageModel) : painLevel)));
             guiGraphics.drawString(font, painText, baseX, lineY, painSuppressed ? 0x8FD3FF : 0xFF8A8A);
             lineY += 10;
         }

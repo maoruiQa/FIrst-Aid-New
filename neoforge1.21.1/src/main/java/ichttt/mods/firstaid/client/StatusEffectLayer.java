@@ -104,7 +104,7 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
         float targetPain = Math.max(basePain, dangerPain);
         SuppressionFeedbackController suppressionFeedbackController = ClientEventHandler.getSuppressionFeedbackController();
         float modelSuppression = playerDamageModel == null ? Math.min(1.0F, damageModel.getAdrenalineTicks() / 200.0F) : playerDamageModel.getSuppressionIntensity();
-        float suppressionScale = FirstAid.lowSuppressionEnabled ? FirstAid.lowSuppressionMultiplier : 1.0F;
+        float suppressionScale = FirstAid.getSuppressionDisplayMultiplier();
         float targetSuppression = FirstAid.suppressionDisplayCurve(Math.max(modelSuppression, suppressionFeedbackController.getVisualStrength()) * suppressionScale);
 
         tickStrengths(targetPain, targetSuppression);
@@ -349,7 +349,7 @@ public class StatusEffectLayer implements LayeredDraw.Layer {
          boolean painSuppressed = damageModel instanceof PlayerDamageModel && ((PlayerDamageModel) damageModel).isPainSuppressed(minecraft.player);
          Component painText = painSuppressed
             ? Component.translatable("firstaid.gui.status.pain_suppressed")
-            : Component.translatable("firstaid.gui.status.pain", new Object[]{Component.translatable(getPainSeverityKey(damageModel.getPainLevel()))});
+            : Component.translatable(PlayerDamageModel.getPainStatusKey(damageModel), new Object[]{Component.translatable(getPainSeverityKey(PlayerDamageModel.getPerceivedPainLevel(damageModel)))});
          guiGraphics.drawString(minecraft.font, painText, 8, lineY, painSuppressed ? 9425919 : 16747146);
          lineY += 10;
       }

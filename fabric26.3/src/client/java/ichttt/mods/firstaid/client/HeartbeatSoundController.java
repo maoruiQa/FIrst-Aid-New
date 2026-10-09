@@ -21,12 +21,12 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 
 public final class HeartbeatSoundController {
-   private static final int FADE_OUT_TICKS = 100;
+   private static final int FADE_OUT_TICKS = 60;
    private static final int ACTIVE_HOLD_TICKS = 2;
    private static final int PULSE_HOLD_TICKS = 2;
    private static final float RED_HEALTH_THRESHOLD = 0.25F;
    /** Ignore tiny residual suppression after rescue (issue #7). */
-   private static final float ACTIVE_SUPPRESSION_THRESHOLD = 0.12F;
+   private static final float ACTIVE_SUPPRESSION_THRESHOLD = 0.05F;
    @Nullable
    private HeartbeatLoopSound activeHeartbeat;
    private int lastAdrenalineHeartbeatTriggerId = -1;
@@ -63,14 +63,17 @@ public final class HeartbeatSoundController {
       }
 
       boolean sustainedHeartbeat = playerDamageModel != null && (this.isCriticalPartRed(playerDamageModel) || this.isSuppressed(playerDamageModel));
+        float strength = playerDamageModel == null ? 0.0F : FirstAid.suppressionDisplayCurve(
+                (playerDamageModel.getSuppressionIntensity() - ACTIVE_SUPPRESSION_THRESHOLD) / (1.0F - ACTIVE_SUPPRESSION_THRESHOLD));
+        if (playerDamageModel != null && isCriticalPartRed(playerDamageModel)) strength = Math.max(strength, 0.65F);
       int triggerId = playerDamageModel == null ? -1 : playerDamageModel.getAdrenalineHeartbeatTriggerId();
-      boolean pulseHeartbeat = triggerId != -1 && triggerId != this.lastAdrenalineHeartbeatTriggerId;
+      boolean pulseHeartbeat = this.lastAdrenalineHeartbeatTriggerId >= 0 && triggerId > this.lastAdrenalineHeartbeatTriggerId;
       this.lastAdrenalineHeartbeatTriggerId = triggerId;
       if (sustainedHeartbeat || pulseHeartbeat) {
          HeartbeatLoopSound heartbeat = this.ensureHeartbeat(minecraft, player);
          if (heartbeat != null) {
             if (sustainedHeartbeat) {
-               heartbeat.keepAlive();
+               heartbeat.keepAlive(strength);
             }
 
             if (pulseHeartbeat) {
@@ -112,8 +115,8 @@ public final class HeartbeatSoundController {
    }
 
    private boolean isSuppressed(PlayerDamageModel model) {
-      return model.getSuppressionHoldTicks() > 0 && model.getSuppressionIntensity() > ACTIVE_SUPPRESSION_THRESHOLD;
-   }
+        return model.getSuppressionIntensity() > ACTIVE_SUPPRESSION_THRESHOLD;
+    }
 
    @Nullable
    private HeartbeatLoopSound ensureHeartbeat(Minecraft minecraft, LocalPlayer player) {
@@ -134,8 +137,8 @@ public final class HeartbeatSoundController {
    }
 
    private static final class HeartbeatLoopSound implements TickableSoundInstance {
-      private static final float BASE_VOLUME = 0.92F;
-      private static final float PULSE_VOLUME = 1.0F;
+      private static final float BASE_VOLUME = 0.40F;
+
       private final LocalPlayer player;
       private final Identifier location;
       private Sound sound = SoundManager.EMPTY_SOUND;
@@ -144,13 +147,15 @@ public final class HeartbeatSoundController {
       private int pulseHoldTicks;
       private int fadeTicksRemaining = -1;
       private boolean stopped;
+        private float strength;
 
       private HeartbeatLoopSound(LocalPlayer player, SoundEvent event) {
          this.player = player;
          this.location = event.location();
       }
 
-      private void keepAlive() {
+      private void keepAlive(float targetStrength) {
+            strength = Math.max(strength - 0.025F, Math.min(strength + 0.04F, targetStrength));
          this.activeHoldTicks = ACTIVE_HOLD_TICKS;
          this.fadeTicksRemaining = -1;
       }
@@ -256,25 +261,16 @@ public final class HeartbeatSoundController {
 
       @Override
       public float getVolume() {
-         if (this.activeHoldTicks > 0) {
-            return BASE_VOLUME;
-         }
-
-         if (this.pulseHoldTicks > 0) {
-            return PULSE_VOLUME;
-         }
-
-         if (this.fadeTicksRemaining < 0) {
-            return 0.0F;
-         }
-
-         return BASE_VOLUME * (this.fadeTicksRemaining / (float)FADE_OUT_TICKS);
-      }
+            float volume = BASE_VOLUME + 0.60F * strength;
+            if (activeHoldTicks > 0 || pulseHoldTicks > 0) return volume;
+            if (fadeTicksRemaining < 0) return volume;
+            return volume * (fadeTicksRemaining / (float) FADE_OUT_TICKS);
+        }
 
       @Override
       public float getPitch() {
-         return 1.0F;
-      }
+            return 0.95F + 0.25F * strength;
+        }
 
       @Override
       public double getX() {

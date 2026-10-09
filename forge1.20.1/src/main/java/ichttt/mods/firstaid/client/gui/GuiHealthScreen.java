@@ -256,7 +256,7 @@ public class GuiHealthScreen extends Screen {
         if (HealthRenderUtils.drawAsString(damageablePart, true)) {
             return 160;
         }
-        return 200 - Math.min(40, HealthRenderUtils.getMaxHearts(damageablePart.getMaxHealth()) * 9 + HealthRenderUtils.getMaxHearts(damageablePart.getAbsorption()) * 9 + 2);
+        return 200 - Math.min(40, HealthRenderUtils.getMaxHearts(damageablePart.getMaxHealth()) * 9 + 2);
     }
 
     private static int getHealthIndicatorColor(AbstractDamageablePart part) {

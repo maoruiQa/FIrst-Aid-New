@@ -1,0 +1,45 @@
+First Aid feedback verification - 2026-10-08
+Yaw: shake * 0.28 * sin(time * 0.7); pitch: shake * 0.07 * cos(time * 0.9).
+View-axis roll: clamped suppression * 1.6 * sin(time * 2.24), about 7.13 Hz at 20 TPS.
+Roll has zero mean, preserves facing and cannot accumulate directional bias.
+Near-miss impulses capped at +/-0.22 degrees yaw and +/-0.06 degrees pitch.
+Suppression FOV reduction: original sustained compression * 1.21. No near-miss FOV impulse.
+Head injury tinnitus: new head damage AND (actual loss >4 OR remaining head health <=40%).
+Cooldown: 200 ticks; short base duration: 60-100 ticks, scaled by personal percent.
+Heartbeat: suppression >0.05, smooth volume 0.4-1.0, pitch/speed 0.95-1.20, fade 60 ticks.
+Head/torso on-hit effects: 80-tick cooldown, hit-strength or remaining-health tiers.
+Injury Darkness: head 40/50 ticks at 2/4 damage OR 40/20% remaining head health;
+torso 40 ticks at 4 damage OR 20% remaining torso health. Requires new damage.
+Default head/torso nausea definitions removed; Weakness I below 30% torso health.
+
+PASS: 7 Gradle wrapper builds.
+PASS: production-code stub regression, gradual quarter-point head attrition, healthy head
+strong-hit boundary, other-part exclusion, 10-second tinnitus and 4-second debuff cooldowns,
+backward tick clocks, separate player instances, LOW/OFF modes, healing recovery,
+head/torso Darkness strong-hit and gradual-injury thresholds, short-duration caps,
+post-absorption and overflow damage callbacks, head tinnitus 1/75/100/400% timing,
+heartbeat threshold/curves/smooth fade/mute/death, and adrenaline injection/synchronization.
+PASS: 158,760 camera comparisons across all modules, sustained suppression, repeated
+same-side shots, direction caps, zero-mean roll, impulse decay, death/world cleanup.
+PASS: 178 native client check groups (26 in each Fabric module and 25 in each Forge/NeoForge module), actual sound registry/engine,
+permission-free commands and persisted settings, 4,320 camera phase/pressure cases per
+module, direction vectors, mirror/sleeping hooks, max-suppression helper and sync snapshot,
+head duration sync bounds/legacy payloads, heartbeat curves, actual injury JSON codec
+loading and cooldown factories, legacy JSON compatibility, no stale nausea resources,
+head/torso Darkness registry identity, native effect expiry and no passive health refresh.
+PASS: release JAR resources match source injury data, include the bilingual join command prompt entry, and each other; copies match build
+JAR SHA-256. No legacy modules were changed for this feature.
+NeoForge title-screen model probes use temporary default server config in memory and
+restore the unloaded config state; server config files remain untouched by the probe.
+Fabric 26.3 used JAVA_TOOL_OPTIONS=-Dmax.bg.threads=1 for its existing native startup issue.
+Tests use scripted state and native hooks. No new manual combat recording or multiplayer
+playtest was performed; subjective play feel still requires an in-world playtest.
+
+SHA-256:
+9634baecafd1ee272ea998e05d5de12af64d1229351aa0e894665296f38d16b7  firstaid-1.3.3+fabric1.21.1.jar
+e023bf0c88933f4471bbb6b943ce2451b0529c05e6fec9e155021797625c501d  firstaid-1.3.3+fabric26.2.jar
+629c3ad81680cd31662b6ff148c88f91915dace04033c6cc0678654a91b1ec74  firstaid-1.3.3+fabric26.3.jar
+af1eb322ae4d02ef85c31de8d125600f01336dd9fba29378e8caf96eefc17188  firstaid-1.3.3+forge1.20.1.jar
+4105d2f0a849701a58ee521cf585044603838899ecd02267d8a24467cd4d9bec  firstaid-1.3.3+neoforge1.21.1.jar
+b25a8d2ace54e2d7a2118b119c1e422cf01539ea4a3f2155e202f10271221576  firstaid-1.3.3+neoforge26.2.jar
+7a099e9f8bf890dac651675047d37306d74846ac95326ccb43c70e77af46ad5f  firstaid-1.3.3+neoforge26.3.jar

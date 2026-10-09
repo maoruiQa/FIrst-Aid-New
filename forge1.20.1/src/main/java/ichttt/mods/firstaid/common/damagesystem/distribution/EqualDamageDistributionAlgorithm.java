@@ -121,6 +121,11 @@ public class EqualDamageDistributionAlgorithm implements IDamageDistributionAlgo
         AbstractPlayerDamageModel damageModel = CommonUtils.getDamageModel(player);
         if (damageModel == null) return 0F;
 
+        damage = DamageDistribution.consumeGlobalAbsorption(player, damage);
+        if (damage <= 0.0F) {
+            CommonUtils.syncDamageModel((ServerPlayer) player);
+            return 0.0F;
+        }
         float damageLeft = distributeOnParts(damage, damageModel, player, tryNoKill);
         if (damageLeft > 0F && tryNoKill)
             damageLeft = distributeOnParts(damage, damageModel, player, false);

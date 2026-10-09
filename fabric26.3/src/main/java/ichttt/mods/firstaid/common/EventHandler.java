@@ -258,9 +258,6 @@ public final class EventHandler {
          if (playerAttack) {
             float appliedPartDamage = previousPartHealth - totalPartHealth(damageModel);
             if (appliedPartDamage > 0.0f && onOffensiveDamage(player, source)) {
-                if (damageModel instanceof PlayerDamageModel victimModel && !victimModel.isUnconscious()) {
-                    victimModel.registerAdrenalineNearMiss(player, 0.35f, 40);
-                }
             }
         }
         hitList.remove(player);
@@ -411,7 +408,7 @@ public final class EventHandler {
       if (direct != attacker && !(direct instanceof Projectile projectile && projectile.getOwner() == attacker)) return false;
         recordRecentPlayerAttack(victim, attacker);
       if (CommonUtils.getDamageModel(attacker) instanceof PlayerDamageModel model && !model.isUnconscious()) {
-         model.registerAdrenalineNearMiss(attacker, 0.35F, 40);
+         model.registerAdrenalineAttack(attacker, source.getDirectEntity() == attacker ? 0.50F : 0.35F, 40);
       }
       return true;
    }
@@ -528,10 +525,11 @@ public final class EventHandler {
         double threatRange = FirstAidConfig.SERVER.encounterThreatRange.get();
         if (FirstAid.projectileSuppressionEnabled) {
             double sightRange = FirstAidConfig.SERVER.encounterSightRange.get();
-            boolean encounter = model.getSuppressionIntensity() <= 0.0f
-                ? hasVisibleHostile(player, sightRange)
-                : hasTargetingMob(player, threatRange) || hasRecentPlayerThreat(player, threatRange);
-            if (encounter) model.ensureEncounterAdrenaline(player, FirstAidConfig.SERVER.encounterBaseIntensity.get().floatValue());
+            if (model.getSuppressionIntensity() <= 0.0F && hasVisibleHostile(player, sightRange)) {
+                model.ensureEncounterAdrenaline(player, FirstAidConfig.SERVER.encounterBaseIntensity.get().floatValue());
+            } else {
+                model.recoverEncounterAdrenaline(player, countEncounterThreats(player, threatRange));
+            }
         }
         if (model.isAdrenalineFatigueReady() && !hasAdrenalineFatigueThreat(player, threatRange)) {
             model.applyAdrenalineFatigue(player);
@@ -539,7 +537,7 @@ public final class EventHandler {
     }
 
     public static boolean hasAdrenalineFatigueThreat(ServerPlayer player, double range) {
-        if (hasRecentPlayerThreat(player, range)) return true;
+        if (countRecentPlayerThreats(player, range) > 0) return true;
         for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(range))) {
             if (mob.isAlive() && mob.distanceToSqr(player) <= range * range
                 && (mob instanceof Enemy || mob instanceof NeutralMob && mob.getTarget() == player)) return true;
@@ -559,28 +557,30 @@ public final class EventHandler {
         return false;
     }
 
-    private static boolean hasTargetingMob(ServerPlayer player, double range) {
+    public static int countEncounterThreats(ServerPlayer player, double range) {
+        int count = countRecentPlayerThreats(player, range);
         for (Mob mob : player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(range))) {
-            if (mob.isAlive() && mob.getTarget() == player && mob.distanceToSqr(player) <= range * range) return true;
+            if (mob.isAlive() && mob.getTarget() == player && mob.distanceToSqr(player) <= range * range) ++count;
         }
-        return false;
+        return count;
     }
 
-    private static boolean hasRecentPlayerThreat(ServerPlayer player, double range) {
+    private static int countRecentPlayerThreats(ServerPlayer player, double range) {
         Map<UUID, Long> attacks = recentPlayerAttackers.get(player);
-        if (attacks == null) return false;
+        if (attacks == null) return 0;
         long now = player.level().getGameTime();
         int memory = FirstAidConfig.SERVER.encounterRecentAttackerTicks.get();
         attacks.entrySet().removeIf(entry -> now < entry.getValue() || now - entry.getValue() > memory);
         if (attacks.isEmpty()) {
             recentPlayerAttackers.remove(player);
-            return false;
+            return 0;
         }
+        int count = 0;
         for (Player other : player.level().players()) {
-            if (other != player && other.isAlive() && attacks.containsKey(other.getUUID())
-                && other.distanceToSqr(player) <= range * range) return true;
+            if (other != player && other.isAlive() && !other.isSpectator() && attacks.containsKey(other.getUUID())
+                && other.distanceToSqr(player) <= range * range) ++count;
         }
-        return false;
+        return count;
     }
 
     public static boolean isMovingProjectile(Projectile projectile) {
@@ -748,6 +748,7 @@ public final class EventHandler {
             buildCommandTipLine(
                "firstaid.tip.commands.group.core",
                buildCommandTipChip("firstaid.tip.commands.pain.label", "firstaid.tip.commands.pain.detail", "/firstaid pain mild", ChatFormatting.AQUA),
+               buildCommandTipChip("firstaid.tip.commands.tinnitus.label", "firstaid.tip.commands.tinnitus.detail", "/firstaid tinnitus", ChatFormatting.BLUE),
                buildCommandTipChip("firstaid.tip.commands.suppression.label", "firstaid.tip.commands.suppression.detail", "/firstaid adrenaline dynamic", ChatFormatting.AQUA),
                buildCommandTipChip("firstaid.tip.commands.commandtips.label", "firstaid.tip.commands.commandtips.detail", "/firstaid commandtips off", ChatFormatting.GRAY),
                buildCommandTipChip("firstaid.tip.commands.medicineeffect.label", "firstaid.tip.commands.medicineeffect.detail", "/firstaid medicineeffect assisted", ChatFormatting.YELLOW)

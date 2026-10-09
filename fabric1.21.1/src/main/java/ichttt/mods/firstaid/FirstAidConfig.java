@@ -64,6 +64,10 @@ public final class FirstAidConfig {
         loadSection(GENERAL, "firstaid-general.json");
     }
 
+    public static void saveClient() {
+        writeJson(CONFIG_DIR.resolve("firstaid-client.json"), CLIENT.write());
+    }
+
     public static void loadClient() {
         loadSection(CLIENT, "firstaid-client.json");
     }
@@ -461,6 +465,7 @@ public final class FirstAidConfig {
             NORMAL, HIGHLIGHT_CRITICAL_PATH, HIDE
         }
 
+        /** Legacy setting: all values hide normal hearts and display only absorption. */
         public final ConfigValue<VanillaHealthbarMode> vanillaHealthBarMode;
         public final ConfigValue<OverlayMode> overlayMode;
         public final ConfigValue<Position> pos;
@@ -469,6 +474,8 @@ public final class FirstAidConfig {
         public final ConfigValue<Integer> yOffset;
         public final ConfigValue<Integer> alpha;
         public final ConfigValue<Boolean> enableSounds;
+        public final ConfigValue<Boolean> tinnitusEnabled;
+        public final ConfigValue<Integer> tinnitusDurationPercent;
         public final ConfigValue<Boolean> enableEasterEggs;
         public final ConfigValue<Integer> visibleDurationTicks;
         public final ConfigValue<Boolean> flash;
@@ -486,6 +493,8 @@ public final class FirstAidConfig {
             flash = define(boolValue("flash", true));
             hidePlayerModelIndicators = define(boolValue("hidePlayerModelIndicators", true));
             enableSounds = define(boolValue("enableSoundSystem", true));
+            tinnitusEnabled = define(boolValue("tinnitusEnabled", true));
+            tinnitusDurationPercent = define(intValue("tinnitusDurationPercent", 75, 1, 400));
             enableEasterEggs = define(boolValue("enableEasterEggs", true));
         }
     }

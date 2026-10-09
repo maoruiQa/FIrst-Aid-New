@@ -53,6 +53,10 @@ public class FirstAidConfig {
         CLIENT = specPair.getLeft();
     }
 
+    public static void saveClient() {
+        clientSpec.save();
+    }
+
     public static void persistCommandSettings() {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
         SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
@@ -234,7 +238,7 @@ public class FirstAidConfig {
                     .define("scaleMaxHealth", true);
 
             capMaxHealth = builder
-                    .comment("If true, max health will be capped at 6 hearts and absorption at 2 hearts per limb. If false, the health cap will be much higher (64 hearts normal and 16 absorption)")
+                    .comment("If true, max health is capped at 6 hearts per limb. If false, it is capped at 64 hearts. Absorption uses the shared player pool.")
                     .translation("firstaid.config.scalemaxhealth")
                     .define("capMaxHealth", true);
 
@@ -567,6 +571,8 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.IntValue yOffset;
         public final ForgeConfigSpec.IntValue alpha;
         public final ForgeConfigSpec.BooleanValue enableSounds;
+        public final ForgeConfigSpec.BooleanValue tinnitusEnabled;
+        public final ForgeConfigSpec.IntValue tinnitusDurationPercent;
         public final ForgeConfigSpec.BooleanValue enableEasterEggs;
         public final ForgeConfigSpec.IntValue visibleDurationTicks;
         public final ForgeConfigSpec.BooleanValue flash;
@@ -575,10 +581,8 @@ public class FirstAidConfig {
         public Client(ForgeConfigSpec.Builder builder) {
             builder.comment("Client only configuration settings").push("Overlay");
             vanillaHealthBarMode = builder
-                    .comment("The mode how to show the mc vanilla health bar.",
-                            "NORMAL shows the vanilla health value that calculated the way vanillaHealthCalculation is specified (server config)",
-                            "HIGHLIGHT_CRITICAL_PATH show the vanilla health value and highlights the health value of the most damaged critical limb (by default head or body) using the hardcore-styled hearts for them and the normal hearts for the rest of the health. Only works if vanillaHealthCalculation is set to AVERAGE_ALL",
-                            "HIDE just doesn't display the vanilla health bar at all.")
+                    .comment("Legacy setting retained for existing configs.",
+                            "All values hide normal health hearts and display only absorption hearts.")
                     .translation("firstaid.config.vanillahealthbarmode")
                     .defineEnum("vanillaHealthBarMode", VanillaHealthbarMode.HIDE);
 
@@ -628,6 +632,14 @@ public class FirstAidConfig {
 
 
             builder.push("Misc");
+            tinnitusEnabled = builder
+                    .comment("Enable tinnitus sounds from injuries and morphine. Suppression never triggers tinnitus.")
+                    .translation("firstaid.config.tinnitusenabled")
+                    .define("tinnitusEnabled", true);
+            tinnitusDurationPercent = builder
+                    .comment("Tinnitus duration as a percentage of the original clip (1-400). Values above 100 loop the clip.")
+                    .translation("firstaid.config.tinnitusdurationpercent")
+                    .defineInRange("tinnitusDurationPercent", 75, 1, 400);
             enableSounds = builder
                     .comment("Set to true to enable the debuff sounds. Only matters when debuffs are enabled")
                     .translation("firstaid.config.enablesoundsystem")

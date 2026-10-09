@@ -1,8 +1,5 @@
 package ichttt.mods.firstaid.mixin.client;
 
-import ichttt.mods.firstaid.FirstAidConfig;
-import ichttt.mods.firstaid.FirstAidConfig.Client.VanillaHealthbarMode;
-import ichttt.mods.firstaid.FirstAidConfig.Server.VanillaHealthCalculationMode;
 import ichttt.mods.firstaid.client.gui.FirstaidIngameGui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -30,19 +27,10 @@ public abstract class GuiMixin {
       boolean blinking,
       CallbackInfo ci
    ) {
-      VanillaHealthbarMode mode = (VanillaHealthbarMode)FirstAidConfig.CLIENT.vanillaHealthBarMode.get();
-      if (mode != VanillaHealthbarMode.NORMAL) {
-         ci.cancel();
-
-         Minecraft mc = Minecraft.getInstance();
-         if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.gui.hud.isHidden()) {
-            if (mode == VanillaHealthbarMode.HIGHLIGHT_CRITICAL_PATH
-               && FirstAidConfig.SERVER.vanillaHealthCalculation.get() == VanillaHealthCalculationMode.AVERAGE_ALL) {
-               FirstaidIngameGui.renderHealth(guiGraphics.guiWidth(), guiGraphics.guiHeight(), guiGraphics);
-            } else if (mode == VanillaHealthbarMode.HIDE) {
-               FirstaidIngameGui.renderHealth(guiGraphics.guiWidth(), guiGraphics.guiHeight(), guiGraphics);
-            }
-         }
+      ci.cancel();
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.gameMode != null && mc.gameMode.canHurtPlayer() && !mc.gui.hud.isHidden()) {
+         FirstaidIngameGui.renderHealth(guiGraphics.guiWidth(), guiGraphics.guiHeight(), guiGraphics);
       }
    }
 }
