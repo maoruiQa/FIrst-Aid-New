@@ -17,7 +17,7 @@ Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft
 ### What's new
 
 - **Adrenaline that follows danger:** Visible hostiles, nearby attackers, valid attacks, and moving projectile near misses can build pressure. Gains diminish as the meter fills, near misses grant half their previous gain, and actual injuries lower pressure. Movement and attack-speed bonuses follow current pressure continuously: levels I–V begin at 20%, 35%, 50%, 65% and 80%, adding 4%, 8%, 12%, 16% and 20%. Full natural pressure matches the injector’s movement and attack-speed gains without stacking.
-- **Relief with an aftermath:** Adrenaline provides partial pain relief. At 35% pressure, Slowness, Mining Fatigue and Weakness begin at 50% aggregate health and are capped at level I; ordinary injury rules remain unchanged below 20%. After 60 continuous seconds of adrenaline, leaving danger can trigger a short Fatigue episode; server owners can configure it.
+- **Relief with an aftermath:** Adrenaline provides partial pain relief. Injury debuff relief and pain FOV relief default to 1.7 times their previous strength; pain blur retains its previous relief. At 35% pressure, Slowness, Mining Fatigue and Weakness are capped at level I and their starting thresholds are reduced; ordinary injury rules remain unchanged below 20%. After 60 continuous seconds of adrenaline, leaving danger can trigger a short Fatigue episode; server owners can configure it.
 - **A stronger last resort:** Adrenaline Injectors fill the meter, have four uses by default, and can revive a downed player. They retain their other buffs but no longer grant or extend Painkiller. Defibrillators can also be used for self-revival while downed.
 - **Medicine and crafting controls:** 1.3.2 added commands for addiction gain, recipe yields, and newly crafted device uses on supported modules; Bandages and Plaster now craft four by default there.
 - **Clearer pain and audio:** Recent hits create a short pain spike over ongoing injury pain, while rescue and respawn clear lingering heartbeat and ringing sounds.
@@ -151,6 +151,7 @@ Feedback regression checks (run from the repository root with Python and a JDK o
 ```powershell
 python tools/check_tinnitus.py
 python tools/check_tinnitus_runtime.py
+python tools/check_suppression_parity.py
 ```
 
 Suppression camera feedback is identical across all seven maintained modules. Horizontal
@@ -158,13 +159,22 @@ and vertical sway and near-miss kicks are about 40% of the previous amplitudes.
 Vertical sway is subtle (about a quarter of the horizontal amplitude). A centered roll rocks
 the horizon around the view axis at about 7.13 Hz (1.6 times the previous frequency)
 without changing the facing direction. Its amplitude scales directly with suppression,
-up to ±1.36° in dynamic mode or ±0.88° with default mild settings at full suppression, and is
+up to ±1.20° in dynamic mode or ±0.80° with default mild settings at full suppression, and is
 zero without suppression; it has no constant tilt or accumulated directional roll. Near-miss kicks are
 reduced, decay as before, and are capped at ±0.22° horizontally and ±0.06° vertically.
-Adrenaline feedback uses a shared multiplier for the screen overlay, sustained camera sway
-and FOV: dynamic is 0.85, while mild is 1.375 times its configured base multiplier
-(0.55 at the default base of 0.4), capped at 1.0. These display modes do not change combat
-benefits. Near misses do not add a separate FOV reduction; pain FOV reduction is unchanged.
+Adrenaline feedback uses a shared multiplier for the screen overlay and camera sway:
+dynamic is 0.75, while mild is 1.25 times its configured base multiplier
+(0.50 at the default base of 0.4), capped at 1.0. These display modes do not change combat
+benefits. Suppression and near misses no longer narrow FOV. The server setting
+`adrenalineReliefMultiplier` defaults to 1.7 (range 0–2) and scales injury debuff relief
+and pain FOV relief. Set it to 1.0 to restore the previous relief, or 0 to disable these
+two benefits. It does not change pain blur, sound, HUD pain indicators or drug pain relief.
+Below 20% pressure, injury rules remain unchanged. Between 20% and 35%, the threshold
+reduction increases gradually. With the default 1.7 multiplier and default injury data,
+high-pressure Slowness starts at about 29% aggregate leg/foot health and Mining Fatigue at
+32.5% aggregate arm health, both capped at level I. Thresholds already at or below 50%
+are preserved, including stricter datapack thresholds. Fabric and NeoForge use matching
+overlay parameters; NeoForge 26.2/26.3 renders the status overlay once through its HUD layer.
 Adrenaline injection immediately sets suppression to 100%, holds it for 15 seconds,
 and synchronizes the level to the client. It retains Absorption II, brief regeneration and rescue. Movement and attack speed
 come from pressure alone, with visible Adrenaline Speed, Adrenaline Attack Speed and Adrenaline Strength effects
@@ -182,6 +192,11 @@ percentage points to the base recovery rate and 6 points to its ceiling, capped 
 Recovery is scaled by remaining pressure headroom, respects the two-second post-injury delay,
 and does not prolong higher attack- or injection-generated pressure. Initial visible-hostile
 encounter activation remains unchanged; the configured base ceiling remains effective.
+Actual injury costs 2 percentage points of pressure per heart lost, capped at 10 points
+per hit; absorbed or cancelled damage costs nothing. After the hold period, nearby hostile
+creatures or recent player attackers reduce pressure decay by 60%, from 7.5 to 3 percentage
+points per second. This uses the configured encounter threat range (12 blocks by default)
+and checks nearby danger once per second. Injury loss and the recovery delay still apply.
 Suppression heartbeat starts above 5% intensity, follows the suppression decay, and
 smoothly increases volume from 0.4 to 1.0 and playback speed from 0.95 to 1.20.
 It fades out over 3 seconds after suppression ends; critical head or torso health still
@@ -214,7 +229,14 @@ Legacy `/firstaid suppression` commands remain available for existing server scr
 /firstaid adrenaline fatigue threshold 60
 /firstaid adrenaline fatigue ratio 10
 /firstaid adrenaline gain 0.15
+/firstaid adrenaline relief 1.7
 ```
+
+The `relief` command requires operator permission, updates the server configuration and
+synchronizes clients immediately. `/firstaid suppression relief` is the legacy alias.
+Forge/NeoForge clients and servers must both use the updated mod because the settings
+packet now carries the relief multiplier. Delayed local-client settings replies cannot
+overwrite newer integrated-server commands.
 
 #### Random damage
 

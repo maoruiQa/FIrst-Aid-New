@@ -71,6 +71,10 @@ public final class SuppressionRegressionGameTests {
     }
 
     private static void run(GameTestHelper helper) {
+        testAdrenalineReliefMultiplier(helper);
+        float configuredRelief = FirstAid.adrenalineReliefMultiplier;
+        try {
+        FirstAid.adrenalineReliefMultiplier = 1.0F;
         var firstAidCommand = helper.getLevel().getServer().getCommands().getDispatcher().getRoot().getChild("firstaid");
         helper.assertTrue(firstAidCommand != null && firstAidCommand.getChild("adrenaline") != null
             && firstAidCommand.getChild("suppression") != null, "new and legacy command names must coexist");
@@ -97,10 +101,10 @@ public final class SuppressionRegressionGameTests {
         FirstAid.suppressionGainMultiplier = configuredGain;
         float configuredDisplayScale = FirstAid.lowSuppressionMultiplier;
         FirstAid.lowSuppressionEnabled = false;
-        helper.assertTrue(Math.abs(FirstAid.suppressionDisplayCurve(0.5F * FirstAid.getSuppressionDisplayMultiplier()) - 0.425F) < 0.0001F, "dynamic display is reduced fifteen percent");
+        helper.assertTrue(Math.abs(FirstAid.suppressionDisplayCurve(0.5F * FirstAid.getSuppressionDisplayMultiplier()) - 0.375F) < 0.0001F, "dynamic display uses seventy-five percent intensity");
         FirstAid.lowSuppressionEnabled = true;
         FirstAid.lowSuppressionMultiplier = 0.4F;
-        helper.assertTrue(Math.abs(FirstAid.suppressionDisplayCurve(0.5F * FirstAid.getSuppressionDisplayMultiplier()) - 0.275F) < 0.0001F, "mild display grows from forty to fifty-five percent");
+        helper.assertTrue(Math.abs(FirstAid.suppressionDisplayCurve(0.5F * FirstAid.getSuppressionDisplayMultiplier()) - 0.25F) < 0.0001F, "default mild display uses fifty percent intensity");
         FirstAid.lowSuppressionMultiplier = 0.0F;
         helper.assertTrue(FirstAid.getSuppressionDisplayMultiplier() == 0.0F, "custom zero display scale remains off");
         FirstAid.lowSuppressionMultiplier = 1.0F;
@@ -138,6 +142,7 @@ public final class SuppressionRegressionGameTests {
 
         testInjuryDebuffRecovery(helper, player);
         testAdrenalineMechanics(helper, player);
+        testAdrenalineThreatDecay(helper, player);
         testEncounterCrowdRecovery(helper, player);
 
         var zombie = helper.spawn(EntityTypes.ZOMBIE, new BlockPos(1, 1, 1));
@@ -379,6 +384,136 @@ public final class SuppressionRegressionGameTests {
             FirstAidConfig.SERVER.adrenalineFatigueDurationRatio.set(fatigueRatio);
         }
         helper.succeed();
+        } finally {
+            FirstAid.adrenalineReliefMultiplier = configuredRelief;
+        }
+    }
+
+    private static void testAdrenalineThreatDecay(GameTestHelper helper, FakePlayer player) {
+        PlayerDamageModel normal = new PlayerDamageModel();
+        PlayerDamageModel threatened = new PlayerDamageModel();
+        for (PlayerDamageModel model : List.of(normal, threatened)) {
+            CompoundTag state = model.serializeNBT();
+            state.putFloat("suppressionIntensity", 1.0F);
+            state.putInt("suppressionHoldTicks", 0);
+            model.deserializeNBT(state);
+        }
+        threatened.setAdrenalineThreatNearby(true);
+        for (int i = 0; i < 40; i++) {
+            normal.tickSuppressionState();
+            threatened.tickSuppressionState();
+        }
+        helper.assertTrue(Math.abs(normal.getSuppressionIntensity() - 0.85F) < 0.0001F, "ordinary pressure decay remains unchanged");
+        helper.assertTrue(Math.abs(threatened.getSuppressionIntensity() - 0.94F) < 0.0001F, "nearby danger cuts decay by sixty percent");
+        threatened.setAdrenalineThreatNearby(false);
+        for (int i = 0; i < 4; i++) threatened.tickSuppressionState();
+        helper.assertTrue(Math.abs(threatened.getSuppressionIntensity() - 0.925F) < 0.0001F, "normal decay resumes when danger leaves");
+        threatened.setAdrenalineThreatNearby(true);
+        threatened.clearStatusEffects();
+        CompoundTag state = threatened.serializeNBT();
+        state.putFloat("suppressionIntensity", 1.0F);
+        state.putInt("suppressionHoldTicks", 4);
+        threatened.deserializeNBT(state);
+        for (int i = 0; i < 4; i++) threatened.tickSuppressionState();
+        helper.assertTrue(threatened.getSuppressionIntensity() == 1.0F, "the hold period still prevents decay");
+        for (int i = 0; i < 4; i++) threatened.tickSuppressionState();
+        helper.assertTrue(Math.abs(threatened.getSuppressionIntensity() - 0.985F) < 0.0001F, "clearing medical state removes the cached danger flag");
+
+        PlayerDamageModel model = (PlayerDamageModel) CommonUtils.getDamageModel(player);
+        player.removeAllEffects();
+        model.clearStatusEffects();
+        for (AbstractDamageablePart part : model) part.currentHealth = part.getMaxHealth();
+        model.ensureEncounterAdrenaline(player, 0.225F);
+        player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 200, 0));
+        player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 200, 0));
+        PlayerDamageModel before = new PlayerDamageModel();
+        before.deserializeNBT(model.serializeNBT());
+        model.LEFT_ARM.currentHealth -= 2.0F;
+        model.registerAdrenalineDamage(player, before);
+        model.tick(helper.getLevel(), player);
+        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.205F) < 0.0001F, "a one-heart hit no longer drops 22.5 percent pressure below the first boost tier");
+        for (var effect : List.of(RegistryObjects.ADRENALINE_SPEED_EFFECT,
+                RegistryObjects.ADRENALINE_ATTACK_SPEED_EFFECT, RegistryObjects.ADRENALINE_STRENGTH_EFFECT)) {
+            MobEffectInstance boost = player.getEffect(effect);
+            helper.assertTrue(boost != null && boost.showIcon() && boost.getAmplifier() == 0,
+                "hunger and weakness coexist with all three pressure icons after an injury");
+        }
+        helper.assertTrue(player.hasEffect(MobEffects.HUNGER) && player.hasEffect(MobEffects.WEAKNESS), "unrelated negative effects remain intact");
+        player.removeAllEffects();
+        model.clearStatusEffects();
+        for (AbstractDamageablePart part : model) part.currentHealth = part.getMaxHealth();
+    }
+
+    private static void testAdrenalineReliefMultiplier(GameTestHelper helper) {
+        float saved = FirstAid.adrenalineReliefMultiplier;
+        try {
+            var legs = List.of(new ConstantDebuffEntry(0.33F, 3), new ConstantDebuffEntry(0.60F, 2), new ConstantDebuffEntry(0.80F, 1));
+            var custom = List.of(new ConstantDebuffEntry(0.30F, 1));
+            FirstAid.adrenalineReliefMultiplier = 1.5F;
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(legs, 0.36F, 1.0F), 0, "150 percent protection shifts the first leg threshold to 35 percent");
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(legs, 0.35F, 1.0F), 1, "adjusted threshold remains inclusive");
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(legs, 0.01F, 1.0F), 1, "severe combat injury still has a level-one cap");
+            var arms = List.of(new ConstantDebuffEntry(0.40F, 2), new ConstantDebuffEntry(0.75F, 1));
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(arms, 0.38F, 1.0F), 0, "150 percent arm protection starts below 38 percent");
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(arms, 0.375F, 1.0F), 1, "adjusted arm threshold remains inclusive");
+            FirstAid.adrenalineReliefMultiplier = 1.7F;
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(legs, 0.30F, 1.0F), 0, "170 percent relief protects legs above the new 29 percent threshold");
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(legs, 0.2899F, 1.0F), 1, "170 percent relief still permits severe leg debuffs");
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(arms, 0.33F, 1.0F), 0, "170 percent relief protects arms above 32.5 percent");
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(arms, 0.325F, 1.0F), 1, "170 percent relief retains the level-one arm cap");
+            FirstAid.adrenalineReliefMultiplier = 0.0F;
+            helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(legs, 0.40F, 1.0F), 2, "zero multiplier restores original severe injury levels");
+            PlayerDamageModel model = new PlayerDamageModel();
+            CompoundTag state = model.serializeNBT();
+            state.putFloat("chronicPainIntensity", 1.0F);
+            state.putFloat("acutePainIntensity", 1.0F);
+            state.putFloat("suppressionIntensity", 0.80F);
+            model.deserializeNBT(state);
+            for (float strength : new float[]{0.0F, 0.5F, 1.0F, 1.5F, 1.7F, 2.0F}) {
+                FirstAid.adrenalineReliefMultiplier = strength;
+                helper.assertTrue(Math.abs(model.getPainVisualStrength(false) - 0.95F) < 0.0001F, "pain blur remains unchanged at every configurable protection strength");
+                helper.assertTrue(Math.abs(model.getPainFovStrength(true) - 0.25F) < 0.0001F, "medicine breakthrough behavior stays unchanged");
+                helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(custom, 0.30F, 1.0F), 0, "strict custom thresholds stay strict");
+                for (int i = 0; i <= 1000; i++) {
+                    float health = i / 1000.0F;
+                    int original = health < 0.33F ? 3 : health < 0.60F ? 2 : health < 0.80F ? 1 : 0;
+                    helper.assertValueEqual(ConstantDebuff.calculateAdrenalineMultiplier(legs, health, 0.0F), original, "zero-pressure behavior is independent of relief configuration");
+                }
+                var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), helper.getLevel().registryAccess());
+                var codec = ichttt.mods.firstaid.common.network.MessageSyncCommandSettings.STREAM_CODEC;
+                try {
+                    codec.encode(buffer, ichttt.mods.firstaid.common.network.MessageSyncCommandSettings.current());
+                    var decoded = codec.decode(buffer);
+                    buffer.clear();
+                    codec.encode(buffer, decoded);
+                    for (int i = 0; i < 6; i++) buffer.readBoolean();
+                    helper.assertTrue(Math.abs(buffer.readFloat() - strength) < 0.0001F, "configured relief must survive server-to-client codec round trip");
+                } finally { buffer.release(); }
+            }
+            FirstAid.adrenalineReliefMultiplier = 1.0F;
+            helper.assertTrue(Math.abs(model.getPainFovStrength(false) - 0.95F) < 0.0001F, "one restores previous FOV protection");
+            FirstAid.adrenalineReliefMultiplier = 1.5F;
+            helper.assertTrue(Math.abs(model.getPainFovStrength(false) - 0.475F) < 0.0001F, "150 percent FOV protection is independent of blur");
+            FirstAid.adrenalineReliefMultiplier = 1.7F;
+            helper.assertTrue(Math.abs(model.getPainFovStrength(false) - 0.405F) < 0.0001F, "170 percent relief lowers pain FOV without changing blur");
+            FirstAid.adrenalineReliefMultiplier = 0.0F;
+            helper.assertTrue(Math.abs(model.getPainFovStrength(false) - PlayerDamageModel.PAIN_HARD_CAP) < 0.0001F, "zero turns off pressure protection for FOV");
+            var staleSettings = ichttt.mods.firstaid.common.network.MessageSyncCommandSettings.current();
+            FirstAid.adrenalineReliefMultiplier = 1.5F;
+            var context = (net.neoforged.neoforge.network.handling.IPayloadContext) java.lang.reflect.Proxy.newProxyInstance(
+                net.neoforged.neoforge.network.handling.IPayloadContext.class.getClassLoader(),
+                new Class<?>[]{net.neoforged.neoforge.network.handling.IPayloadContext.class}, (proxy, method, arguments) -> {
+                    if (method.getName().equals("enqueueWork")) {
+                        ((Runnable) arguments[0]).run();
+                        return java.util.concurrent.CompletableFuture.completedFuture(null);
+                    }
+                    throw new UnsupportedOperationException(method.getName());
+                });
+            ichttt.mods.firstaid.common.network.MessageSyncCommandSettings.handle(staleSettings, context);
+            helper.assertTrue(FirstAid.adrenalineReliefMultiplier == 1.5F, "an old local-client reply must not undo a newer server command");
+            var branch = helper.getLevel().getServer().getCommands().getDispatcher().getRoot().getChild("firstaid");
+            helper.assertTrue(branch.getChild("adrenaline").getChild("relief") != null && branch.getChild("suppression").getChild("relief") != null, "both command aliases expose configurable relief");
+        } finally { FirstAid.adrenalineReliefMultiplier = saved; }
     }
 
     private static void testInjuryDebuffRecovery(GameTestHelper helper, FakePlayer player) {
@@ -660,12 +795,12 @@ public final class SuppressionRegressionGameTests {
         before.deserializeNBT(model.serializeNBT());
         model.LEFT_ARM.currentHealth -= 2.0F;
         model.registerAdrenalineDamage(player, before);
-        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.46F) < 0.0001F, "one heart of actual injury lowers pressure four points");
+        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.48F) < 0.0001F, "one heart of actual injury lowers pressure two points");
         before.deserializeNBT(model.serializeNBT());
         model.registerAdrenalineDamage(player, before);
-        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.46F) < 0.0001F, "no injury means no pressure loss");
+        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.48F) < 0.0001F, "no injury means no pressure loss");
         model.ensureEncounterAdrenaline(player, 0.80F);
-        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.46F) < 0.0001F, "encounter floor cannot undo a fresh hit");
+        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.48F) < 0.0001F, "encounter floor cannot undo a fresh hit");
         restored.deserializeNBT(model.serializeNBT());
         helper.assertValueEqual(restored.serializeNBT().getIntOr("encounterRecoveryTicks", 0), 40, "encounter recovery delay survives save load");
         for (int i = 0; i < 40; ++i) model.tick(helper.getLevel(), player);
@@ -696,7 +831,7 @@ public final class SuppressionRegressionGameTests {
         before.deserializeNBT(model.serializeNBT());
         for (AbstractDamageablePart part : model) if (!part.canCauseDeath) part.currentHealth = part.getMaxHealth() * 0.50F;
         model.registerAdrenalineDamage(player, before);
-        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.60F) < 0.0001F, "single injury loss is capped at twenty pressure points");
+        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.70F) < 0.0001F, "single injury loss is capped at ten pressure points");
 
         model.clearStatusEffects();
         player.removeAllEffects();
@@ -720,7 +855,7 @@ public final class SuppressionRegressionGameTests {
         before.deserializeNBT(model.serializeNBT());
         model.RIGHT_ARM.currentHealth -= 1.0F;
         model.registerAdrenalineDamage(player, before);
-        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.98F) < 0.0001F, "injection hold does not protect pressure from injury");
+        helper.assertTrue(Math.abs(model.getSuppressionIntensity() - 0.99F) < 0.0001F, "injection hold does not protect pressure from injury");
         player.addEffect(new MobEffectInstance(RegistryObjects.PAINKILLER_EFFECT, 900, 0));
         model.applyAdrenalineInjection(player);
         helper.assertValueEqual(player.getEffect(RegistryObjects.PAINKILLER_EFFECT).getDuration(), 900, "injection neither clears nor extends existing painkillers");

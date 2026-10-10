@@ -2,7 +2,6 @@
   "effect.firstaid.adrenaline_strength": "Adrenaline Strength",
   "effect.firstaid.adrenaline_speed": "Adrenaline Speed",
   "effect.firstaid.adrenaline_attack_speed": "Adrenaline Attack Speed",
-
   "itemGroup.firstaid": "First Aid",
   "item.firstaid.bandage": "Bandage",
   "item.firstaid.plaster": "Plaster",
@@ -274,5 +273,6 @@
   "firstaid.command.tinnitus.off": "Off",
   "firstaid.command.tinnitus.settings": "Personal tinnitus: %s; duration: %s%%",
   "firstaid.config.tinnitusenabled": "Enable tinnitus",
-  "firstaid.config.tinnitusdurationpercent": "Tinnitus duration (%)"
+  "firstaid.config.tinnitusdurationpercent": "Tinnitus duration (%)",
+  "firstaid.command.adrenaline.relief": "Adrenaline injury and pain FOV protection multiplier set to %s"
 }

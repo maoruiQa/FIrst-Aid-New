@@ -82,6 +82,7 @@ public final class FirstAidConfig {
       FirstAid.projectileSuppressionEnabled = SERVER.projectileSuppressionEnabled.get();
       FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
       FirstAid.suppressionGainMultiplier = SERVER.suppressionGainMultiplier.get().floatValue();
+      FirstAid.adrenalineReliefMultiplier = SERVER.adrenalineReliefMultiplier.get().floatValue();
       FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
       FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
       FirstAid.naturalRegenMode = SERVER.naturalRegenMode.get();
@@ -114,6 +115,7 @@ public final class FirstAidConfig {
       SERVER.projectileSuppressionEnabled.set(FirstAid.projectileSuppressionEnabled);
       SERVER.lowSuppressionMultiplier.set((double)FirstAid.lowSuppressionMultiplier);
       SERVER.suppressionGainMultiplier.set((double) FirstAid.suppressionGainMultiplier);
+      SERVER.adrenalineReliefMultiplier.set((double) FirstAid.adrenalineReliefMultiplier);
       SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
       SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
       SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
@@ -547,6 +549,7 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Boolean> projectileSuppressionEnabled;
       public final FirstAidConfig.ConfigValue<Double> lowSuppressionMultiplier;
       public final FirstAidConfig.ConfigValue<Double> suppressionGainMultiplier;
+      public final FirstAidConfig.ConfigValue<Double> adrenalineReliefMultiplier;
       public final FirstAidConfig.ConfigValue<Double> encounterSightRange;
       public final FirstAidConfig.ConfigValue<Double> encounterThreatRange;
       public final FirstAidConfig.ConfigValue<Integer> encounterRecentAttackerTicks;
@@ -647,6 +650,7 @@ public final class FirstAidConfig {
          this.projectileSuppressionEnabled = this.define(FirstAidConfig.boolValue("projectileSuppressionEnabled", true));
          this.lowSuppressionMultiplier = this.define(FirstAidConfig.doubleValue("lowSuppressionMultiplier", 0.4, 0.0, 1.0));
          this.suppressionGainMultiplier = this.define(FirstAidConfig.doubleValue("suppressionGainMultiplier", 0.15, 0.01, 1.0));
+         this.adrenalineReliefMultiplier = this.define(FirstAidConfig.doubleValue("adrenalineReliefMultiplier", 1.7D, 0D, 2D));
          this.encounterSightRange = this.define(FirstAidConfig.doubleValue("encounterSightRange", 16.0, 1.0, 128.0));
          this.encounterThreatRange = this.define(FirstAidConfig.doubleValue("encounterThreatRange", 12.0, 1.0, 128.0));
          this.encounterRecentAttackerTicks = this.define(FirstAidConfig.intValue("encounterRecentAttackerTicks", 600, 1, 72000));

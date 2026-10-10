@@ -150,13 +150,31 @@ public class TinnitusRuntimeProbe {
             payload.getClass().getMethod("remove",String.class).invoke(payload,"tinnitusCueDurationTicks"); deserialize.invoke(restored,payload);
             if ((int)modelType.getMethod("getTinnitusCueDurationTicks").invoke(restored)!=0) throw new AssertionError("old sync payload compatibility");
             result.append("PASS native head tinnitus metadata sync, duration bound and old payload compatibility\n");
+            Class<?> firstAid=loader.loadClass("ichttt.mods.firstaid.FirstAid");
+            Field relief=firstAid.getField("adrenalineReliefMultiplier"); float oldRelief=relief.getFloat(null);
+            try {
+                Object painState=modelType.getMethod("serializeNBT").invoke(model);
+                Method putFloat=painState.getClass().getMethod("putFloat",String.class,float.class);
+                putFloat.invoke(painState,"suppressionIntensity",0.8F);
+                putFloat.invoke(painState,"chronicPainIntensity",1.0F);
+                putFloat.invoke(painState,"acutePainIntensity",1.0F);
+                deserialize.invoke(restored,painState);
+                for (float strength : new float[]{0,0.5F,1,1.5F,2}) {
+                    relief.setFloat(null,strength);
+                    float blur=((Number)modelType.getMethod("getPainVisualStrength",boolean.class).invoke(restored,false)).floatValue();
+                    float fov=((Number)modelType.getMethod("getPainFovStrength",boolean.class).invoke(restored,false)).floatValue();
+                    float expected=Math.min(1.85F,Math.max(0,1-0.7F*strength)+Math.max(0,1-0.35F*strength));
+                    if(Math.abs(blur-0.95F)>0.0001F || Math.abs(fov-expected)>0.0001F) throw new AssertionError("configured FOV relief must leave blur unchanged");
+                }
+                result.append("PASS native configurable pain FOV relief, unchanged pain blur at strengths 0/0.5/1/1.5/2\n");
+            } finally { relief.setFloat(null,oldRelief); }
             checkHeartbeat(loader,model,result);
         } finally { if (unload!=null) unload.invoke(spec,(Object)null); }
 
         Object feedback = loader.loadClass("ichttt.mods.firstaid.client.ClientEventHandler").getMethod("getSuppressionFeedbackController").invoke(null);
         Class<?> type=feedback.getClass();
-        Field compression=type.getDeclaredField("sustainedFovCompression"), pain=type.getDeclaredField("painFovCompression");
-        compression.setAccessible(true); pain.setAccessible(true);
+        Field pain=type.getDeclaredField("painFovCompression");
+        pain.setAccessible(true);
         Method apply=Arrays.stream(type.getMethods()).filter(m -> m.getName().equals("applyFov")).findFirst().orElseThrow();
         Method miss=type.getMethod("onNearMiss",loader.loadClass("net.minecraft.world.entity.player.Player"),float.class,float.class,float.class);
         boolean fabric=apply.getParameterTypes()[0]==float.class;
@@ -169,7 +187,11 @@ public class TinnitusRuntimeProbe {
                 if (types[i]==float.class) args[i]=0.0F;
                 else if (types[i]==double.class) args[i]=0.0D;
                 else if (types[i]==boolean.class) args[i]=true;
-                else if (types[i].getName().equals("net.minecraft.client.Camera")) args[i]=types[i].getConstructor().newInstance();
+                else if (types[i].getName().equals("net.minecraft.client.Camera")) {
+                    Object renderer=client.getClass().getField("gameRenderer").get(client);
+                    try { args[i]=renderer.getClass().getMethod("mainCamera").invoke(renderer); }
+                    catch (NoSuchMethodException e) { args[i]=renderer.getClass().getMethod("getMainCamera").invoke(renderer); }
+                }
                 else args[i]=client.getClass().getField("gameRenderer").get(client);
             }
             event=ctor.newInstance(args); get=eventType.getMethod("getFOV");
@@ -177,8 +199,8 @@ public class TinnitusRuntimeProbe {
         }
         try {
             type.getMethod("clear").invoke(feedback);
-            for (float value : new float[]{0,0.4F,1,3.2F}) for (float painValue : new float[]{0,4,12}) {
-                compression.setFloat(feedback,value); pain.setFloat(feedback,painValue);
+            for (float painValue : new float[]{0,4,12}) {
+                pain.setFloat(feedback,painValue);
                 for (int shots : new int[]{0,1000}) {
                     for (int i=0;i<shots;i++) miss.invoke(feedback,null,1.0F,1.0F,1.0F);
                     float actual;
@@ -188,10 +210,10 @@ public class TinnitusRuntimeProbe {
                         if (set.getParameterTypes()[0]==float.class) base=90.0F; else base=90.0D;
                         set.invoke(event,base); apply.invoke(feedback,event); actual=((Number)get.invoke(event)).floatValue();
                     }
-                    if (Math.abs(actual-(90-(value*1.21F+painValue)))>0.00001F) throw new AssertionError("suppression +10% or near-miss FOV");
+                    if (Math.abs(actual-(90-painValue))>0.00001F) throw new AssertionError("pain-only FOV or near-miss FOV");
                 }
             }
-            result.append("PASS native suppression FOV another +10% (1.21x original), unchanged pain FOV, zero near-miss FOV after 1000 shots\n");
+            result.append("PASS native pain-only FOV, zero near-miss FOV after 1000 shots\n");
         } finally { type.getMethod("clear").invoke(feedback); }
     }
 

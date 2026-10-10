@@ -93,7 +93,6 @@ public final class SuppressionFeedbackController {
     private float musicDetuneStrength;
     private float tinnitusStrength;
     private float shakeStrength;
-    private float sustainedFovCompression;
     private float painFovCompression;
     private float yawImpulse;
     private float pitchImpulse;
@@ -133,7 +132,7 @@ public final class SuppressionFeedbackController {
         boolean painSuppressed = playerDamageModel != null && playerDamageModel.isPainSuppressed(player);
         float targetPainFov = 0.0F;
         if (playerDamageModel != null && FirstAid.enablePainFovCompression) {
-            float visual = playerDamageModel.getPainVisualStrength(painSuppressed);
+            float visual = playerDamageModel.getPainFovStrength(painSuppressed);
             if (visual > 0.01F) {
                 float soft = Mth.clamp(visual, 0.0F, 1.0F) * PAIN_FOV_MAX_REDUCTION;
                 float hardExtra = Math.max(0.0F, visual - 1.0F) / (PlayerDamageModel.PAIN_HARD_CAP - 1.0F)
@@ -156,13 +155,11 @@ public final class SuppressionFeedbackController {
             targetTinnitus = Math.max(targetTinnitus, 0.10F + addictionNorm * 0.22F);
         }
         float targetShake = (holding ? 0.30F : 0.10F) * FirstAid.suppressionDisplayCurve(suppressionIntensity);
-        float targetFovCompression = (holding ? 3.2F : 1.0F) * FirstAid.suppressionDisplayCurve(suppressionIntensity);
 
         audioMuffleStrength = approach(audioMuffleStrength, targetMuffle, targetMuffle > audioMuffleStrength ? 0.18F : 0.020F);
         musicDetuneStrength = approach(musicDetuneStrength, targetMusicDetune, targetMusicDetune > musicDetuneStrength ? 0.10F : 0.03F);
         tinnitusStrength = approach(tinnitusStrength, targetTinnitus, targetTinnitus > tinnitusStrength ? 0.14F : 0.06F);
         shakeStrength = approach(shakeStrength, targetShake, targetShake > shakeStrength ? 0.10F : 0.015F);
-        sustainedFovCompression = approach(sustainedFovCompression, targetFovCompression, targetFovCompression > sustainedFovCompression ? 0.16F : 0.03F);
         painFovCompression = approach(painFovCompression, targetPainFov, targetPainFov > painFovCompression ? PAIN_FOV_GAIN : PAIN_FOV_DECAY);
 
         yawImpulse *= 0.85F;
@@ -223,11 +220,8 @@ public final class SuppressionFeedbackController {
     }
 
     public void applyFov(ViewportEvent.ComputeFov event) {
-        double reduction = sustainedFovCompression * 1.21F + painFovCompression;
-        if (reduction <= 0.01D) {
-            return;
-        }
-        event.setFOV(Math.max(30.0D, event.getFOV() - reduction));
+        if (painFovCompression <= 0.01F) return;
+        event.setFOV(Math.max(30.0D, event.getFOV() - painFovCompression));
     }
 
     public void onPlaySound(PlaySoundEvent event) {
@@ -288,7 +282,6 @@ public final class SuppressionFeedbackController {
         musicDetuneStrength = 0.0F;
         tinnitusStrength = 0.0F;
         shakeStrength = 0.0F;
-        sustainedFovCompression = 0.0F;
         painFovCompression = 0.0F;
         yawImpulse = 0.0F;
         pitchImpulse = 0.0F;

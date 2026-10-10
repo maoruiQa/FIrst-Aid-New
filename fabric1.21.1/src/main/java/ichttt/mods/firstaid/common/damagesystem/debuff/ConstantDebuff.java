@@ -125,6 +125,7 @@ public class ConstantDebuff extends AbstractDebuff {
     }
 
     public static int calculateAdrenalineMultiplier(List<ConstantDebuffEntry> boundaries, float healthFraction, float relief) {
+        relief *= FirstAid.adrenalineReliefMultiplier;
         float firstThreshold = 0.0F;
         int maxLevel = 0;
         for (ConstantDebuffEntry entry : boundaries) {
@@ -132,14 +133,14 @@ public class ConstantDebuff extends AbstractDebuff {
             maxLevel = Math.max(maxLevel, entry.effectAmplifier());
         }
         float target = Math.min(firstThreshold, 0.50F);
-        float scale = firstThreshold <= 0.0F ? 1.0F : 1.0F + relief * (target / firstThreshold - 1.0F);
+        float scale = firstThreshold <= 0.0F ? 1.0F : Math.max(0.0F, 1.0F + relief * (target / firstThreshold - 1.0F));
         int cap = Math.max(1, Math.round(maxLevel + relief * (1 - maxLevel)));
         for (ConstantDebuffEntry entry : boundaries) {
             float threshold = entry.healthFractionThreshold() * scale;
             if (relief >= 1.0F) threshold = Math.min(threshold, target);
-            boolean firstAtHalf = relief >= 1.0F && firstThreshold >= 0.50F
-                && entry.healthFractionThreshold() == firstThreshold && healthFraction <= 0.50F;
-            if (healthFraction < threshold || firstAtHalf) return Math.min(entry.effectAmplifier(), cap);
+            boolean firstAtAdjustedThreshold = relief >= 1.0F && firstThreshold >= 0.50F
+                && entry.healthFractionThreshold() == firstThreshold && healthFraction <= firstThreshold * scale;
+            if (healthFraction < threshold || firstAtAdjustedThreshold) return Math.min(entry.effectAmplifier(), cap);
         }
         return 0;
     }

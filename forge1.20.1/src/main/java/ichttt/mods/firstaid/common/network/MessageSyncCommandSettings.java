@@ -19,6 +19,7 @@
 package ichttt.mods.firstaid.common.network;
 
 import ichttt.mods.firstaid.FirstAid;
+import net.minecraftforge.server.ServerLifecycleHooks;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -34,19 +35,21 @@ public class MessageSyncCommandSettings {
     private final boolean enablePainAudioEffects;
     private final boolean projectileSuppressionEnabled;
     private final boolean lowSuppressionEnabled;
+    private final float adrenalineReliefMultiplier;
     private final String suppressionEntityBlacklist;
 
-    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, boolean projectileSuppressionEnabled, boolean lowSuppressionEnabled, String suppressionEntityBlacklist) {
+    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, boolean projectileSuppressionEnabled, boolean lowSuppressionEnabled, float adrenalineReliefMultiplier, String suppressionEntityBlacklist) {
         this.enablePainVignette = enablePainVignette;
         this.enablePainFovCompression = enablePainFovCompression;
         this.enablePainAudioEffects = enablePainAudioEffects;
         this.projectileSuppressionEnabled = projectileSuppressionEnabled;
         this.lowSuppressionEnabled = lowSuppressionEnabled;
+        this.adrenalineReliefMultiplier = adrenalineReliefMultiplier;
         this.suppressionEntityBlacklist = suppressionEntityBlacklist;
     }
 
     public MessageSyncCommandSettings(FriendlyByteBuf buffer) {
-        this(buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readUtf(32767));
+        this(buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readFloat(), buffer.readUtf(32767));
     }
 
     public static MessageSyncCommandSettings current() {
@@ -63,6 +66,7 @@ public class MessageSyncCommandSettings {
                 FirstAid.enablePainAudioEffects,
                 FirstAid.projectileSuppressionEnabled,
                 FirstAid.lowSuppressionEnabled,
+                FirstAid.adrenalineReliefMultiplier,
                 builder.toString());
     }
 
@@ -72,6 +76,7 @@ public class MessageSyncCommandSettings {
         buf.writeBoolean(enablePainAudioEffects);
         buf.writeBoolean(projectileSuppressionEnabled);
         buf.writeBoolean(lowSuppressionEnabled);
+        buf.writeFloat(adrenalineReliefMultiplier);
         buf.writeUtf(suppressionEntityBlacklist, 32767);
     }
 
@@ -80,11 +85,14 @@ public class MessageSyncCommandSettings {
             NetworkEvent.Context ctx = supplier.get();
             CommonUtils.checkClient(ctx);
             ctx.enqueueWork(() -> {
+                // The integrated server already owns these shared settings; an older reply must not overwrite a new command.
+                if (ServerLifecycleHooks.getCurrentServer() != null) return;
                 FirstAid.enablePainVignette = message.enablePainVignette;
                 FirstAid.enablePainFovCompression = message.enablePainFovCompression;
                 FirstAid.enablePainAudioEffects = message.enablePainAudioEffects;
                 FirstAid.projectileSuppressionEnabled = message.projectileSuppressionEnabled;
                 FirstAid.lowSuppressionEnabled = message.lowSuppressionEnabled;
+                FirstAid.adrenalineReliefMultiplier = Math.max(0.0F, Math.min(2.0F, message.adrenalineReliefMultiplier));
                 FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist));
             });
         }

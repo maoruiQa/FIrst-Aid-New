@@ -6,6 +6,7 @@
 package ichttt.mods.firstaid.common.network;
 
 import ichttt.mods.firstaid.FirstAid;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -31,6 +32,8 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
             message -> message.projectileSuppressionEnabled,
             ByteBufCodecs.BOOL,
             message -> message.lowSuppressionEnabled,
+            ByteBufCodecs.FLOAT,
+            message -> message.adrenalineReliefMultiplier,
             ByteBufCodecs.stringUtf8(32767),
             message -> message.suppressionEntityBlacklist,
             MessageSyncCommandSettings::new);
@@ -41,6 +44,7 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
     private final boolean enablePainAudioEffects;
     private final boolean projectileSuppressionEnabled;
     private final boolean lowSuppressionEnabled;
+    private final float adrenalineReliefMultiplier;
     private final String suppressionEntityBlacklist;
 
     private MessageSyncCommandSettings(
@@ -50,6 +54,7 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
             boolean enablePainAudioEffects,
             boolean projectileSuppressionEnabled,
             boolean lowSuppressionEnabled,
+            float adrenalineReliefMultiplier,
             String suppressionEntityBlacklist
     ) {
         this.enablePainVignette = enablePainVignette;
@@ -58,6 +63,7 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
         this.enablePainAudioEffects = enablePainAudioEffects;
         this.projectileSuppressionEnabled = projectileSuppressionEnabled;
         this.lowSuppressionEnabled = lowSuppressionEnabled;
+        this.adrenalineReliefMultiplier = adrenalineReliefMultiplier;
         this.suppressionEntityBlacklist = suppressionEntityBlacklist;
     }
 
@@ -76,6 +82,7 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
                 FirstAid.enablePainAudioEffects,
                 FirstAid.projectileSuppressionEnabled,
                 FirstAid.lowSuppressionEnabled,
+                FirstAid.adrenalineReliefMultiplier,
                 builder.toString());
     }
 
@@ -86,12 +93,15 @@ public class MessageSyncCommandSettings implements CustomPacketPayload {
 
     public static void handle(MessageSyncCommandSettings message, IPayloadContext context) {
         context.enqueueWork(() -> {
+            // The integrated server already owns these shared settings; an older reply must not overwrite a new command.
+            if (ServerLifecycleHooks.getCurrentServer() != null) return;
             FirstAid.enablePainVignette = message.enablePainVignette;
             FirstAid.enablePainBlur = message.enablePainBlur;
             FirstAid.enablePainFovCompression = message.enablePainFovCompression;
             FirstAid.enablePainAudioEffects = message.enablePainAudioEffects;
             FirstAid.projectileSuppressionEnabled = message.projectileSuppressionEnabled;
             FirstAid.lowSuppressionEnabled = message.lowSuppressionEnabled;
+            FirstAid.adrenalineReliefMultiplier = Math.max(0.0F, Math.min(2.0F, message.adrenalineReliefMultiplier));
             FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist));
         });
     }

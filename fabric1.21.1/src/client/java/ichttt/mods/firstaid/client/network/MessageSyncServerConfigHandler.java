@@ -31,6 +31,8 @@ public final class MessageSyncServerConfigHandler {
 
     public static void handle(MessageSyncServerConfig message, ClientPlayNetworking.Context context) {
         context.client().execute(() -> {
+            // Local server settings are shared; ignore delayed copies of older commands.
+            if (context.client().getSingleplayerServer() != null) return;
             try {
                 JsonElement element = JsonParser.parseString(message.payload());
                 if (element != null && element.isJsonObject()) {

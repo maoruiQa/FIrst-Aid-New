@@ -2,7 +2,6 @@
   "effect.firstaid.adrenaline_strength": "应激力量",
   "effect.firstaid.adrenaline_speed": "应激迅捷",
   "effect.firstaid.adrenaline_attack_speed": "应激攻速",
-
   "itemGroup.firstaid": "First Aid",
   "item.firstaid.bandage": "Bandage",
   "item.firstaid.plaster": "Plaster",
@@ -259,5 +258,6 @@
   "firstaid.command.tinnitus.off": "关闭",
   "firstaid.command.tinnitus.settings": "个人耳鸣：%s；时长：%s%%",
   "firstaid.config.tinnitusenabled": "启用耳鸣",
-  "firstaid.config.tinnitusdurationpercent": "耳鸣时长（%）"
+  "firstaid.config.tinnitusdurationpercent": "耳鸣时长（%）",
+  "firstaid.command.adrenaline.relief": "肾上腺素伤情减益与疼痛 FOV 缓解倍率已设为 %s"
 }

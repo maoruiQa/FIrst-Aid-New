@@ -101,6 +101,7 @@ public final class FirstAidConfig {
         FirstAid.projectileSuppressionEnabled = SERVER.projectileSuppressionEnabled.get();
         FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
         FirstAid.suppressionGainMultiplier = SERVER.suppressionGainMultiplier.get().floatValue();
+        FirstAid.adrenalineReliefMultiplier = SERVER.adrenalineReliefMultiplier.get().floatValue();
         FirstAid.enablePainVignette = SERVER.enablePainVignette.get();
         FirstAid.enablePainBlur = SERVER.enablePainBlur.get();
 
@@ -134,6 +135,7 @@ public final class FirstAidConfig {
         SERVER.projectileSuppressionEnabled.set(FirstAid.projectileSuppressionEnabled);
         SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
         SERVER.suppressionGainMultiplier.set((double) FirstAid.suppressionGainMultiplier);
+        SERVER.adrenalineReliefMultiplier.set((double) FirstAid.adrenalineReliefMultiplier);
         SERVER.enablePainVignette.set(FirstAid.enablePainVignette);
         SERVER.enablePainBlur.set(FirstAid.enablePainBlur);
         SERVER.enablePainFovCompression.set(FirstAid.enablePainFovCompression);
@@ -276,6 +278,7 @@ public final class FirstAidConfig {
         public final ConfigValue<Boolean> projectileSuppressionEnabled;
         public final ConfigValue<Double> lowSuppressionMultiplier;
         public final ConfigValue<Double> suppressionGainMultiplier;
+        public final ConfigValue<Double> adrenalineReliefMultiplier;
         public final ConfigValue<Double> encounterSightRange;
         public final ConfigValue<Double> encounterThreatRange;
         public final ConfigValue<Integer> encounterRecentAttackerTicks;
@@ -379,6 +382,7 @@ public final class FirstAidConfig {
             projectileSuppressionEnabled = define(boolValue("projectileSuppressionEnabled", true));
             lowSuppressionMultiplier = define(doubleValue("lowSuppressionMultiplier", 0.4D, 0D, 1D));
             suppressionGainMultiplier = define(doubleValue("suppressionGainMultiplier", 0.15D, 0.01D, 1D));
+            adrenalineReliefMultiplier = define(doubleValue("adrenalineReliefMultiplier", 1.7D, 0D, 2D));
             encounterSightRange = define(doubleValue("encounterSightRange", 16.0D, 1.0D, 128.0D));
             encounterThreatRange = define(doubleValue("encounterThreatRange", 12.0D, 1.0D, 128.0D));
             encounterRecentAttackerTicks = define(intValue("encounterRecentAttackerTicks", 600, 1, 72000));

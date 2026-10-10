@@ -72,9 +72,10 @@ public class FirstAid {
     public static boolean projectileSuppressionEnabled = true;
     public static float lowSuppressionMultiplier = 0.4F;
     public static float suppressionGainMultiplier = 0.15F;
+    public static float adrenalineReliefMultiplier = 1.7F;
 
     public static float getSuppressionDisplayMultiplier() {
-        return lowSuppressionEnabled ? Math.max(0.0F, Math.min(1.0F, lowSuppressionMultiplier * 1.375F)) : 0.85F;
+        return lowSuppressionEnabled ? Math.max(0.0F, Math.min(1.0F, lowSuppressionMultiplier * 1.25F)) : 0.75F;
     }
 
     public static float suppressionDisplayCurve(float scaledIntensity) {

@@ -98,18 +98,17 @@ public class StatusEffectLayer implements GuiLayer {
             renderDeathDangerOverlay(guiGraphics, width, height, deathDanger, pulseTime);
         }
 
-        // Soft cool edge only — continuous gray-white rim is drawn by PainVisualEffectsController.
+        // Continuous gray-white rim is drawn once by PainVisualEffectsController.
         if (smoothSuppression > 0.0F) {
-            float pulse = 0.92F + 0.08F * Mth.sin(pulseTime * 0.40F + 0.8F);
+            float pulse = 0.90F + 0.10F * Mth.sin(pulseTime * 0.46F + 0.8F);
             float intensity = Math.min(0.55F, smoothSuppression * 0.40F * pulse);
-            renderEdgeVignette(guiGraphics, width, height, 40, 46, 58, intensity * 0.50F, 16);
+            renderVignette(guiGraphics, width, height, 40, 46, 58, intensity * 0.50F, 16);
         }
 
         float tinnitusStrength = suppressionFeedbackController.getTinnitusStrength();
         if (tinnitusStrength > 0.0F) {
-            float pulse = 0.88F + 0.12F * Mth.sin(pulseTime * 0.70F + 1.3F);
-            float intensity = Math.min(0.28F, tinnitusStrength * 0.18F * pulse);
-            renderEdgeVignette(guiGraphics, width, height, 190, 195, 205, intensity, 12);
+            float pulse = 0.84F + 0.16F * Mth.sin(pulseTime * 0.77F + 1.3F);
+            renderVignette(guiGraphics, width, height, 210, 214, 224, Math.min(0.38F, tinnitusStrength * 0.22F), 16);
         }
 
         if (damageModel.getUnconsciousTicks() > 0) {
@@ -168,10 +167,19 @@ public class StatusEffectLayer implements GuiLayer {
     }
 
     private static void renderVignette(GuiGraphicsExtractor guiGraphics, int width, int height, int red, int green, int blue, float intensity, int baseThickness) {
-        renderEdgeVignette(guiGraphics, width, height, red, green, blue, intensity, baseThickness);
+        if (intensity <= 0.0F) return;
+        int layers = 7;
+        for (int layer = 0; layer < layers; layer++) {
+            float progress = (float) (layer + 1) / layers;
+            float falloff = 1.0F - progress;
+            int thickness = Math.max(4, Math.round(baseThickness * (0.35F + progress * (1.15F + intensity * 0.95F))));
+            int alpha = Math.round((8.0F + 76.0F * intensity) * falloff * falloff);
+            if (alpha > 0) {
+                fillEdge(guiGraphics, width, height, color(alpha, red, green, blue), thickness);
+            }
+        }
     }
 
-    /** Edge-only vignette (no full-screen fill). */
     private static void renderEdgeVignette(GuiGraphicsExtractor guiGraphics, int width, int height, int red, int green, int blue, float intensity, int baseThickness) {
         if (intensity <= 0.0F) {
             return;

@@ -32,7 +32,6 @@ public final class SuppressionFeedbackController {
     private static final float PAIN_FOV_HARD_MAX_REDUCTION = 22.0F;
    private static final float PAIN_FOV_GAIN = 0.22F;
    private static final float PAIN_FOV_DECAY = 0.05F;
-   private static final float SUPPRESSION_FOV_MIN = 30.0F;
    private static final int SEVERE_PAIN_LEVEL = 4;
    private static final float ACUTE_TINNITUS_THRESHOLD = 0.85F;
    private static final int SEVERE_PAIN_SOUND_COOLDOWN_TICKS = 60;
@@ -78,7 +77,6 @@ public final class SuppressionFeedbackController {
    private float musicDetuneStrength;
    private float tinnitusStrength;
    private float shakeStrength;
-   private float sustainedFovCompression;
    private float painFovCompression;
    private float yawImpulse;
    private float pitchImpulse;
@@ -113,7 +111,7 @@ public final class SuppressionFeedbackController {
          boolean painSuppressed = playerDamageModel != null && playerDamageModel.isPainSuppressed(player);
          float targetPainFov = 0.0F;
          if (playerDamageModel != null && FirstAid.enablePainFovCompression && !withdrawalActive) {
-            float visual = playerDamageModel.getPainVisualStrength(painSuppressed);
+            float visual = playerDamageModel.getPainFovStrength(painSuppressed);
             if (visual > 0.01F) {
                float soft = Mth.clamp(visual, 0.0F, 1.0F) * PAIN_FOV_MAX_REDUCTION;
                float hardExtra = Math.max(0.0F, visual - 1.0F) / (PlayerDamageModel.PAIN_HARD_CAP - 1.0F)
@@ -133,14 +131,11 @@ public final class SuppressionFeedbackController {
             targetTinnitus = Math.max(targetTinnitus, 0.10F + addictionNorm * 0.22F);
          }
          float targetShake = (holding ? 0.30F : 0.10F) * FirstAid.suppressionDisplayCurve(this.suppressionIntensity);
-         float targetFovCompression = (holding ? 3.2F : 1.0F) * FirstAid.suppressionDisplayCurve(this.suppressionIntensity);
+
          this.audioMuffleStrength = approach(this.audioMuffleStrength, targetMuffle, targetMuffle > this.audioMuffleStrength ? 0.18F : 0.020F);
          this.musicDetuneStrength = approach(this.musicDetuneStrength, targetMusicDetune, targetMusicDetune > this.musicDetuneStrength ? 0.10F : 0.03F);
          this.tinnitusStrength = approach(this.tinnitusStrength, targetTinnitus, targetTinnitus > this.tinnitusStrength ? 0.14F : 0.06F);
          this.shakeStrength = approach(this.shakeStrength, targetShake, targetShake > this.shakeStrength ? 0.1F : 0.015F);
-         this.sustainedFovCompression = approach(
-            this.sustainedFovCompression, targetFovCompression, targetFovCompression > this.sustainedFovCompression ? 0.16F : 0.03F
-         );
          this.painFovCompression = withdrawalActive ? 0.0F
             : approach(this.painFovCompression, targetPainFov, targetPainFov > this.painFovCompression ? 0.18F : 0.04F);
          this.yawImpulse *= 0.85F;
@@ -190,7 +185,7 @@ public final class SuppressionFeedbackController {
    }
 
    public float getSustainedFovCompression() {
-      return this.sustainedFovCompression;
+      return 0.0F;
    }
 
    public void beginMute(int ticks) {
@@ -217,14 +212,8 @@ public final class SuppressionFeedbackController {
     }
 
    public float applyFov(float baseFov) {
-      if (this.suppressionIntensity <= 0.01F && this.sustainedFovCompression <= 0.01F && this.painFovCompression <= 0.01F) {
-         return baseFov;
-      } else {
-         float suppressionTunnelVision = this.sustainedFovCompression * 1.21F;
-         float tunnelVision = suppressionTunnelVision + this.painFovCompression;
-         float minFov = suppressionTunnelVision > 0.01F ? 30.0F : 44.0F;
-         return Math.max(minFov, baseFov - tunnelVision);
-      }
+      if (painFovCompression <= 0.01F) return baseFov;
+      return Math.max(44.0F, baseFov - painFovCompression);
    }
 
    @Nullable
@@ -333,7 +322,6 @@ public final class SuppressionFeedbackController {
       this.musicDetuneStrength = 0.0F;
       this.tinnitusStrength = 0.0F;
       this.shakeStrength = 0.0F;
-      this.sustainedFovCompression = 0.0F;
       this.painFovCompression = 0.0F;
       this.yawImpulse = 0.0F;
       this.pitchImpulse = 0.0F;

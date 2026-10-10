@@ -8,7 +8,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 public final class SimpleFirstAidChannel {
 
     public void register(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("1");
+        var registrar = event.registrar("2");
         registrar.playToServer(MessageApplyHealingItem.TYPE, MessageApplyHealingItem.STREAM_CODEC, MessageApplyHealingItem.Handler::onMessage);
         registrar.playToServer(MessageClientRequest.TYPE, MessageClientRequest.STREAM_CODEC, MessageClientRequest.Handler::onMessage);
         registrar.playToClient(MessageSyncDamageModel.TYPE, MessageSyncDamageModel.STREAM_CODEC, MessageSyncDamageModel::handle);

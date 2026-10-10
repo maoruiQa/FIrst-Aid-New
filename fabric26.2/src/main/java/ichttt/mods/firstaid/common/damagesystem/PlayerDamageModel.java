@@ -212,6 +212,7 @@ implements LookupReloadListener {
     private float suppressionIntensity = 0.0f;
     private int suppressionHoldTicks = 0;
     private int suppressionDecayTicker = 0;
+    private boolean adrenalineThreatNearby = false;
     private int suppressionPainReliefTicks = 0;
     private static final Identifier ATTR_ADRENALINE_BURST = Identifier.fromNamespaceAndPath("firstaid", "adrenaline_burst");
     private int adrenalineInjectionTicks = 0;
@@ -971,6 +972,15 @@ implements LookupReloadListener {
         return Math.min(PAIN_HARD_CAP, effective) / CHRONIC_SOFT_CAP;
     }
 
+    /** FOV protection is configurable independently of pain blur. */
+    public float getPainFovStrength(boolean painSuppressed) {
+        if (painSuppressed) return this.getPainVisualStrength(true);
+        float relief = this.getAdrenalinePainRelief() * FirstAid.adrenalineReliefMultiplier;
+        float effective = this.chronicPainIntensity * Math.max(0.0F, 1.0F - 0.70F * relief)
+            + this.acutePainIntensity * Math.max(0.0F, 1.0F - 0.35F * relief);
+        return Math.min(PAIN_HARD_CAP, effective) / CHRONIC_SOFT_CAP;
+    }
+
     public int getMorphineRushTicks() {
         return this.morphineRushTicks;
     }
@@ -1087,7 +1097,7 @@ implements LookupReloadListener {
             lost += Math.max(0.0F, before.getFromEnum(part.part).currentHealth - part.currentHealth);
         }
         if (!Float.isFinite(lost) || lost <= 0.0F) return;
-        this.suppressionIntensity = Math.max(0.0F, this.suppressionIntensity - Math.min(lost * 0.02F, 0.20F));
+        this.suppressionIntensity = Math.max(0.0F, this.suppressionIntensity - Math.min(lost * 0.01F, 0.10F));
         this.encounterRecoveryTicks = 40;
         this.refreshSuppressionSnapshot();
         this.scheduleResync();
@@ -1134,6 +1144,7 @@ implements LookupReloadListener {
         this.suppressionIntensity = 0.0f;
         this.suppressionHoldTicks = 0;
         this.suppressionDecayTicker = 0;
+        this.adrenalineThreatNearby = false;
         this.suppressionPainReliefTicks = 0;
         this.adrenalineInjectionTicks = 0;
         this.encounterRecoveryTicks = 0;
@@ -1262,6 +1273,7 @@ implements LookupReloadListener {
         this.suppressionIntensity = 0.0f;
         this.suppressionHoldTicks = 0;
         this.suppressionDecayTicker = 0;
+        this.adrenalineThreatNearby = false;
         this.suppressionPainReliefTicks = 0;
         this.refreshSuppressionSnapshot();
         this.acutePainIntensity = Math.min(this.acutePainIntensity, 0.35f);
@@ -1968,7 +1980,7 @@ implements LookupReloadListener {
             ++this.suppressionDecayTicker;
             if (this.suppressionDecayTicker >= 4) {
                 this.suppressionDecayTicker = 0;
-                this.suppressionIntensity = Math.max(0.0f, this.suppressionIntensity - 0.015f);
+                this.suppressionIntensity = Math.max(0.0f, this.suppressionIntensity - (this.adrenalineThreatNearby ? 0.006F : 0.015F));
             }
         } else {
             this.suppressionDecayTicker = 0;
@@ -1983,6 +1995,10 @@ implements LookupReloadListener {
         }
         this.refreshSuppressionSnapshot();
     }
+    public void setAdrenalineThreatNearby(boolean threatNearby) {
+        this.adrenalineThreatNearby = threatNearby;
+    }
+
     public boolean isAdrenalineFatigueReady() {
         return FirstAidConfig.SERVER.adrenalineFatigueEnabled.get()
             && !this.adrenalineFatigueTriggered

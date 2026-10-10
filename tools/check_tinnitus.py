@@ -74,8 +74,9 @@ STUBS = r"""
         static Network NETWORKING = new Network();
         static boolean isSynced = true, lowSuppressionEnabled, enablePainFovCompression = true, enablePainAudioEffects = true;
         static float lowSuppressionMultiplier = 0.4F;
+        static float adrenalineReliefMultiplier = 1.7F;
         static float suppressionDisplayCurve(float v) { return Math.max(0,Math.min(1,v)); }
-        static float getSuppressionDisplayMultiplier() { return lowSuppressionEnabled ? Math.max(0,Math.min(1,lowSuppressionMultiplier*1.375F)) : 0.85F; }
+        static float getSuppressionDisplayMultiplier() { return lowSuppressionEnabled ? Math.max(0,Math.min(1,lowSuppressionMultiplier*1.25F)) : 0.75F; }
     }
     static class Mth {
         static float clamp(float v, float lo, float hi) { return Math.max(lo,Math.min(hi,v)); }
@@ -103,15 +104,18 @@ STUBS = r"""
         public Iterator<AbstractDamageablePart> iterator() { return parts.iterator(); }
     }
     static class PlayerDamageModel extends AbstractPlayerDamageModel {
-        static final float PAIN_HARD_CAP = 2;
+        static final float PAIN_HARD_CAP = 1.85F, CHRONIC_SOFT_CAP = 1, ACUTE_BREAKTHROUGH = 0.25F;
+        float chronicPainIntensity, acutePainIntensity;
         boolean muted; float suppression; int holdTicks, heartbeatId;
         boolean isAudioMuted() { return muted; }
         int getPainLevel() { return 0; } float getAcutePainIntensity() { return 0; }
         float getSuppressionIntensity() { return suppression; } int getSuppressionHoldTicks() { return holdTicks; }
         boolean isWithdrawalEpisodeActive() { return false; } float getAddictionNormalized() { return 0; }
-        boolean isPainSuppressed(Player p) { return false; } float getPainVisualStrength(boolean suppressed) { return 0; }
-        int getTinnitusCueId() { return 0; } float getTinnitusCueSeverity() { return 0; }
-        int getTinnitusCueDurationTicks() { return 0; } int getAdrenalineHeartbeatTriggerId() { return heartbeatId; }
+        boolean isPainSuppressed(Player p) { return false; }
+        PAIN_VISUAL_METHODS
+        int cueId, cueDuration; float cueSeverity;
+        int getTinnitusCueId() { return cueId; } float getTinnitusCueSeverity() { return cueSeverity; }
+        int getTinnitusCueDurationTicks() { return cueDuration; } int getAdrenalineHeartbeatTriggerId() { return heartbeatId; }
         int removedWeakness; void replaceTrackedInjuryEffect(Player p, String id, MobEffectInstance replacement) { removedWeakness++; }
     }
     static class CommonUtils {
@@ -170,6 +174,12 @@ STUBS = r"""
     static void same(float a, float b) { check(Math.abs(a-b) < 0.000001F); }
 """
 
+pain_model = (ROOT / "forge1.20.1/src/main/java/ichttt/mods/firstaid/common/damagesystem/PlayerDamageModel.java").read_text(encoding="utf-8")
+pain_methods = "\n".join(method(pain_model, signature) for signature in (
+    "public float getAdrenalinePainRelief()", "public float getPainVisualStrength(boolean painSuppressed)",
+    "public float getPainFovStrength(boolean painSuppressed)"))
+STUBS = STUBS.replace("PAIN_VISUAL_METHODS", pain_methods.replace("this.suppressionIntensity", "this.suppression"))
+
 classes, tests = [], []
 part = (ROOT / "forge1.20.1/src/main/java/ichttt/mods/firstaid/common/damagesystem/DamageablePart.java").read_text(encoding="utf-8")
 classes.append("static class AbsorptionPart { int maxHealth=10; float currentHealth=10; IDebuff[] debuffs; "
@@ -201,7 +211,7 @@ for index, module in enumerate(MODULES):
     constants = "\n".join(re.findall(r"private static final float \w+ = [^;]+;", feedback))
     fields = """
         float suppressionIntensity, audioMuffleStrength, musicDetuneStrength, tinnitusStrength, shakeStrength,
-              sustainedFovCompression, painFovCompression, yawImpulse, pitchImpulse;
+              painFovCompression, yawImpulse, pitchImpulse;
         int holdTicks, lastTinnitusCueId, hallucinationCooldownTicks, localMuteTicks;
         Level trackedLevel; SoundInstance activeTinnitusSound;
         void stopActiveTinnitusSound() {} void playTinnitusSound(float severity, int duration) { throw new AssertionError("unexpected tinnitus"); }
@@ -218,6 +228,9 @@ for index, module in enumerate(MODULES):
                    .replace("TinnitusSoundController", f"Sound{index}"))
     model_dir = ROOT / module / "src/main/java/ichttt/mods/firstaid"
     model = (model_dir / "common/damagesystem/PlayerDamageModel.java").read_text(encoding="utf-8")
+    for signature in ("public float getAdrenalinePainRelief()", "public float getPainVisualStrength(boolean painSuppressed)",
+                      "public float getPainFovStrength(boolean painSuppressed)"):
+        assert re.sub(r"\s+", "", method(model, signature)) == re.sub(r"\s+", "", method(pain_model, signature)), module
     model_methods = "\n".join(method(model, signature) for signature in (
         "public void registerDamageFeedback(", "public void registerTinnitusCue(", "private void tickDotTinnitusState(",
         "public void applyAdrenalineInjection(", "private void forceMaxSuppression(Player player)",
@@ -454,14 +467,34 @@ for index, module in enumerate(MODULES):
             CommonUtils.model.suppression=1; heart.tick(mc); mc.player.alive=false; heart.tick(mc); check(heart.activeHeartbeat==null);
             mc.player.alive=true; CommonUtils.model.suppression=0; heart.clear();
             Camera{index} cam = new Camera{index}();
-            for (float compression : new float[]{{0,0.4F,1,3.2F}}) for (float pain : new float[]{{0,4,12}}) {{
-                cam.sustainedFovCompression=compression; cam.painFovCompression=pain;
-                float expected=90-(compression*1.21F+pain), before=cam.fov(90);
+            for (boolean mild : new boolean[]{{false,true}}) {{
+                FirstAid.lowSuppressionEnabled=mild;
+                for (float pressure : new float[]{{0,0.2F,0.5F,0.8F,1}}) {{
+                    CommonUtils.model.suppression=pressure; CommonUtils.model.holdTicks=200;
+                    Camera{index} healthy=new Camera{index}();
+                    for (int t=0;t<200;t++) healthy.tick(mc);
+                    same(healthy.fov(90),90); // Healthy pressure must never narrow FOV.
+                }}
+            }}
+            float[] painPressures={{0,0.2F,0.5F,0.8F,1}}, expectedPainFovs={{80.4F,80.4F,86.112F,90,90}};
+            CommonUtils.model.chronicPainIntensity=0.8F;
+            for (int p=0;p<painPressures.length;p++) {{
+                CommonUtils.model.suppression=painPressures[p];
+                Camera{index} injured=new Camera{index}();
+                for (int t=0;t<200;t++) injured.tick(mc);
+                check(Math.abs(injured.fov(90)-expectedPainFovs[p])<0.00001F);
+            }}
+            CommonUtils.model.chronicPainIntensity=0; CommonUtils.model.suppression=0; CommonUtils.model.holdTicks=0;
+            for (float pressure : new float[]{{0,0.2F,0.5F,1}}) for (float pain : new float[]{{0,4,12}}) {{
+                cam.suppressionIntensity=pressure; cam.painFovCompression=pain;
+                float expected=90-pain, before=cam.fov(90);
                 same(before,expected);
                 for (int shot=0;shot<1000;shot++) cam.onNearMiss(mc.player,1,1,1);
                 same(cam.fov(90),before); // Near-miss packets cannot add any FOV impulse.
                 cam.yawImpulse=0; cam.pitchImpulse=0;
             }}
+            cam.painFovCompression=12;
+            same(cam.fov(40), {30 if module == 'forge1.20.1' else 44}); // Preserve each loader's original pain-only FOV floor.
             for (float suppression : new float[]{{0,0.2F,0.6F,1,2}})
             for (float shake : new float[]{{0,0.3F,0.9F}}) for (int tick=0;tick<120;tick++)
             for (float partial : new float[]{{0,0.25F,0.75F}}) {{
@@ -530,7 +563,7 @@ for index, module in enumerate(MODULES):
                 same(actual.sample(0).yaw(),12); same(actual.sample(0).pitch(),-8); same(actual.sample(0).roll(),0);
             }}
             FirstAid.lowSuppressionEnabled=false;
-            System.out.println("PASS {module}: gradual-injury and strong-hit triggers, short head/torso darkness, debuff tiers/cooldowns and healing, short configurable tinnitus, pressure-scaled heartbeat and cleanup, adrenaline injection/sync; 5400 formula + 17280 camera comparisons; 1.6-degree roll at 1.6x frequency, suppression FOV 1.21x original, no near-miss FOV");
+            System.out.println("PASS {module}: gradual-injury and strong-hit triggers, short head/torso darkness, debuff tiers/cooldowns and healing, short configurable tinnitus, pressure-scaled heartbeat and cleanup, adrenaline injection/sync; 5400 formula + 17280 camera comparisons; reduced screen strength, no suppression/near-miss FOV, pain FOV follows partial adrenaline relief");
         }}
     """)
 

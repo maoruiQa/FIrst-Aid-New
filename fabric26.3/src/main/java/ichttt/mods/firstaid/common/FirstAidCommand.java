@@ -255,6 +255,9 @@ public final class FirstAidCommand {
     private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> buildAdrenalineBranch(String literalName) {
         return Commands.literal(literalName)
                   .then(buildAdrenalineFatigueBranch())
+                  .then(Commands.literal("relief")
+                     .then(Commands.argument("multiplier", DoubleArgumentType.doubleArg(0.0D, 2.0D))
+                        .executes(context -> setAdrenalineRelief(context.getSource(), DoubleArgumentType.getDouble(context, "multiplier")))))
                   .then(Commands.literal("gain")
                      .then(Commands.argument("coefficient", DoubleArgumentType.doubleArg(0.01D, 1.0D))
                         .executes(context -> setSuppressionGain(context.getSource(), DoubleArgumentType.getDouble(context, "coefficient")))))
@@ -336,6 +339,14 @@ public final class FirstAidCommand {
       syncServerConfig(source);
       source.sendSuccess(() -> Component.translatable(enabled ? "firstaid.command.pain.display.audio.on" : "firstaid.command.pain.display.audio.off"), true);
       return 1;
+   }
+
+   private static int setAdrenalineRelief(CommandSourceStack source, double multiplier) {
+       FirstAid.adrenalineReliefMultiplier = (float) multiplier;
+       FirstAidConfig.persistCommandSettings();
+       syncServerConfig(source);
+       source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.relief", multiplier), true);
+       return 1;
    }
 
    private static int setSuppressionGain(CommandSourceStack source, double coefficient) {

@@ -68,6 +68,7 @@ public class FirstAidConfig {
         SERVER.projectileSuppressionEnabled.set(FirstAid.projectileSuppressionEnabled);
         SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
         SERVER.suppressionGainMultiplier.set((double) FirstAid.suppressionGainMultiplier);
+        SERVER.adrenalineReliefMultiplier.set((double) FirstAid.adrenalineReliefMultiplier);
         SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
         SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
         SERVER.morphineActivationDelaySeconds.set(FirstAid.morphineActivationDelaySeconds);
@@ -94,6 +95,7 @@ public class FirstAidConfig {
         FirstAid.projectileSuppressionEnabled = SERVER.projectileSuppressionEnabled.get();
         FirstAid.lowSuppressionMultiplier = SERVER.lowSuppressionMultiplier.get().floatValue();
         FirstAid.suppressionGainMultiplier = SERVER.suppressionGainMultiplier.get().floatValue();
+        FirstAid.adrenalineReliefMultiplier = SERVER.adrenalineReliefMultiplier.get().floatValue();
         FirstAid.rescueWakeUpEnabled = SERVER.rescueWakeUpEnabled.get();
         FirstAid.rescueWakeUpDelaySeconds = SERVER.rescueWakeUpDelaySeconds.get();
         FirstAid.morphineActivationDelaySeconds = SERVER.morphineActivationDelaySeconds.get();
@@ -299,6 +301,7 @@ public class FirstAidConfig {
                     .comment("Per-hit adrenaline gain multiplier; also set by /firstaid adrenaline gain")
 
                     .defineInRange("suppressionGainMultiplier", 0.15D, 0.01D, 1D);
+            adrenalineReliefMultiplier = builder.comment("Adrenaline protection for injury debuffs and pain FOV; 1 restores previous strength, does not change pain blur").defineInRange("adrenalineReliefMultiplier", 1.7D, 0D, 2D);
             encounterSightRange = builder.comment("Visible hostile encounter range in blocks").defineInRange("encounterSightRange", 16.0D, 1.0D, 128.0D);
             encounterThreatRange = builder.comment("Current threat range in blocks").defineInRange("encounterThreatRange", 12.0D, 1.0D, 128.0D);
             encounterRecentAttackerTicks = builder.comment("Recent player attacker memory in ticks").defineInRange("encounterRecentAttackerTicks", 600, 1, 72000);
@@ -451,6 +454,7 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.BooleanValue projectileSuppressionEnabled;
         public final ForgeConfigSpec.DoubleValue lowSuppressionMultiplier;
         public final ForgeConfigSpec.DoubleValue suppressionGainMultiplier;
+        public final ForgeConfigSpec.DoubleValue adrenalineReliefMultiplier;
         public final ForgeConfigSpec.DoubleValue encounterSightRange;
         public final ForgeConfigSpec.DoubleValue encounterThreatRange;
         public final ForgeConfigSpec.IntValue encounterRecentAttackerTicks;

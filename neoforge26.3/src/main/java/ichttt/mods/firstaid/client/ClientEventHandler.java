@@ -54,7 +54,6 @@ import net.neoforged.neoforge.client.event.CalculatePlayerTurnEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
@@ -258,12 +257,6 @@ public class ClientEventHandler {
     @SubscribeEvent
     public static void onPlaySound(PlaySoundEvent event) {
         SUPPRESSION_FEEDBACK_CONTROLLER.onPlaySound(event);
-    }
-
-    @SubscribeEvent
-    public static void onRenderGui(RenderGuiEvent.Post event) {
-        StatusEffectLayer.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
-        HUDHandler.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
     }
 
     @SubscribeEvent

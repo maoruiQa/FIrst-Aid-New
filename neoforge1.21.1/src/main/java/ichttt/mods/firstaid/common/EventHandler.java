@@ -582,6 +582,7 @@ public class EventHandler {
         FirstAid.projectileSuppressionEnabled = true;
         FirstAid.lowSuppressionMultiplier = 0.4F;
         FirstAid.suppressionGainMultiplier = 0.15F;
+        FirstAid.adrenalineReliefMultiplier = 1.7F;
         FirstAid.rescueWakeUpEnabled = true;
         FirstAid.rescueWakeUpDelaySeconds = FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS;
         FirstAid.naturalRegenMode = FirstAid.NaturalRegenMode.LIMITED;
@@ -641,8 +642,14 @@ public class EventHandler {
     }
 
     private static void tickEncounterAdrenaline(ServerPlayer player, PlayerDamageModel model) {
-        if (model.isUnconscious() || player.level().getGameTime() % 20L != 0L) return;
+        if (model.isUnconscious()) {
+            model.setAdrenalineThreatNearby(false);
+            return;
+        }
+        if (player.level().getGameTime() % 20L != 0L) return;
         double threatRange = FirstAidConfig.SERVER.encounterThreatRange.get();
+        boolean threatNearby = hasAdrenalineFatigueThreat(player, threatRange);
+        model.setAdrenalineThreatNearby(threatNearby);
         if (FirstAid.projectileSuppressionEnabled) {
             double sightRange = FirstAidConfig.SERVER.encounterSightRange.get();
             if (model.getSuppressionIntensity() <= 0.0F && hasVisibleHostile(player, sightRange)) {
@@ -651,7 +658,7 @@ public class EventHandler {
                 model.recoverEncounterAdrenaline(player, countEncounterThreats(player, threatRange));
             }
         }
-        if (model.isAdrenalineFatigueReady() && !hasAdrenalineFatigueThreat(player, threatRange)) {
+        if (model.isAdrenalineFatigueReady() && !threatNearby) {
             model.applyAdrenalineFatigue(player);
         }
     }
