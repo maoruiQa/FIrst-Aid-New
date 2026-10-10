@@ -41,6 +41,7 @@ import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.projectile.ThrownEnderpearl;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
@@ -306,8 +307,12 @@ public class CommonUtils {
                 || stack.getItem() instanceof TridentItem);
     }
 
+    public static boolean isEnderPearlDamageSource(@Nullable DamageSource source) {
+        return source != null && source.getDirectEntity() instanceof ThrownEnderpearl;
+    }
+
     public static boolean isFootOnlyDamageSource(@Nullable DamageSource source) {
-        if (source == null) {
+        if (source == null || isEnderPearlDamageSource(source)) {
             return false;
         }
         if (source.is(DamageTypeTags.IS_FALL)) {

@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import javax.annotation.Nonnull;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import org.apache.commons.lang3.tuple.Pair;
@@ -26,6 +27,31 @@ public class RandomDamageDistributionAlgorithm extends DamageDistribution {
    public static final RandomDamageDistributionAlgorithm NEAREST_KILL = new RandomDamageDistributionAlgorithm(true, false);
    public static final RandomDamageDistributionAlgorithm ANY_NOKILL = new RandomDamageDistributionAlgorithm(false, true);
    public static final RandomDamageDistributionAlgorithm ANY_KILL = new RandomDamageDistributionAlgorithm(false, false);
+   public static final RandomDamageDistributionAlgorithm PER_POINT = new RandomDamageDistributionAlgorithm(false, false) {
+      @Override
+      protected List<Pair<EquipmentSlot, EnumPlayerPart[]>> getPartList() {
+         List<EnumPlayerPart> parts = new ArrayList<>(Arrays.asList(EnumPlayerPart.VALUES));
+         Collections.shuffle(parts, RANDOM);
+         List<Pair<EquipmentSlot, EnumPlayerPart[]>> result = new ArrayList<>(parts.size());
+         for (EnumPlayerPart part : parts) {
+            result.add(Pair.of(part.slot, new EnumPlayerPart[]{part}));
+         }
+         return result;
+      }
+
+      @Override
+      public float distributeDamage(float damage, @Nonnull Player player, @Nonnull DamageSource source, boolean addStat) {
+         while (damage > 0.0F) {
+            float point = Math.min(1.0F, damage);
+            float left = super.distributeDamage(point, player, source, addStat);
+            damage -= point;
+            if (left > 0.0F) {
+               return damage + left;
+            }
+         }
+         return 0.0F;
+      }
+   };
    private static final Random RANDOM = new Random();
    private final boolean nearestFirst;
    private final boolean tryNoKill;

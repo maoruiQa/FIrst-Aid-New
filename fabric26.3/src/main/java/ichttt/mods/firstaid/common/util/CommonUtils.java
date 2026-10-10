@@ -230,8 +230,12 @@ public class CommonUtils {
             || stack.getItem() instanceof MaceItem);
    }
 
+   public static boolean isEnderPearlDamageSource(@Nullable DamageSource source) {
+      return source != null && source.is(DamageTypes.ENDER_PEARL);
+   }
+
    public static boolean isFootOnlyDamageSource(@Nullable DamageSource source) {
-      if (source == null) {
+      if (source == null || isEnderPearlDamageSource(source)) {
          return false;
       }
 

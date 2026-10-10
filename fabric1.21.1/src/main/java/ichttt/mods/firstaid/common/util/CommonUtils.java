@@ -33,6 +33,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.projectile.ThrownEnderpearl;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -258,8 +259,12 @@ public class CommonUtils {
                 || stack.getItem() instanceof MaceItem);
     }
 
+    public static boolean isEnderPearlDamageSource(@Nullable DamageSource source) {
+        return source != null && source.getDirectEntity() instanceof ThrownEnderpearl;
+    }
+
     public static boolean isFootOnlyDamageSource(@Nullable DamageSource source) {
-        if (source == null) {
+        if (source == null || isEnderPearlDamageSource(source)) {
             return false;
         }
         if (source.is(DamageTypes.FALL) || source.is(DamageTypes.HOT_FLOOR)) {

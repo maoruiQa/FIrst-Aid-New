@@ -31,6 +31,8 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
          )
          .apply(instance, StandardDamageDistributionAlgorithm::new)
    );
+   private static final float MIN_CUMULATIVE_TRANSFER = 0.5F;
+
    private final boolean shuffle;
    private final boolean doNeighbours;
    private final EnumSet<EnumPlayerPart> blockedParts;
@@ -78,6 +80,10 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
 
    @Override
    public float distributeDamage(float damage, @Nonnull Player player, @Nonnull DamageSource source, boolean addStat) {
+      return distributeDamage(damage, player, source, addStat, 1.0F);
+   }
+
+   private float distributeDamage(float damage, Player player, DamageSource source, boolean addStat, float cumulativeTransfer) {
       float rest = super.distributeDamage(damage, player, source, addStat);
       EnumSet<EnumPlayerPart> exhaustedParts = this.blockedParts;
       if (rest > 0.0F && this.doNeighbours) {
@@ -112,7 +118,10 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
                StandardDamageDistributionAlgorithm remainingDistribution = new StandardDamageDistributionAlgorithm(
                   neighbourDistributions, false, true, blockedParts
                );
-               rest = remainingDistribution.distributeDamage(rest * overflowTransfer, player, source, addStat);
+               float nextTransfer = Math.max(MIN_CUMULATIVE_TRANSFER, cumulativeTransfer * overflowTransfer);
+               float transfer = nextTransfer / cumulativeTransfer;
+               // Keep leftover damage in this layer's scale so alternate paths cannot compound attenuation.
+               rest = remainingDistribution.distributeDamage(rest * transfer, player, source, addStat, nextTransfer) / transfer;
                if (rest <= 0.0F) {
                   break;
                }

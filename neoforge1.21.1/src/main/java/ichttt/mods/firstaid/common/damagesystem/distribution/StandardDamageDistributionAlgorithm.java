@@ -41,6 +41,8 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
                     Codec.BOOL.optionalFieldOf("doNeighbours", true).forGetter(o -> o.doNeighbours)
             ).apply(instance, StandardDamageDistributionAlgorithm::new));
 
+    private static final float MIN_CUMULATIVE_TRANSFER = 0.5F;
+
     private final boolean shuffle;
     private final boolean doNeighbours;
     private final EnumSet<EnumPlayerPart> blockedParts;
@@ -80,6 +82,10 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
 
     @Override
     public float distributeDamage(float damage, @Nonnull Player player, @Nonnull DamageSource source, boolean addStat) {
+        return distributeDamage(damage, player, source, addStat, 1.0F);
+    }
+
+    private float distributeDamage(float damage, Player player, DamageSource source, boolean addStat, float cumulativeTransfer) {
         float rest = super.distributeDamage(damage, player, source, addStat);
         EnumSet<EnumPlayerPart> exhaustedParts = this.blockedParts;
         if (rest > 0 && doNeighbours) {
@@ -115,7 +121,10 @@ public class StandardDamageDistributionAlgorithm extends DamageDistribution {
 
                     // shuffle can be false, we already shuffle above. Always do neighbours to have a predictable order
                     StandardDamageDistributionAlgorithm remainingDistribution = new StandardDamageDistributionAlgorithm(neighbourDistributions, false, true, blockedParts);
-                    rest = remainingDistribution.distributeDamage(rest * overflowTransfer, player, source, addStat);
+                    float nextTransfer = Math.max(MIN_CUMULATIVE_TRANSFER, cumulativeTransfer * overflowTransfer);
+                    float transfer = nextTransfer / cumulativeTransfer;
+                    // Keep leftover damage in this layer's scale so alternate paths cannot compound attenuation.
+                    rest = remainingDistribution.distributeDamage(rest * transfer, player, source, addStat, nextTransfer) / transfer;
                     if (rest <= 0F) break; //Check if we actually need to do next layer or if it is fine with this iteration
 
                     // Still got some damage left. Add the now drained parts to the blocked list. Take the block list from the temp distribution

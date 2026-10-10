@@ -192,6 +192,7 @@ public class FirstAid {
     public FirstAid(IEventBus modEventBus, ModContainer container) {
         NeoForge.EVENT_BUS.register(EventHandler.class);
         SuppressionRegressionGameTests.register(modEventBus);
+        ichttt.mods.firstaid.common.damagesystem.DamageHealingGameTests.register(modEventBus);
         modEventBus.addListener(this::init);
         modEventBus.addListener(this::registerCreativeTab);
         modEventBus.addListener(NETWORKING::register);

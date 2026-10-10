@@ -266,6 +266,9 @@ public final class EventHandler {
    }
 
    public static IDamageDistributionAlgorithm getForcedDamageDistribution(DamageSource source) {
+      if (CommonUtils.isEnderPearlDamageSource(source)) {
+          return RandomDamageDistributionAlgorithm.PER_POINT;
+      }
       return CommonUtils.isFootOnlyDamageSource(source) ? FOOT_ONLY_DAMAGE_DISTRIBUTION : null;
    }
 
