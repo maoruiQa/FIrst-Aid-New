@@ -1,4 +1,13 @@
 {
+  "firstaid.command.reset.done": "First Aid 服务器配置已恢复默认值、保存并同步，配方已重新加载。初始化时读取的设置需重新登录或重启后生效。",
+  "firstaid.command.reset.failed": "无法恢复 First Aid 服务器配置，请检查服务器日志。",
+  "firstaid.command.reset.reload_failed": "默认配置已保存并同步，但配方重新加载失败。修复加载错误后执行 /reload。",
+  "firstaid.tip.commands.reset.label": "恢复默认",
+  "firstaid.tip.commands.reset.detail": "恢复全部 First Aid 服务器配置默认值，包括身体血量、药物、合成及进服提示，并保存、同步、重载配方。保留玩家伤势、成瘾值和客户端个人设置。初始化设置可能需要重新登录或重启。\n点击填入：/firstaid reset",
+  "firstaid.command.health.query": "%s 的基础最大血量：%s 点（2 点 = 1 颗心）",
+  "firstaid.command.health.set": "%s 的基础最大血量已设为 %s 点，已保存并同步，保留现有伤势。",
+  "firstaid.tip.commands.health.label": "身体血量",
+  "firstaid.tip.commands.health.detail": "管理员身体血量配置\n查询：/firstaid health <部位>\n设置：/firstaid health <部位> <2-12>\n部位：head、body、left_arm、right_arm、left_leg、right_leg、left_foot、right_foot\n2 点 = 1 颗心，仍受血量缩放和上限影响\n点击填入：/firstaid health body 6",
   "effect.firstaid.adrenaline_strength": "应激力量",
   "effect.firstaid.adrenaline_speed": "应激迅捷",
   "effect.firstaid.adrenaline_attack_speed": "应激攻速",

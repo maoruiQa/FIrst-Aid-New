@@ -371,7 +371,7 @@ public final class FirstAidCommand {
         return 1;
     }
 
-    private static void syncCommandSettings(CommandSourceStack source) {
+    static void syncCommandSettings(CommandSourceStack source) {
         if (source.getServer() == null) {
             return;
         }
@@ -431,7 +431,7 @@ public final class FirstAidCommand {
         }
     }
 
-    private static void refreshNaturalRegenState(CommandSourceStack source) {
+    static void refreshNaturalRegenState(CommandSourceStack source) {
         if (source.getServer() == null) {
             return;
         }

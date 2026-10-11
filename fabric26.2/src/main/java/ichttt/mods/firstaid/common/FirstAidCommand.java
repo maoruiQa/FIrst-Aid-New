@@ -405,7 +405,7 @@ public final class FirstAidCommand {
       }
    }
 
-   private static void syncServerConfig(CommandSourceStack source) {
+   static void syncServerConfig(CommandSourceStack source) {
       if (source.getServer() != null) {
          for (ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
             FirstAidNetworking.sendServerConfig(player);
@@ -467,7 +467,7 @@ public final class FirstAidCommand {
       }
    }
 
-   private static void refreshNaturalRegenState(CommandSourceStack source) {
+   static void refreshNaturalRegenState(CommandSourceStack source) {
       if (source.getServer() == null) {
          return;
       }

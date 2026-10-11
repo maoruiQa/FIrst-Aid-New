@@ -1127,6 +1127,8 @@ public class EventHandler {
         ));
         sendSystemMessage(player, buildCommandTipLine(
                 "firstaid.tip.commands.group.rescue",
+                buildCommandTipChip("firstaid.tip.commands.reset.label", "firstaid.tip.commands.reset.detail", "/firstaid reset", ChatFormatting.RED),
+                buildCommandTipChip("firstaid.tip.commands.health.label", "firstaid.tip.commands.health.detail", "/firstaid health body 6", ChatFormatting.GREEN),
                 buildCommandTipChip("firstaid.tip.commands.naturalregen.label", "firstaid.tip.commands.naturalregen.detail", "/firstaid naturalregen limited critical", ChatFormatting.GREEN),
                 buildCommandTipChip("firstaid.tip.commands.revivewakeup.label", "firstaid.tip.commands.revivewakeup.detail", "/firstaid revivewakeup on 15", ChatFormatting.GREEN)
         ));

@@ -1641,14 +1641,21 @@ implements LookupReloadListener {
         }
     }
 
+    public void refreshMaxHealth(Player player) {
+        this.prevScaleFactor = Float.NaN;
+        this.runScaleLogic(player);
+    }
+
     @Override
     public void runScaleLogic(Player player) {
-        if (((Boolean)FirstAidConfig.SERVER.scaleMaxHealth.get()).booleanValue()) {
-            float globalFactor = player.getMaxHealth() / 20.0f;
+        // Clients use the server's synced maxima, never their local config defaults.
+        if (!player.level().isClientSide()) {
+            float globalFactor = FirstAidConfig.SERVER.scaleMaxHealth.get() ? player.getMaxHealth() / 20.0f : 1.0f;
             if (this.prevScaleFactor != globalFactor) {
+                this.scheduleResync();
                 if (Math.abs(globalFactor - 1.0f) < 1.0E-6f) {
                     for (AbstractDamageablePart part : this) {
-                        part.setMaxHealth(part.initialMaxHealth);
+                        part.setMaxHealth(FirstAidConfig.getPartMaxHealth(part.part).get());
                     }
                     this.prevScaleFactor = globalFactor;
                     return;
@@ -1661,7 +1668,8 @@ implements LookupReloadListener {
                 float expectedNewMaxHealth = 0.0f;
                 int newMaxHealth = 0;
                 for (AbstractDamageablePart part : this) {
-                    float floatResult = (float)part.initialMaxHealth * globalFactor;
+                    int baseMaxHealth = FirstAidConfig.getPartMaxHealth(part.part).get();
+                    float floatResult = (float)baseMaxHealth * globalFactor;
                     expectedNewMaxHealth += floatResult;
                     int result = (int)floatResult;
                     if (result % 2 == 1) {
@@ -1682,7 +1690,7 @@ implements LookupReloadListener {
                     }
                     newMaxHealth += result;
                     if (((Boolean)FirstAidConfig.GENERAL.debug.get()).booleanValue()) {
-                        FirstAid.LOGGER.info("Part {} max health: {} initial; {} old; {} new", (Object)part.part.name(), (Object)part.initialMaxHealth, (Object)part.getMaxHealth(), (Object)result);
+                        FirstAid.LOGGER.info("Part {} max health: {} initial; {} old; {} new", (Object)part.part.name(), (Object)baseMaxHealth, (Object)part.getMaxHealth(), (Object)result);
                     }
                     part.setMaxHealth(result);
                 }

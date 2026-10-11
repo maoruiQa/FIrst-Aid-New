@@ -1,5 +1,7 @@
 package ichttt.mods.firstaid;
 
+import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -104,6 +106,29 @@ public final class FirstAidConfig {
       FirstAid.setSuppressionEntityBlacklist(SERVER.suppressionEntityBlacklist.get());
    }
 
+   public static ConfigValue<Integer> getPartMaxHealth(EnumPlayerPart part) {
+      return switch (part) {
+         case HEAD -> SERVER.maxHealthHead;
+         case BODY -> SERVER.maxHealthBody;
+         case LEFT_ARM -> SERVER.maxHealthLeftArm;
+         case RIGHT_ARM -> SERVER.maxHealthRightArm;
+         case LEFT_LEG -> SERVER.maxHealthLeftLeg;
+         case RIGHT_LEG -> SERVER.maxHealthRightLeg;
+         case LEFT_FOOT -> SERVER.maxHealthLeftFoot;
+         case RIGHT_FOOT -> SERVER.maxHealthRightFoot;
+      };
+   }
+
+   public static void resetServerSettings() {
+      JsonObject previous = SERVER.write();
+      SERVER.read(new JsonObject());
+      if (!saveServer()) {
+         SERVER.read(previous);
+         throw new IllegalStateException("Failed saving First Aid defaults");
+      }
+      applyCommandSettings();
+   }
+
    public static void persistCommandSettings() {
       SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
       SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
@@ -174,17 +199,19 @@ public final class FirstAidConfig {
       }
    }
 
-   private static void writeJson(Path file, JsonObject data) {
+   private static boolean writeJson(Path file, JsonObject data) {
       try {
          Files.createDirectories(CONFIG_DIR);
          Files.writeString(file, GSON.toJson(data), StandardCharsets.UTF_8);
+         return true;
       } catch (IOException var3) {
          FirstAid.LOGGER.warn("Failed writing config {}: {}", file, var3.getMessage());
+         return false;
       }
    }
 
-   private static void saveServer() {
-      writeJson(CONFIG_DIR.resolve("firstaid-server.json"), SERVER.write());
+   private static boolean saveServer() {
+      return writeJson(CONFIG_DIR.resolve("firstaid-server.json"), SERVER.write());
    }
 
    private static FirstAidConfig.ConfigValue<Boolean> boolValue(String key, boolean def) {

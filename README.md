@@ -277,6 +277,29 @@ overwrite newer integrated-server commands.
 
 Querying another player’s addiction is admin-only; operators can set values for balance testing.
 
+#### Restore defaults (admin)
+
+```mcfunction
+/firstaid reset
+```
+
+Restore every First Aid server configuration value to its declared default, including body health, medicine, crafting, and join command tips.
+The command saves and syncs the settings, updates online body-health caps, and reloads recipes. Player injuries, addiction, and personal client settings are preserved.
+Values read during player or world initialization take effect after rejoining or restarting. If recipe reload fails, the default settings stay saved; fix the reported error and run `/reload`.
+
+#### Body health (admin)
+
+```mcfunction
+/firstaid health body
+/firstaid health head 8
+/firstaid health left_arm 6
+```
+
+Use `head`, `body`, `left_arm`, `right_arm`, `left_leg`, `right_leg`, `left_foot`, or `right_foot`.
+Omit the value to query; set 2–12 health points (2 points = 1 heart) to save the base maximum and immediately sync all online players.
+Existing max-health attribute scaling and caps still apply. Injuries and treatments are preserved; lowering a maximum clamps current health, while raising it does not heal.
+Offline players receive the new maxima when they next join. Requires operator level 2 or the equivalent gamemaster permission.
+
 #### Medicine and crafting (admin)
 
 ```mcfunction

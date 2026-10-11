@@ -22,13 +22,17 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.Objects;
 
 public final class DamageHealingGameTests {
     private static final Identifier ID = Identifier.fromNamespaceAndPath(FirstAid.MODID, "damage_healing_regression");
@@ -63,6 +67,8 @@ public final class DamageHealingGameTests {
         boolean allowHealing = FirstAidConfig.SERVER.allowOtherHealingItems.get();
         double healingMultiplier = FirstAidConfig.SERVER.otherRegenMultiplier.get();
         try {
+            checkDefaultReset(helper);
+            checkHealthConfiguration(helper, player, model);
             model.clearStatusEffects();
             for (AbstractDamageablePart part : model) part.currentHealth = 0.0F;
             model.HEAD.currentHealth = model.HEAD.getMaxHealth();
@@ -128,6 +134,93 @@ public final class DamageHealingGameTests {
             FirstAidConfig.SERVER.otherRegenMultiplier.set(healingMultiplier);
             model.deserializeNBT(saved);
             player.removeAllEffects();
+        }
+    }
+
+    private static void checkDefaultReset(GameTestHelper helper) {
+        var values = new ArrayList<ModConfigSpec.ConfigValue<?>>();
+        try {
+            for (var field : FirstAidConfig.Server.class.getFields()) {
+                Object value = field.get(FirstAidConfig.SERVER);
+                if (value instanceof ModConfigSpec.ConfigValue<?> config) {
+                    values.add(config);
+                } else if (value instanceof FirstAidConfig.Server.IEEntry entry) {
+                    for (var nested : FirstAidConfig.Server.IEEntry.class.getFields()) {
+                        values.add((ModConfigSpec.ConfigValue<?>) nested.get(entry));
+                    }
+                }
+            }
+        } catch (ReflectiveOperationException error) {
+            throw new AssertionError(error);
+        }
+        List<Runnable> restore = values.stream().map(DamageHealingGameTests::restoreConfigValue).toList();
+        try {
+            FirstAidConfig.SERVER.maxHealthHead.set(12);
+            FirstAidConfig.SERVER.bandage.totalHeals.set(1);
+            FirstAidConfig.SERVER.morphineAddictionGain.set(99.0D);
+            FirstAidConfig.SERVER.scaleMaxHealth.set(false);
+            FirstAidConfig.SERVER.scaleMaxHealth.clearCache();
+            FirstAidConfig.SERVER.commandTipsEnabled.set(false);
+            FirstAidConfig.SERVER.enablePainAudioEffects.set(false);
+            FirstAidConfig.resetServerSettings();
+            helper.assertTrue(values.contains(FirstAidConfig.SERVER.maxHealthHead)
+                            && values.contains(FirstAidConfig.SERVER.bandage.totalHeals)
+                            && values.contains(FirstAidConfig.SERVER.plaster.totalHeals),
+                    "reset regression must include body health and nested medicine entries");
+            for (var value : values) {
+                helper.assertTrue(Objects.equals(value.get(), value.getDefault()), "reset must restore declared defaults: " + value);
+            }
+            helper.assertTrue(FirstAid.enablePainAudioEffects == FirstAidConfig.SERVER.enablePainAudioEffects.getDefault(),
+                    "reset must apply defaults to runtime command state");
+            FirstAid.LOGGER.info("Defaults regression: all {} server config values and runtime state passed", values.size());
+        } finally {
+            restore.forEach(Runnable::run);
+            FirstAidConfig.applyCommandSettings();
+            FirstAidConfig.SERVER.maxHealthHead.save();
+        }
+    }
+
+    private static <T> Runnable restoreConfigValue(ModConfigSpec.ConfigValue<T> value) {
+        T saved = value.get();
+        return () -> {
+            value.set(saved);
+            value.clearCache();
+        };
+    }
+
+    private static void checkHealthConfiguration(GameTestHelper helper, net.minecraft.server.level.ServerPlayer player, PlayerDamageModel model) {
+        int configuredHead = FirstAidConfig.SERVER.maxHealthHead.get();
+        boolean scale = FirstAidConfig.SERVER.scaleMaxHealth.get();
+        var attribute = player.getAttribute(Attributes.MAX_HEALTH);
+        double baseHealth = attribute.getBaseValue();
+        var saved = model.serializeNBT();
+        try {
+            FirstAidConfig.SERVER.scaleMaxHealth.set(false);
+            FirstAidConfig.SERVER.maxHealthHead.set(8);
+            model.HEAD.currentHealth = 1.0F;
+            var treatment = model.HEAD.activeHealer;
+            model.refreshMaxHealth(player);
+            helper.assertTrue(model.HEAD.getMaxHealth() == 8 && model.HEAD.currentHealth == 1.0F
+                    && model.HEAD.activeHealer == treatment, "health configuration must preserve injuries and treatment");
+            model.HEAD.currentHealth = 7.0F;
+            FirstAidConfig.SERVER.maxHealthHead.set(2);
+            model.refreshMaxHealth(player);
+            helper.assertTrue(model.HEAD.getMaxHealth() == 2 && model.HEAD.currentHealth == 2.0F, "lower maximum must clamp health");
+            FirstAidConfig.SERVER.maxHealthHead.set(6);
+            FirstAidConfig.SERVER.scaleMaxHealth.set(true);
+            attribute.setBaseValue(40.0D);
+            model.refreshMaxHealth(player);
+            helper.assertTrue(model.HEAD.getMaxHealth() == 12 && model.HEAD.currentHealth == 2.0F, "attribute scaling must use the new configured maximum");
+            attribute.setBaseValue(20.0D);
+            model.runScaleLogic(player);
+            helper.assertTrue(model.HEAD.getMaxHealth() == 6, "removing attribute scaling must retain the new base maximum");
+            FirstAid.LOGGER.info("Body health regression: live configuration, injury preservation and attribute scaling passed");
+        } finally {
+            FirstAidConfig.SERVER.maxHealthHead.set(configuredHead);
+            FirstAidConfig.SERVER.scaleMaxHealth.set(scale);
+            attribute.setBaseValue(baseHealth);
+            model.refreshMaxHealth(player);
+            model.deserializeNBT(saved);
         }
     }
 

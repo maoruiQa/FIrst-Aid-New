@@ -18,6 +18,9 @@
 
 package ichttt.mods.firstaid;
 
+import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
+import com.electronwill.nightconfig.core.UnmodifiableConfig;
+
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
@@ -94,6 +97,40 @@ public class FirstAidConfig {
 
     public static void saveClient() {
         clientSpec.save();
+    }
+
+    public static ModConfigSpec.IntValue getPartMaxHealth(EnumPlayerPart part) {
+        return switch (part) {
+            case HEAD -> SERVER.maxHealthHead;
+            case BODY -> SERVER.maxHealthBody;
+            case LEFT_ARM -> SERVER.maxHealthLeftArm;
+            case RIGHT_ARM -> SERVER.maxHealthRightArm;
+            case LEFT_LEG -> SERVER.maxHealthLeftLeg;
+            case RIGHT_LEG -> SERVER.maxHealthRightLeg;
+            case LEFT_FOOT -> SERVER.maxHealthLeftFoot;
+            case RIGHT_FOOT -> SERVER.maxHealthRightFoot;
+        };
+    }
+
+    public static void resetServerSettings() {
+        resetValues(serverSpec.getValues());
+        applyCommandSettings();
+        serverSpec.save();
+    }
+
+    private static void resetValues(UnmodifiableConfig values) {
+        for (Object value : values.valueMap().values()) {
+            if (value instanceof UnmodifiableConfig section) {
+                resetValues(section);
+            } else if (value instanceof ModConfigSpec.ConfigValue<?> configValue) {
+                resetValue(configValue);
+            }
+        }
+    }
+
+    private static <T> void resetValue(ModConfigSpec.ConfigValue<T> value) {
+        value.set(value.getDefault());
+        value.clearCache();
     }
 
     public static void persistCommandSettings() {

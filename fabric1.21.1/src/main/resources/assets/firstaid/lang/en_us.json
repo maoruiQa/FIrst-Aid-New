@@ -1,4 +1,13 @@
 {
+  "firstaid.command.reset.done": "First Aid server settings restored to defaults, saved and synced; recipes reloaded. Rejoin or restart for settings read at initialization.",
+  "firstaid.command.reset.failed": "Could not restore First Aid server settings. Check the server log.",
+  "firstaid.command.reset.reload_failed": "Defaults saved and synced, but recipe reload failed. Fix the reload error and run /reload.",
+  "firstaid.tip.commands.reset.label": "Reset Defaults",
+  "firstaid.tip.commands.reset.detail": "Restore all First Aid server configuration defaults, including body health, medicine, crafting and command tips. Saves, syncs and reloads recipes. Preserves player injuries, addiction and personal client settings. Initialization settings may require rejoining or restarting.\nClick to fill: /firstaid reset",
+  "firstaid.command.health.query": "Base max health for %s: %s HP (2 HP = 1 heart)",
+  "firstaid.command.health.set": "Base max health for %s set to %s HP. Saved and synced; injuries preserved.",
+  "firstaid.tip.commands.health.label": "Body Health",
+  "firstaid.tip.commands.health.detail": "Admin body health configuration\nQuery: /firstaid health <part>\nSet: /firstaid health <part> <2-12>\nParts: head, body, left_arm, right_arm, left_leg, right_leg, left_foot, right_foot\n2 HP = 1 heart; scaling and caps still apply\nClick to fill: /firstaid health body 6",
   "effect.firstaid.adrenaline_strength": "Adrenaline Strength",
   "effect.firstaid.adrenaline_speed": "Adrenaline Speed",
   "effect.firstaid.adrenaline_attack_speed": "Adrenaline Attack Speed",
