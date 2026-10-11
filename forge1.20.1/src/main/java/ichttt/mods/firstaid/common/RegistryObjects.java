@@ -85,14 +85,14 @@ public class RegistryObjects {
         // ITEMS
         BANDAGE = ITEM_REGISTER.register("bandage", () -> ItemHealing.create(
                 new Item.Properties().stacksTo(16),
-                stack -> new PartHealer(() -> server.bandage.secondsPerHeal.get() * 20, server.bandage.totalHeals::get, stack),
+                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.bandage.secondsPerHeal.get() * 20), server.bandage.totalHeals::get, stack),
                 stack -> server.bandage.applyTime.get(),
                 stack -> getBandageUseSound(),
                 stack -> ItemHealing.ApplySoundMode.WHILE_USING
         ));
         PLASTER = ITEM_REGISTER.register("plaster", () -> ItemHealing.create(
                 new Item.Properties().stacksTo(16),
-                stack -> new PartHealer(() -> server.plaster.secondsPerHeal.get() * 20, server.plaster.totalHeals::get, stack),
+                stack -> new PartHealer(() -> FirstAid.scaleMedicalTimingTicks(server.plaster.secondsPerHeal.get() * 20), server.plaster.totalHeals::get, stack),
                 stack -> server.plaster.applyTime.get(),
                 stack -> getBandageUseSound(),
                 stack -> ItemHealing.ApplySoundMode.WHILE_USING

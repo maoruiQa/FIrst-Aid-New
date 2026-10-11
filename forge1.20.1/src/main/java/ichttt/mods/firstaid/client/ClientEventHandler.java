@@ -427,6 +427,12 @@ public class ClientEventHandler {
 
     @SubscribeEvent
     public static void onDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+        FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
+        FirstAid.medicineTimingMultiplier = 1.0F;
+        FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
+        FirstAid.lowInjuryDebuffDamageScale = 0.4F;
+        FirstAid.lowInjuryDebuffAmplifierScale = 0.5F;
+        FirstAid.lowInjuryDebuffDurationScale = 0.5F;
         FirstAid.isSynced = false;
         HUDHandler.INSTANCE.ticker = -1;
         syncRetryTicks = 0;

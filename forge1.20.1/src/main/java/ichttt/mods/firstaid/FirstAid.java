@@ -62,7 +62,7 @@ public class FirstAid {
     private static final ResourceLocation SPLASH_POTION_ENTITY_ID = new ResourceLocation("minecraft", "splash_potion");
     private static final ResourceLocation LINGERING_POTION_ENTITY_ID = new ResourceLocation("minecraft", "lingering_potion");
 
-    private static final String NETWORKING_MAJOR = "6.";
+    private static final String NETWORKING_MAJOR = "7.";
     private static final String NETWORKING_MINOR = "0";
 
     private static final String NETWORKING_VERSION = NETWORKING_MAJOR + NETWORKING_MINOR;
@@ -103,7 +103,35 @@ public class FirstAid {
     public static float naturalRegenCriticalPriorityRatio = 0.85F;
     public static boolean useFriendlyRandomDistribution = true;
     public static float friendlyRandomDistributionChance = DEFAULT_FRIENDLY_RANDOM_DISTRIBUTION_CHANCE;
+    public static MedicineEffectMode medicineEffectMode = MedicineEffectMode.REALISTIC;
+    public static float medicineTimingMultiplier = 1.0F;
+    public static InjuryDebuffMode injuryDebuffMode = InjuryDebuffMode.NORMAL;
+    public static float lowInjuryDebuffDamageScale = 0.4F;
+    public static float lowInjuryDebuffAmplifierScale = 0.5F;
+    public static float lowInjuryDebuffDurationScale = 0.5F;
     public static final Set<ResourceLocation> suppressionEntityBlacklist = ConcurrentHashMap.newKeySet();
+
+    public enum MedicineEffectMode {
+        REALISTIC(1.0F),
+        ASSISTED(0.5F),
+        CASUAL(0.25F);
+
+        private final float timingMultiplier;
+
+        MedicineEffectMode(float timingMultiplier) {
+            this.timingMultiplier = timingMultiplier;
+        }
+
+        public float getTimingMultiplier() {
+            return timingMultiplier;
+        }
+    }
+
+    public enum InjuryDebuffMode {
+        NORMAL,
+        LOW,
+        OFF
+    }
 
     public enum NaturalRegenMode {
         OFF,
@@ -138,7 +166,7 @@ public class FirstAid {
     }
 
     public static int scaleMedicalTimingTicks(int baseTicks) {
-        return Math.max(1, baseTicks);
+        return Math.max(1, Math.round(baseTicks * medicineTimingMultiplier));
     }
 
     public static int getMorphineActivationDelayTicks() {

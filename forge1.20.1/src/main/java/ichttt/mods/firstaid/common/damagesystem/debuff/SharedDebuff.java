@@ -21,6 +21,7 @@ package ichttt.mods.firstaid.common.damagesystem.debuff;
 import ichttt.mods.firstaid.api.damagesystem.AbstractDamageablePart;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.api.debuff.IDebuff;
+import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.enums.EnumDebuffSlot;
 import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.common.util.CommonUtils;
@@ -68,6 +69,9 @@ public class SharedDebuff implements IDebuff {
         }
 
         healthFraction /= parts.length;
+        if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
+            healthFraction = Math.min(1.0F, 0.5F + (healthFraction * 0.5F));
+        }
         if (healingCount > 0) {
             debuff.handleHealing(this.healingDone / this.healingCount, healthFraction, (ServerPlayer) player);
         }

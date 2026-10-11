@@ -565,6 +565,12 @@ public class EventHandler {
         FirstAid.naturalRegenStrategy = FirstAid.NaturalRegenStrategy.CRITICAL;
         FirstAid.naturalRegenLimitRatio = 0.85F;
         FirstAid.naturalRegenCriticalPriorityRatio = 0.85F;
+        FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
+        FirstAid.medicineTimingMultiplier = 1.0F;
+        FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
+        FirstAid.lowInjuryDebuffDamageScale = 0.4F;
+        FirstAid.lowInjuryDebuffAmplifierScale = 0.5F;
+        FirstAid.lowInjuryDebuffDurationScale = 0.5F;
         FirstAid.setSuppressionEntityBlacklist(FirstAid.getDefaultSuppressionEntityBlacklist());
         CapProvider.tutorialDone.clear();
         EventHandler.hitList.clear();
@@ -851,6 +857,8 @@ public class EventHandler {
         ), false);
         player.displayClientMessage(buildCommandTipLine(
                 "firstaid.tip.commands.group.rescue",
+                buildCommandTipChip("firstaid.tip.commands.reset.label", "firstaid.tip.commands.reset.detail", "/firstaid reset", ChatFormatting.RED),
+                buildCommandTipChip("firstaid.tip.commands.health.label", "firstaid.tip.commands.health.detail", "/firstaid health body 6", ChatFormatting.GREEN),
                 buildCommandTipChip("firstaid.tip.commands.naturalregen.label", "firstaid.tip.commands.naturalregen.detail", "/firstaid naturalregen limited critical", ChatFormatting.GREEN),
                 buildCommandTipChip("firstaid.tip.commands.revivewakeup.label", "firstaid.tip.commands.revivewakeup.detail", "/firstaid revivewakeup on 15", ChatFormatting.GREEN)
         ), false);

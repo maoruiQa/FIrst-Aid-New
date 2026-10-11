@@ -54,6 +54,8 @@ public class OnHitDebuff extends AbstractDebuff {
     @Override
     public void handleDamageTaken(float damage, float healthFraction, ServerPlayer player) {
         if (player == null || !Float.isFinite(damage) || damage <= 0.0F) return;
+        FirstAid.InjuryDebuffMode mode = getDebuffMode();
+        if (mode == FirstAid.InjuryDebuffMode.OFF) return;
         int value = -1;
         for (OnHitDebuffEntry entry : timeBoundaries) {
             if (damage >= entry.damageTakenThreshold() || (entry.healthFractionThreshold() > 0.0F
@@ -63,7 +65,7 @@ public class OnHitDebuff extends AbstractDebuff {
         }
         if (value <= 0 || (cooldownTicks > 0 && lastTriggerTick >= 0 && player.tickCount >= lastTriggerTick
                 && (long) player.tickCount - lastTriggerTick < cooldownTicks)) return;
-        int duration = value;
+        int duration = mode == FirstAid.InjuryDebuffMode.LOW ? scaleDurationForMode(value) : value;
         this.applyInjuryEffect(player, new MobEffectInstance(effect, duration, 0, false, false));
         lastTriggerTick = player.tickCount;
         if (sound != null)

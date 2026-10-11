@@ -18,6 +18,9 @@
 
 package ichttt.mods.firstaid;
 
+import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
+import com.electronwill.nightconfig.core.UnmodifiableConfig;
+
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
@@ -57,6 +60,40 @@ public class FirstAidConfig {
         clientSpec.save();
     }
 
+    public static ForgeConfigSpec.IntValue getPartMaxHealth(EnumPlayerPart part) {
+        return switch (part) {
+            case HEAD -> SERVER.maxHealthHead;
+            case BODY -> SERVER.maxHealthBody;
+            case LEFT_ARM -> SERVER.maxHealthLeftArm;
+            case RIGHT_ARM -> SERVER.maxHealthRightArm;
+            case LEFT_LEG -> SERVER.maxHealthLeftLeg;
+            case RIGHT_LEG -> SERVER.maxHealthRightLeg;
+            case LEFT_FOOT -> SERVER.maxHealthLeftFoot;
+            case RIGHT_FOOT -> SERVER.maxHealthRightFoot;
+        };
+    }
+
+    public static void resetServerSettings() {
+        resetValues(serverSpec.getValues());
+        applyCommandSettings();
+        serverSpec.save();
+    }
+
+    private static void resetValues(UnmodifiableConfig values) {
+        for (Object value : values.valueMap().values()) {
+            if (value instanceof UnmodifiableConfig section) {
+                resetValues(section);
+            } else if (value instanceof ForgeConfigSpec.ConfigValue<?> configValue) {
+                resetValue(configValue);
+            }
+        }
+    }
+
+    private static <T> void resetValue(ForgeConfigSpec.ConfigValue<T> value) {
+        value.set(value.getDefault());
+        value.clearCache();
+    }
+
     public static void persistCommandSettings() {
         SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
         SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
@@ -80,6 +117,12 @@ public class FirstAidConfig {
         SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
         SERVER.useFriendlyRandomDistribution.set(FirstAid.useFriendlyRandomDistribution);
         SERVER.friendlyRandomDistributionChance.set((double) FirstAid.clampFriendlyRandomDistributionChance(FirstAid.friendlyRandomDistributionChance));
+        SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
+        SERVER.medicineTimingMultiplier.set((double) FirstAid.medicineTimingMultiplier);
+        SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+        SERVER.lowInjuryDebuffDamageScale.set((double) FirstAid.lowInjuryDebuffDamageScale);
+        SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
+        SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
         SERVER.suppressionEntityBlacklist.set(serializeResourceLocationList(FirstAid.suppressionEntityBlacklist));
         serverSpec.save();
     }
@@ -106,6 +149,12 @@ public class FirstAidConfig {
         FirstAid.naturalRegenCriticalPriorityRatio = SERVER.naturalRegenCriticalPriorityRatio.get().floatValue();
         FirstAid.useFriendlyRandomDistribution = SERVER.useFriendlyRandomDistribution.get();
         FirstAid.friendlyRandomDistributionChance = SERVER.friendlyRandomDistributionChance.get().floatValue();
+        FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
+        FirstAid.medicineTimingMultiplier = SERVER.medicineTimingMultiplier.get().floatValue();
+        FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+        FirstAid.lowInjuryDebuffDamageScale = SERVER.lowInjuryDebuffDamageScale.get().floatValue();
+        FirstAid.lowInjuryDebuffAmplifierScale = SERVER.lowInjuryDebuffAmplifierScale.get().floatValue();
+        FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
         FirstAid.setSuppressionEntityBlacklist(parseResourceLocationList(SERVER.suppressionEntityBlacklist.get()));
     }
 
@@ -324,6 +373,24 @@ public class FirstAidConfig {
             naturalRegenLimitRatio = builder
                     .comment("Maximum health fraction natural regeneration can restore in limited modes")
                     .defineInRange("naturalRegenLimitRatio", 0.85D, 0D, 1D);
+            medicineEffectMode = builder
+                    .comment("Persistent medicine timing preset selected by /firstaid medicineeffect")
+                    .defineEnum("medicineEffectMode", FirstAid.MedicineEffectMode.REALISTIC);
+            medicineTimingMultiplier = builder
+                    .comment("Multiplier for bandage and plaster healing intervals; lower values heal faster")
+                    .defineInRange("medicineTimingMultiplier", 1D, 0.01D, 20D);
+            injuryDebuffMode = builder
+                    .comment("Persistent injury debuff mode selected by /firstaid injurydebuff")
+                    .defineEnum("injuryDebuffMode", FirstAid.InjuryDebuffMode.NORMAL);
+            lowInjuryDebuffDamageScale = builder
+                    .comment("Damage and healing signal multiplier for injury debuffs in low mode")
+                    .defineInRange("lowInjuryDebuffDamageScale", 0.4D, 0D, 1D);
+            lowInjuryDebuffAmplifierScale = builder
+                    .comment("Effect amplifier multiplier for injury debuffs in low mode")
+                    .defineInRange("lowInjuryDebuffAmplifierScale", 0.5D, 0D, 1D);
+            lowInjuryDebuffDurationScale = builder
+                    .comment("On-hit effect duration multiplier for injury debuffs in low mode")
+                    .defineInRange("lowInjuryDebuffDurationScale", 0.5D, 0D, 1D);
             naturalRegenCriticalPriorityRatio = builder
                     .comment("Critical limb health fraction at or below which critical natural regeneration is prioritized")
                     .defineInRange("naturalRegenCriticalPriorityRatio", 0.85D, 0D, 1D);
@@ -443,6 +510,12 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.EnumValue<VanillaHealthCalculationMode> vanillaHealthCalculation;
         public final ForgeConfigSpec.BooleanValue useFriendlyRandomDistribution;
         public final ForgeConfigSpec.DoubleValue friendlyRandomDistributionChance;
+        public final ForgeConfigSpec.EnumValue<FirstAid.MedicineEffectMode> medicineEffectMode;
+        public final ForgeConfigSpec.DoubleValue medicineTimingMultiplier;
+        public final ForgeConfigSpec.EnumValue<FirstAid.InjuryDebuffMode> injuryDebuffMode;
+        public final ForgeConfigSpec.DoubleValue lowInjuryDebuffDamageScale;
+        public final ForgeConfigSpec.DoubleValue lowInjuryDebuffAmplifierScale;
+        public final ForgeConfigSpec.DoubleValue lowInjuryDebuffDurationScale;
         public final ForgeConfigSpec.EnumValue<ArmorEnchantmentMode> armorEnchantmentMode;
         public final ForgeConfigSpec.BooleanValue dynamicPainEnabled;
         public final ForgeConfigSpec.IntValue mildPainLevel;

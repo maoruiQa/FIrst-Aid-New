@@ -70,6 +70,7 @@ STUBS = r"""
         enum InjuryDebuffMode { NORMAL, LOW, OFF }
         static InjuryDebuffMode injuryDebuffMode=InjuryDebuffMode.NORMAL;
         static float lowInjuryDebuffDurationScale=0.5F;
+        static float lowInjuryDebuffDamageScale=0.4F;
         static class Network { void send(Object target, Object packet) {} }
         static Network NETWORKING = new Network();
         static boolean isSynced = true, lowSuppressionEnabled, enablePainFovCompression = true, enablePainAudioEffects = true;
@@ -183,7 +184,8 @@ STUBS = STUBS.replace("PAIN_VISUAL_METHODS", pain_methods.replace("this.suppress
 classes, tests = [], []
 part = (ROOT / "forge1.20.1/src/main/java/ichttt/mods/firstaid/common/damagesystem/DamageablePart.java").read_text(encoding="utf-8")
 classes.append("static class AbsorptionPart { int maxHealth=10; float currentHealth=10; IDebuff[] debuffs; "
-               + method(part, "public float damage(float amount, @Nullable Player player, boolean applyDebuff, float minHealth)").replace("@Nullable ", "") + "}")
+               + method(part, "public float damage(float amount, @Nullable Player player, boolean applyDebuff, float minHealth)").replace("@Nullable ", "")
+               + method(part, "private static float softenDebuffHealthFraction(") + "}")
 tests.append("""
     for (float damage : new float[]{0.25F,2,4,6,12}) {
         AbsorptionPart part=new AbsorptionPart();
@@ -309,7 +311,7 @@ for index, module in enumerate(MODULES):
             tests.append(f"""{{ Hit{index} hit=new Hit{index}(); hit.timeBoundaries=List.of({entries});
                 hit.handleDamageTaken({damage}F,{ratio}F,new ServerPlayer());
                 check(hit.applications=={int(duration > 0)} && hit.duration=={duration}); }}""")
-        low_mode = "" if module == "forge1.20.1" else f"""
+        low_mode = f"""
             FirstAid.injuryDebuffMode=FirstAid.InjuryDebuffMode.LOW; Hit{index} mild=new Hit{index}(); mild.timeBoundaries=hit.timeBoundaries;
             mild.handleDamageTaken(6,1,p); check(mild.duration=={definition['timeBoundaries'][0]['effectDuration']//2});
             FirstAid.injuryDebuffMode=FirstAid.InjuryDebuffMode.OFF; Hit{index} off=new Hit{index}(); off.timeBoundaries=hit.timeBoundaries;

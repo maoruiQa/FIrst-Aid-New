@@ -96,6 +96,23 @@ public final class FirstAidCommand {
                                                 .executes(context -> setFriendlyRandomDistributionChance(context.getSource(), DoubleArgumentType.getDouble(context, "percent"))))))
                         .then(Commands.literal("normal")
                                 .executes(context -> setFriendlyRandomDistribution(context.getSource(), false))))
+                .then(Commands.literal("medicineeffect")
+                        .then(Commands.literal("realistic")
+                                .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.REALISTIC)))
+                        .then(Commands.literal("assisted")
+                                .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.ASSISTED)))
+                        .then(Commands.literal("casual")
+                                .executes(context -> setMedicineEffectMode(context.getSource(), FirstAid.MedicineEffectMode.CASUAL)))
+                        .then(Commands.literal("multiplier")
+                                .then(Commands.argument("value", DoubleArgumentType.doubleArg(0.01D, 20D))
+                                        .executes(context -> setMedicineTimingMultiplier(context.getSource(), DoubleArgumentType.getDouble(context, "value"))))))
+                .then(Commands.literal("injurydebuff")
+                        .then(Commands.literal("normal")
+                                .executes(context -> setInjuryDebuffMode(context.getSource(), FirstAid.InjuryDebuffMode.NORMAL)))
+                        .then(Commands.literal("low")
+                                .executes(context -> setInjuryDebuffMode(context.getSource(), FirstAid.InjuryDebuffMode.LOW)))
+                        .then(Commands.literal("off")
+                                .executes(context -> setInjuryDebuffMode(context.getSource(), FirstAid.InjuryDebuffMode.OFF))))
                 .then(Commands.literal("revivewakeup")
                         .then(Commands.literal("on")
                                 .executes(context -> setRescueWakeUp(context.getSource(), true))
@@ -124,6 +141,32 @@ public final class FirstAidCommand {
                                                         context.getSource(),
                                                         EntityArgument.getPlayer(context, "player"),
                                                         FloatArgumentType.getFloat(context, "value"))))))));
+    }
+
+    private static int setMedicineEffectMode(CommandSourceStack source, FirstAid.MedicineEffectMode mode) {
+        FirstAid.medicineEffectMode = mode;
+        FirstAid.medicineTimingMultiplier = mode.getTimingMultiplier();
+        FirstAidConfig.persistCommandSettings();
+        syncCommandSettings(source);
+        source.sendSuccess(() -> Component.translatable("firstaid.command.medicineeffect." + mode.name().toLowerCase(java.util.Locale.ROOT)), true);
+        return 1;
+    }
+
+    private static int setMedicineTimingMultiplier(CommandSourceStack source, double multiplier) {
+        if (!Double.isFinite(multiplier)) return 0;
+        FirstAid.medicineTimingMultiplier = (float) multiplier;
+        FirstAidConfig.persistCommandSettings();
+        syncCommandSettings(source);
+        source.sendSuccess(() -> Component.translatable("firstaid.command.medicineeffect.multiplier", multiplier), true);
+        return 1;
+    }
+
+    private static int setInjuryDebuffMode(CommandSourceStack source, FirstAid.InjuryDebuffMode mode) {
+        FirstAid.injuryDebuffMode = mode;
+        FirstAidConfig.persistCommandSettings();
+        syncCommandSettings(source);
+        source.sendSuccess(() -> Component.translatable("firstaid.command.injurydebuff." + mode.name().toLowerCase(java.util.Locale.ROOT)), true);
+        return 1;
     }
 
     private static int queryAddiction(CommandSourceStack source, ServerPlayer target) {
@@ -273,7 +316,7 @@ public final class FirstAidCommand {
         return 1;
     }
 
-    private static void syncCommandSettings(CommandSourceStack source) {
+    static void syncCommandSettings(CommandSourceStack source) {
         if (source.getServer() == null) {
             return;
         }
@@ -401,7 +444,7 @@ public final class FirstAidCommand {
         }
     }
 
-    private static void refreshNaturalRegenState(CommandSourceStack source) {
+    static void refreshNaturalRegenState(CommandSourceStack source) {
         if (source.getServer() == null) {
             return;
         }

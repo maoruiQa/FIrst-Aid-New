@@ -19,6 +19,7 @@
 package ichttt.mods.firstaid.common.damagesystem.debuff;
 
 import ichttt.mods.firstaid.api.debuff.IDebuff;
+import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -38,6 +39,18 @@ public abstract class AbstractDebuff implements IDebuff {
     public AbstractDebuff(@Nonnull ResourceLocation potionName) {
         this.injuryEffectId = potionName.toString();
         this.effect = Objects.requireNonNull(ForgeRegistries.MOB_EFFECTS.getValue(potionName));
+    }
+
+    protected final FirstAid.InjuryDebuffMode getDebuffMode() {
+        return FirstAid.injuryDebuffMode;
+    }
+
+    protected final int scaleAmplifierForMode(int amplifier) {
+        return amplifier <= 0 ? amplifier : Math.max(0, Math.round(amplifier * FirstAid.lowInjuryDebuffAmplifierScale));
+    }
+
+    protected final int scaleDurationForMode(int duration) {
+        return duration <= 1 ? duration : Math.max(1, Math.round(duration * FirstAid.lowInjuryDebuffDurationScale));
     }
 
     protected final void applyInjuryEffect(Player player, MobEffectInstance instance) {

@@ -71,6 +71,12 @@ public class ConstantDebuff extends AbstractDebuff {
 
     @Override
     public void update(Player player, float healthFraction) {
+        FirstAid.InjuryDebuffMode mode = getDebuffMode();
+        if (mode == FirstAid.InjuryDebuffMode.OFF) {
+            ticks = 0;
+            activeMultiplier = 0;
+            return;
+        }
         if (this.updateAdrenalineDebuff(player, healthFraction)) return;
         if (ticks == 0 && healthFraction != -1) {
             syncMultiplier(healthFraction);
@@ -82,7 +88,9 @@ public class ConstantDebuff extends AbstractDebuff {
 
         if (ticks == 0) {
             if (activeMultiplier != 0) {
-                this.applyInjuryEffect(player, new MobEffectInstance(effect, 169, activeMultiplier - 1, false, false));
+                int amplifier = activeMultiplier - 1;
+                if (mode == FirstAid.InjuryDebuffMode.LOW) amplifier = scaleAmplifierForMode(amplifier);
+                this.applyInjuryEffect(player, new MobEffectInstance(effect, 169, amplifier, false, false));
             }
         }
         ticks++;
@@ -98,6 +106,9 @@ public class ConstantDebuff extends AbstractDebuff {
         if (relief == 0.0F && this.lastAdrenalineRelief == 0.0F) return false;
         if (healthFraction < 0.0F) return false;
         int level = calculateAdrenalineMultiplier(this.amplifierBoundaries, healthFraction, relief);
+        if (getDebuffMode() == FirstAid.InjuryDebuffMode.LOW && level > 0) {
+            level = scaleAmplifierForMode(level - 1) + 1;
+        }
         if (level != this.lastCombatMultiplier || this.ticks == 0
             || level > 0 && !player.hasEffect(this.effect)) {
             model.replaceTrackedInjuryEffect(player, this.injuryEffectId, level == 0 ? null

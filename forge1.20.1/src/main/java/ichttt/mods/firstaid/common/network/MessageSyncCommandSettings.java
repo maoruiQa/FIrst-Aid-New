@@ -37,8 +37,14 @@ public class MessageSyncCommandSettings {
     private final boolean lowSuppressionEnabled;
     private final float adrenalineReliefMultiplier;
     private final String suppressionEntityBlacklist;
+    private final FirstAid.MedicineEffectMode medicineEffectMode;
+    private final float medicineTimingMultiplier;
+    private final FirstAid.InjuryDebuffMode injuryDebuffMode;
+    private final float lowInjuryDebuffDamageScale;
+    private final float lowInjuryDebuffAmplifierScale;
+    private final float lowInjuryDebuffDurationScale;
 
-    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, boolean projectileSuppressionEnabled, boolean lowSuppressionEnabled, float adrenalineReliefMultiplier, String suppressionEntityBlacklist) {
+    private MessageSyncCommandSettings(boolean enablePainVignette, boolean enablePainFovCompression, boolean enablePainAudioEffects, boolean projectileSuppressionEnabled, boolean lowSuppressionEnabled, float adrenalineReliefMultiplier, String suppressionEntityBlacklist, FirstAid.MedicineEffectMode medicineEffectMode, float medicineTimingMultiplier, FirstAid.InjuryDebuffMode injuryDebuffMode, float lowInjuryDebuffDamageScale, float lowInjuryDebuffAmplifierScale, float lowInjuryDebuffDurationScale) {
         this.enablePainVignette = enablePainVignette;
         this.enablePainFovCompression = enablePainFovCompression;
         this.enablePainAudioEffects = enablePainAudioEffects;
@@ -46,10 +52,16 @@ public class MessageSyncCommandSettings {
         this.lowSuppressionEnabled = lowSuppressionEnabled;
         this.adrenalineReliefMultiplier = adrenalineReliefMultiplier;
         this.suppressionEntityBlacklist = suppressionEntityBlacklist;
+        this.medicineEffectMode = medicineEffectMode;
+        this.medicineTimingMultiplier = medicineTimingMultiplier;
+        this.injuryDebuffMode = injuryDebuffMode;
+        this.lowInjuryDebuffDamageScale = lowInjuryDebuffDamageScale;
+        this.lowInjuryDebuffAmplifierScale = lowInjuryDebuffAmplifierScale;
+        this.lowInjuryDebuffDurationScale = lowInjuryDebuffDurationScale;
     }
 
     public MessageSyncCommandSettings(FriendlyByteBuf buffer) {
-        this(buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readFloat(), buffer.readUtf(32767));
+        this(buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readBoolean(), buffer.readFloat(), buffer.readUtf(32767), buffer.readEnum(FirstAid.MedicineEffectMode.class), buffer.readFloat(), buffer.readEnum(FirstAid.InjuryDebuffMode.class), buffer.readFloat(), buffer.readFloat(), buffer.readFloat());
     }
 
     public static MessageSyncCommandSettings current() {
@@ -67,7 +79,13 @@ public class MessageSyncCommandSettings {
                 FirstAid.projectileSuppressionEnabled,
                 FirstAid.lowSuppressionEnabled,
                 FirstAid.adrenalineReliefMultiplier,
-                builder.toString());
+                builder.toString(),
+                FirstAid.medicineEffectMode,
+                FirstAid.medicineTimingMultiplier,
+                FirstAid.injuryDebuffMode,
+                FirstAid.lowInjuryDebuffDamageScale,
+                FirstAid.lowInjuryDebuffAmplifierScale,
+                FirstAid.lowInjuryDebuffDurationScale);
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -78,6 +96,12 @@ public class MessageSyncCommandSettings {
         buf.writeBoolean(lowSuppressionEnabled);
         buf.writeFloat(adrenalineReliefMultiplier);
         buf.writeUtf(suppressionEntityBlacklist, 32767);
+        buf.writeEnum(medicineEffectMode);
+        buf.writeFloat(medicineTimingMultiplier);
+        buf.writeEnum(injuryDebuffMode);
+        buf.writeFloat(lowInjuryDebuffDamageScale);
+        buf.writeFloat(lowInjuryDebuffAmplifierScale);
+        buf.writeFloat(lowInjuryDebuffDurationScale);
     }
 
     public static class Handler {
@@ -92,6 +116,12 @@ public class MessageSyncCommandSettings {
                 FirstAid.enablePainAudioEffects = message.enablePainAudioEffects;
                 FirstAid.projectileSuppressionEnabled = message.projectileSuppressionEnabled;
                 FirstAid.lowSuppressionEnabled = message.lowSuppressionEnabled;
+                FirstAid.medicineEffectMode = message.medicineEffectMode;
+                FirstAid.medicineTimingMultiplier = Float.isFinite(message.medicineTimingMultiplier) ? Math.max(0.01F, Math.min(20F, message.medicineTimingMultiplier)) : 1.0F;
+                FirstAid.injuryDebuffMode = message.injuryDebuffMode;
+                FirstAid.lowInjuryDebuffDamageScale = Float.isFinite(message.lowInjuryDebuffDamageScale) ? Math.max(0F, Math.min(1F, message.lowInjuryDebuffDamageScale)) : 0.4F;
+                FirstAid.lowInjuryDebuffAmplifierScale = Float.isFinite(message.lowInjuryDebuffAmplifierScale) ? Math.max(0F, Math.min(1F, message.lowInjuryDebuffAmplifierScale)) : 0.5F;
+                FirstAid.lowInjuryDebuffDurationScale = Float.isFinite(message.lowInjuryDebuffDurationScale) ? Math.max(0F, Math.min(1F, message.lowInjuryDebuffDurationScale)) : 0.5F;
                 FirstAid.adrenalineReliefMultiplier = Math.max(0.0F, Math.min(2.0F, message.adrenalineReliefMultiplier));
                 FirstAid.setSuppressionEntityBlacklist(parseList(message.suppressionEntityBlacklist));
             });

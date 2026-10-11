@@ -67,10 +67,16 @@ public class DamageablePart extends AbstractDamageablePart {
             notFitting = notFitting - (currentHealth - oldHealth);
         }
         final float finalNotFitting = notFitting;
-        if (applyDebuff && debuffs != null) {
+        if (applyDebuff && debuffs != null && FirstAid.injuryDebuffMode != FirstAid.InjuryDebuffMode.OFF) {
             Objects.requireNonNull(player, "Got null player with applyDebuff = true");
+            float debuffHealing = amount - finalNotFitting;
+            float debuffHealthFraction = currentHealth / maxHealth;
+            if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
+                debuffHealing *= FirstAid.lowInjuryDebuffDamageScale;
+                debuffHealthFraction = softenDebuffHealthFraction(debuffHealthFraction);
+            }
             for (IDebuff debuff : debuffs) {
-                debuff.handleHealing(amount - finalNotFitting, currentHealth / maxHealth, (ServerPlayer) player);
+                debuff.handleHealing(debuffHealing, debuffHealthFraction, (ServerPlayer) player);
             }
         }
         return notFitting;
@@ -89,10 +95,16 @@ public class DamageablePart extends AbstractDamageablePart {
             throw new IllegalArgumentException("Cannot damage part with minHealth " + minHealth + " while he has more max health (" + maxHealth + ")");
         float notFitting = Math.abs(Math.min(minHealth, currentHealth - amount) - minHealth);
         currentHealth = Math.max(minHealth, currentHealth - amount);
-        if (applyDebuff && debuffs != null) {
+        if (applyDebuff && debuffs != null && FirstAid.injuryDebuffMode != FirstAid.InjuryDebuffMode.OFF) {
             Objects.requireNonNull(player, "Got null player with applyDebuff = true");
+            float debuffDamage = amount - notFitting;
+            float debuffHealthFraction = currentHealth / maxHealth;
+            if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
+                debuffDamage *= FirstAid.lowInjuryDebuffDamageScale;
+                debuffHealthFraction = softenDebuffHealthFraction(debuffHealthFraction);
+            }
             for (IDebuff debuff : debuffs) {
-                debuff.handleDamageTaken(amount - notFitting, currentHealth / maxHealth, (ServerPlayer) player);
+                debuff.handleDamageTaken(debuffDamage, debuffHealthFraction, (ServerPlayer) player);
             }
         }
         return notFitting;
@@ -111,9 +123,13 @@ public class DamageablePart extends AbstractDamageablePart {
             if (activeHealer.hasFinished())
                 activeHealer = null;
         }
-        if (!world.isClientSide && tickDebuffs && debuffs != null) {
+        if (!world.isClientSide && tickDebuffs && debuffs != null && FirstAid.injuryDebuffMode != FirstAid.InjuryDebuffMode.OFF) {
+            float debuffHealthFraction = currentHealth / maxHealth;
+            if (FirstAid.injuryDebuffMode == FirstAid.InjuryDebuffMode.LOW) {
+                debuffHealthFraction = softenDebuffHealthFraction(debuffHealthFraction);
+            }
             for (IDebuff debuff : debuffs) {
-                debuff.update(player, currentHealth / maxHealth);
+                debuff.update(player, debuffHealthFraction);
             }
         }
     }
@@ -191,5 +207,9 @@ public class DamageablePart extends AbstractDamageablePart {
     @Override
     public int getMaxHealth() {
         return maxHealth;
+    }
+
+    private static float softenDebuffHealthFraction(float healthFraction) {
+        return Math.min(1.0F, 0.5F + (healthFraction * 0.5F));
     }
 }

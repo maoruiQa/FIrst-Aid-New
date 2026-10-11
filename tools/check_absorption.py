@@ -26,7 +26,12 @@ STUBS = r"""
     static class Mth { static int ceil(float v) { return (int)Math.ceil(v); } }
     static class Value<T> { T v; Value(T v) {this.v=v;} T get() {return v;} }
     static class FirstAidConfig { static General GENERAL=new General(); static class General {Value<Boolean> debug=new Value<>(false);} }
-    static class FirstAid { static Log LOGGER=new Log(); }
+    static class FirstAid {
+        static Log LOGGER=new Log();
+        enum InjuryDebuffMode { NORMAL, LOW, OFF }
+        static InjuryDebuffMode injuryDebuffMode=InjuryDebuffMode.NORMAL;
+        static float lowInjuryDebuffDamageScale=0.4F;
+    }
     static class Log { void info(Object... args) {} void error(Object... args) {} void warn(Object... args) {} }
     static class LoggingMarkers {static String DAMAGE_DISTRIBUTION="damage";}
     enum EnumPlayerPart { HEAD, BODY; static final EnumPlayerPart[] VALUES=values(); }
@@ -124,6 +129,7 @@ damage = (base / "common/damagesystem/distribution/DamageDistribution.java").rea
 part = (base / "common/damagesystem/DamageablePart.java").read_text(encoding="utf-8")
 classes = ["static class Part extends AbstractDamageablePart {"
            + method(part, "public float damage(float amount, @Nullable Player player, boolean applyDebuff, float minHealth)")
+           + method(part, "private static float softenDebuffHealthFraction(")
            + method(part, "public void setAbsorption(") + method(part, "public float getAbsorption(") + "}"]
 classes.append("static class DamageDistribution implements IDamageDistributionAlgorithm {"
                + method(damage, "public static float handleDamageTaken(")
@@ -219,7 +225,7 @@ assert 'putFloat("absorption"' not in part and 'nbt.getFloat("absorption"' not i
 update = (base / "common/network/MessageUpdatePart.java").read_text(encoding="utf-8")
 assert "this.absorption = 0.0F" in update and "setAbsorption(message.absorption)" not in update
 network = (base / "FirstAid.java").read_text(encoding="utf-8")
-assert 'NETWORKING_MAJOR = "5."' in network and 'NETWORKING_MINOR = "0"' in network
+assert 'NETWORKING_MAJOR = "7."' in network and 'NETWORKING_MINOR = "0"' in network
 
 java = "import java.util.*; public class AbsorptionRegression {" + STUBS + "\n".join(classes)
 java += "public static void main(String[] args){" + "\n".join(tests) + "}}"
@@ -234,4 +240,4 @@ with tempfile.TemporaryDirectory(prefix="firstaid-absorption-") as tmp:
         for number in re.findall(r"AbsorptionRegression.java:(\d+)", result.stderr):
             print(f"Java {number}: {lines[int(number)-1].strip()}")
         raise SystemExit(result.returncode)
-print("PASS native absorption delegation, legacy save/wire retirement and Forge protocol 5.0")
+print("PASS native absorption delegation, legacy save/wire retirement and Forge protocol 7.0")
