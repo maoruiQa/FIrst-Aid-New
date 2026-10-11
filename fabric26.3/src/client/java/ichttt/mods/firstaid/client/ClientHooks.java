@@ -1,8 +1,9 @@
 package ichttt.mods.firstaid.client;
 
-import com.mojang.blaze3d.platform.InputConstants.Type;
+import com.mojang.blaze3d.platform.InputConstants;
 import ichttt.mods.firstaid.FirstAid;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
@@ -21,14 +22,16 @@ import net.minecraft.world.InteractionHand;
 
 public final class ClientHooks {
    private static final Category CATEGORY = Category.register(Identifier.fromNamespaceAndPath("firstaid", "firstaid"));
-   public static final KeyMapping SHOW_WOUNDS = new KeyMapping("keybinds.show_wounds", Type.KEYBOARD, 72, CATEGORY);
-   public static final KeyMapping GIVE_UP = new KeyMapping("keybinds.give_up", Type.KEYBOARD, 71, CATEGORY);
+   public static final KeyMapping SHOW_WOUNDS = new KeyMapping("keybinds.show_wounds", InputConstants.Type.KEYBOARD, InputConstants.KEY_H, CATEGORY);
+   public static final KeyMapping GIVE_UP = new KeyMapping("keybinds.give_up", InputConstants.Type.KEYBOARD, InputConstants.KEY_G, CATEGORY);
 
    private ClientHooks() {
    }
 
    public static void setup() {
       FirstAid.LOGGER.debug("Loading ClientHooks");
+      KeyMappingHelper.registerKeyMapping(SHOW_WOUNDS);
+      KeyMappingHelper.registerKeyMapping(GIVE_UP);
       HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("firstaid", "status_effects"), StatusEffectLayer.INSTANCE);
       HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("firstaid", "hud_handler"), HUDHandler.INSTANCE);
       ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(HUDHandler.INSTANCE);

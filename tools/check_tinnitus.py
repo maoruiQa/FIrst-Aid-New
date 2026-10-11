@@ -142,6 +142,7 @@ STUBS = r"""
         double getX() { return x; } double getY() { return y; } double getZ() { return z; }
         boolean isRelative() { return relative; } Object getAttenuation() { return attenuation; }
         boolean isStopped() { return false; }
+        boolean canPlaySound() { return true; }
     }
     static class AbstractSoundInstance extends SoundInstance {
         boolean resolved;
@@ -149,15 +150,22 @@ STUBS = r"""
         @Override float getVolume() { if (!resolved) throw new IllegalStateException("Sound is not resolved"); return volume; }
         @Override float getPitch() { if (!resolved) throw new IllegalStateException("Sound is not resolved"); return pitch; }
     }
+    interface TickableSoundInstance { void tick(); boolean isStopped(); }
     static class SoundManager {
         List<SoundInstance> playing = new ArrayList<>();
         void play(SoundInstance s) { if (s instanceof AbstractSoundInstance a) a.resolved=true; playing.add(s); } void stop(SoundInstance s) { playing.remove(s); }
+        void tick() {
+            for (SoundInstance s : List.copyOf(playing)) if (s instanceof TickableSoundInstance t) t.tick();
+            playing.removeIf(SoundInstance::isStopped);
+        }
     }
     static class Minecraft {
         static Minecraft INSTANCE = new Minecraft(); LocalPlayer player = new LocalPlayer(); Level level = new Level();
         SoundManager manager = new SoundManager(); static Minecraft getInstance() { return INSTANCE; }
         SoundManager getSoundManager() { return manager; }
+        boolean paused; boolean isPaused() { return paused; }
     }
+    static void stepSounds(Runnable cleanup) { Minecraft.INSTANCE.manager.tick(); cleanup.run(); }
     static class ViewportEvent {
         static class ComputeFov {
             double fov; ComputeFov(float v) { fov=v; }
@@ -216,7 +224,7 @@ for index, module in enumerate(MODULES):
               painFovCompression, yawImpulse, pitchImpulse;
         int holdTicks, lastTinnitusCueId, hallucinationCooldownTicks, localMuteTicks;
         Level trackedLevel; SoundInstance activeTinnitusSound;
-        void stopActiveTinnitusSound() {} void playTinnitusSound(float severity, int duration) { throw new AssertionError("unexpected tinnitus"); }
+        int tinnitusPlays; void stopActiveTinnitusSound() {} void playTinnitusSound(float severity, int duration) { tinnitusPlays++; }
         void tickWithdrawalHallucinations(Player p, Level l, boolean active, float addiction) {}
     """
     sample = ("return applyCameraAngles(Minecraft.INSTANCE.player, partial, 12, -8);"
@@ -394,14 +402,22 @@ for index, module in enumerate(MODULES):
                 check(injected.tinnitusCueId==0); // Max suppression itself must not ring ears.
                 check(!serverPlayer.hasEffect(MobEffects.HASTE) && !serverPlayer.hasEffect(MobEffects.STRENGTH) && !serverPlayer.hasEffect(MobEffects.SPEED));
             }}
-            Sound{index}.tick(mc);
+            stepSounds(() -> Sound{index}.tick(mc));
             for (int percent : new int[]{{1,75,100,400}}) {{
                 FirstAidConfig.CLIENT.tinnitusDurationPercent.set(percent);
                 SoundInstance shortRing=Sound{index}.play(new SoundEvent(),0.3F,0.36F,60);
                 same(shortRing.pitch,0.36F); same(shortRing.volume,0.3F);
                 int ticks=(int)Math.ceil(60*percent/100.0D);
-                for (int t=0;t<ticks-1;t++) Sound{index}.tick(mc);
-                check(mc.manager.playing.size()==1); Sound{index}.tick(mc); check(mc.manager.playing.isEmpty());
+                float previous=shortRing.getVolume();
+                for (int t=0;t<ticks-1;t++) {{
+                    stepSounds(() -> Sound{index}.tick(mc));
+                    float volume=shortRing.getVolume();
+                    check(volume>0 && volume<=previous);
+                    if (ticks-t-1<Math.min(40,ticks)) check(volume<previous);
+                    previous=volume;
+                }}
+                check(mc.manager.playing.size()==1); stepSounds(() -> Sound{index}.tick(mc)); check(mc.manager.playing.isEmpty());
+                same(shortRing.getVolume(),0);
             }}
             FirstAidConfig.CLIENT.tinnitusDurationPercent.set(75);
             check(Sound{index}.durationTicks(1,75)==159);
@@ -421,28 +437,71 @@ for index, module in enumerate(MODULES):
             same(injury.pitch,original.pitch); same(injury.volume,original.volume);
             check(injury.x==2 && injury.y==3 && injury.z==4 && !injury.looping);
             check(mc.manager.playing.size()==2);
-            for (int t=0;t<158;t++) Sound{index}.tick(mc);
+            for (int t=0;t<158;t++) stepSounds(() -> Sound{index}.tick(mc));
             check(mc.manager.playing.size()==2);
-            Sound{index}.tick(mc); check(mc.manager.playing.isEmpty());
+            stepSounds(() -> Sound{index}.tick(mc)); check(mc.manager.playing.isEmpty());
+            // Sound-engine ticks alone must expire every source, even if feedback ticks are skipped.
+            for (int percent : new int[]{{1,75,100,400}}) for (float pitch : new float[]{{0.162F,0.36F,0.7F,1,1.35F}}) {{
+                FirstAidConfig.CLIENT.tinnitusDurationPercent.set(percent);
+                SoundInstance ring=Sound{index}.play(new SoundEvent(),0.3F,pitch);
+                int duration=Sound{index}.durationTicks(pitch,percent);
+                float previous=ring.getVolume();
+                for (int t=0;t<duration-1;t++) {{
+                    mc.manager.tick();
+                    float volume=ring.getVolume();
+                    check(volume>0 && volume<=previous);
+                    if (duration-t-1<Math.min(40,duration)) check(volume<previous);
+                    else same(volume,0.3F);
+                    previous=volume;
+                }}
+                check(!ring.isStopped() && mc.manager.playing.contains(ring));
+                mc.manager.tick();
+                check(ring.isStopped() && !ring.canPlaySound() && !ring.looping && mc.manager.playing.isEmpty());
+                same(ring.getVolume(),0);
+                for (int t=0;t<100;t++) ((TickableSoundInstance)ring).tick();
+                check(ring.isStopped() && !ring.canPlaySound() && !ring.looping);
+                Sound{index}.tick(mc);
+            }}
+            FirstAidConfig.CLIENT.tinnitusDurationPercent.set(400);
+            SoundInstance canceled=Sound{index}.play(new SoundEvent(),0.3F,1);
+            Sound{index}.stop(canceled);
+            check(canceled.isStopped() && !canceled.canPlaySound() && !canceled.looping); same(canceled.getVolume(),0);
+            SoundInstance paused=Sound{index}.play(new SoundEvent(),0.3F,1);
+            mc.paused=true; Sound{index}.tick(mc); mc.paused=false;
+            check(paused.isStopped() && !paused.canPlaySound() && mc.manager.playing.isEmpty());
+            SoundInstance disconnected=Sound{index}.play(new SoundEvent(),0.3F,1);
+            LocalPlayer player=mc.player; mc.player=null; Sound{index}.tick(mc); mc.player=player;
+            check(disconnected.isStopped() && !disconnected.canPlaySound() && mc.manager.playing.isEmpty());
             FirstAidConfig.CLIENT.tinnitusDurationPercent.set(400);
             check(Sound{index}.play(new SoundEvent(),original.volume,original.pitch).looping);
             FirstAidConfig.CLIENT.tinnitusDurationPercent.set(1);
-            for (int t=0;t<847;t++) Sound{index}.tick(mc);
+            for (int t=0;t<847;t++) stepSounds(() -> Sound{index}.tick(mc));
             check(mc.manager.playing.size()==1); // Existing duration does not change.
-            Sound{index}.tick(mc); check(mc.manager.playing.isEmpty());
+            stepSounds(() -> Sound{index}.tick(mc)); check(mc.manager.playing.isEmpty());
             Sound{index}.play(new SoundEvent(),original.volume,original.pitch);
-            FirstAidConfig.CLIENT.tinnitusEnabled.set(false); Sound{index}.tick(mc);
+            FirstAidConfig.CLIENT.tinnitusEnabled.set(false); stepSounds(() -> Sound{index}.tick(mc));
             check(mc.manager.playing.isEmpty() && Sound{index}.play(new SoundEvent(),original.volume,original.pitch)==null);
             FirstAidConfig.CLIENT.tinnitusEnabled.set(true);
-            Sound{index}.play(new SoundEvent(),original.volume,original.pitch); mc.player.alive=false; Sound{index}.tick(mc);
+            Sound{index}.play(new SoundEvent(),original.volume,original.pitch); mc.player.alive=false; stepSounds(() -> Sound{index}.tick(mc));
             check(mc.manager.playing.isEmpty()); mc.player.alive=true;
-            Sound{index}.play(new SoundEvent(),original.volume,original.pitch); mc.level=new Level(); Sound{index}.tick(mc);
+            Sound{index}.play(new SoundEvent(),original.volume,original.pitch); mc.level=new Level(); stepSounds(() -> Sound{index}.tick(mc));
             check(mc.manager.playing.isEmpty());
             Sound{index}.beginMute(3); check(Sound{index}.play(new SoundEvent(),original.volume,original.pitch)==null);
-            for (int t=0;t<3;t++) Sound{index}.tick(mc);
+            for (int t=0;t<3;t++) stepSounds(() -> Sound{index}.tick(mc));
             check(Sound{index}.play(new SoundEvent(),original.volume,original.pitch)!=null); Sound{index}.clear();
             CommonUtils.model.muted=true; check(Sound{index}.play(new SoundEvent(),original.volume,original.pitch)==null);
             CommonUtils.model.muted=false;
+            Camera{index} feedback=new Camera{index}();
+            for (int cue=1;cue<=3;cue++) {{
+                CommonUtils.model.cueId=cue; CommonUtils.model.cueSeverity=0.7F;
+                CommonUtils.model.cueDuration=(cue==2 ? 60 : 0); // Blast, head injury, poison/wither.
+                for (int t=0;t<2000;t++) feedback.tick(mc);
+                check(feedback.tinnitusPlays==cue); // Repeated snapshots must never replay the same cue.
+            }}
+            feedback.localMuteTicks=60; CommonUtils.model.cueId=4;
+            feedback.tick(mc); for (int t=0;t<2000;t++) feedback.tick(mc);
+            check(feedback.tinnitusPlays==3); // Muted events are consumed, never replayed later.
+            CommonUtils.model.cueId=0; CommonUtils.model.cueSeverity=0; CommonUtils.model.cueDuration=0;
             Heartbeat{index} heart=new Heartbeat{index}(); CommonUtils.model.suppression=0; CommonUtils.model.holdTicks=0;
             CommonUtils.model.heartbeatId=0; heart.tick(mc); check(heart.activeHeartbeat==null); // No phantom join pulse.
             CommonUtils.model.suppression=0.05F; heart.tick(mc); check(heart.activeHeartbeat==null);
@@ -565,9 +624,12 @@ for index, module in enumerate(MODULES):
                 same(actual.sample(0).yaw(),12); same(actual.sample(0).pitch(),-8); same(actual.sample(0).roll(),0);
             }}
             FirstAid.lowSuppressionEnabled=false;
-            System.out.println("PASS {module}: gradual-injury and strong-hit triggers, short head/torso darkness, debuff tiers/cooldowns and healing, short configurable tinnitus, pressure-scaled heartbeat and cleanup, adrenaline injection/sync; 5400 formula + 17280 camera comparisons; reduced screen strength, no suppression/near-miss FOV, pain FOV follows partial adrenaline relief");
+            System.out.println("PASS {module}: tinnitus fades to zero before native expiry, cancellation rejects restart, pause/disconnect cleanup and duplicate-cue rejection; gradual-injury and strong-hit triggers, short head/torso darkness, debuff tiers/cooldowns and healing, short configurable tinnitus, pressure-scaled heartbeat and cleanup, adrenaline injection/sync; 5400 formula + 17280 camera comparisons; reduced screen strength, no suppression/near-miss FOV, pain FOV follows partial adrenaline relief");
         }}
     """)
+    module_test = tests.pop()
+    classes.append(f"static void checkModule{index}() {{ Minecraft mc=Minecraft.INSTANCE; {module_test} }}")
+    tests.append(f"checkModule{index}();")
 
 java = ("import java.util.*; public class FeedbackRegression {" + STUBS + "\n".join(classes)
         + "public static void main(String[] args) { Minecraft mc=Minecraft.INSTANCE;"

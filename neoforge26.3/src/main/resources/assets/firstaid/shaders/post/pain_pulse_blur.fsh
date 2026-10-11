@@ -49,7 +49,7 @@ void main() {
     }
 
     // Less original mix — blur must be obvious at mild/medium.
-    float keep = 1.0 - clamp(effectStrength * 4.0, 0.20, 0.78);
+    float keep = 1.0 - clamp(effectStrength * 4.0, 0.0, 0.78);
     vec3 original = texture(InSampler, texCoord).rgb;
     vec3 result = mix(accum / float(replicas + 1), original, keep);
     fragColor = vec4(result, 1.0);

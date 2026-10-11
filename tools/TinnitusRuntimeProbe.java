@@ -13,6 +13,8 @@ public class TinnitusRuntimeProbe {
     }
 
     public static void agentmain(String output, Instrumentation instrumentation) {
+        boolean lifetimeOnly = output.startsWith("lifetime:");
+        String outputFile = lifetimeOnly ? output.substring("lifetime:".length()) : output;
         Thread worker = new Thread(() -> {
             try {
                 Class<?> minecraft = Arrays.stream(instrumentation.getAllLoadedClasses())
@@ -21,8 +23,8 @@ public class TinnitusRuntimeProbe {
                 CompletableFuture<Void> done = new CompletableFuture<>();
                 minecraft.getMethod("execute", Runnable.class).invoke(client, (Runnable) () -> {
                     try {
-                        String result = check(client);
-                        Files.writeString(Path.of(output), result);
+                        String result = lifetimeOnly ? checkLifetime(client) : check(client);
+                        Files.writeString(Path.of(outputFile), result);
                         done.complete(null);
                     } catch (Throwable error) {
                         done.completeExceptionally(error);
@@ -35,12 +37,110 @@ public class TinnitusRuntimeProbe {
                     });
                 }
             } catch (Throwable error) {
-                try { Files.writeString(Path.of(output), "FAIL " + error + "\n" + stack(error)); }
+                try { Files.writeString(Path.of(outputFile), "FAIL " + error + "\n" + stack(error)); }
                 catch (Exception ignored) { error.printStackTrace(); }
             }
         }, "firstaid-runtime-probe");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    private static String checkLifetime(Object client) throws Exception {
+        ClassLoader loader = client.getClass().getClassLoader();
+        Class<?> controller = loader.loadClass("ichttt.mods.firstaid.client.TinnitusSoundController");
+        Class<?> type = loader.loadClass("ichttt.mods.firstaid.client.TinnitusSoundController$TinnitusSound");
+        Class<?> soundInstance = loader.loadClass("net.minecraft.client.resources.sounds.SoundInstance");
+        Class<?> tickable = loader.loadClass("net.minecraft.client.resources.sounds.TickableSoundInstance");
+        Class<?> sourceType = loader.loadClass("net.minecraft.sounds.SoundSource");
+        Object holder = loader.loadClass("ichttt.mods.firstaid.common.RegistryObjects").getField("TINNITUS").get(null);
+        Object event;
+        try { event = holder.getClass().getMethod("get").invoke(holder); }
+        catch (NoSuchMethodException e) { event = holder.getClass().getMethod("value").invoke(holder); }
+        Object manager = client.getClass().getMethod("getSoundManager").invoke(client);
+        Method play = manager.getClass().getMethod("play", soundInstance);
+        Method tick = manager.getClass().getMethod("tick", boolean.class);
+        Constructor<?> ctor = type.getDeclaredConstructors()[0]; ctor.setAccessible(true);
+        Method stopped = type.getDeclaredMethod("isStopped"); stopped.setAccessible(true);
+        Field remaining = type.getDeclaredField("remainingTicks"); remaining.setAccessible(true);
+        Field fadeOut = type.getDeclaredField("fadeOutTicks"); fadeOut.setAccessible(true);
+        Method getVolume = soundInstance.getMethod("getVolume");
+        Field active = controller.getDeclaredField("ACTIVE"); active.setAccessible(true);
+        String ui;
+        try { sourceType.getField("UI"); ui = "UI"; } catch (NoSuchFieldException e) { ui = "MASTER"; }
+        StringBuilder result = new StringBuilder();
+        for (String category : List.of(ui, "PLAYERS")) for (int percent : new int[]{1, 75, 100, 400})
+                for (int baseDuration : new int[]{0, 60, 100}) {
+            Object source = Enum.valueOf((Class) sourceType, category);
+            float pitch = category.equals("PLAYERS") ? 0.9F : 0.36F;
+            Object sound = ctor.newInstance(event, source, 0.05F, pitch, !category.equals("PLAYERS"), 0D, 0D, 0D, percent);
+            if (baseDuration > 0) {
+                int ticks = Math.max(1, (int) Math.ceil(baseDuration * percent / 100.0D));
+                remaining.setInt(sound, ticks);
+                fadeOut.setInt(sound, Math.min(40, ticks));
+            }
+            if (!tickable.isInstance(sound)) throw new AssertionError("ear ringing has no native expiry");
+            int duration = remaining.getInt(sound);
+            try {
+                play.invoke(manager, sound);
+                float initialVolume = (float) getVolume.invoke(sound);
+                if (initialVolume <= 0) throw new AssertionError("ringing started silent");
+                float previous = initialVolume;
+                for (int i = 0; i < duration - 1; i++) {
+                    tick.invoke(manager, false);
+                    float volume = (float) getVolume.invoke(sound);
+                    if (volume <= 0 || volume > previous) throw new AssertionError("invalid fade volume");
+                    if (duration - i - 1 < Math.min(40, duration) && volume >= previous)
+                        throw new AssertionError("ringing ended without fading");
+                    previous = volume;
+                }
+                if ((boolean) stopped.invoke(sound)) throw new AssertionError("early expiry");
+                tick.invoke(manager, false);
+                if (!(boolean) stopped.invoke(sound) || (boolean) soundInstance.getMethod("canPlaySound").invoke(sound)
+                        || (boolean) soundInstance.getMethod("isLooping").invoke(sound)
+                        || (float) getVolume.invoke(sound) != 0) throw new AssertionError("ringing can restart after expiry");
+                checkStoppedChannel(manager, sound);
+                for (int i = 0; i < 100; i++) tick.invoke(manager, false);
+                if (!(boolean) stopped.invoke(sound) || (float) getVolume.invoke(sound) != 0)
+                    throw new AssertionError("ringing restarted after expiry");
+                result.append("PASS native fade to silence and expiry ").append(category).append(' ').append(percent)
+                        .append("% at pitch ").append(pitch).append(" base duration ").append(baseDuration).append('\n');
+            } finally { controller.getMethod("stop", soundInstance).invoke(null, sound); }
+        }
+        Object source = Enum.valueOf((Class) sourceType, ui);
+        for (boolean clearAll : new boolean[]{false, true}) {
+            Object sound = ctor.newInstance(event, source, 0.05F, 0.36F, true, 0D, 0D, 0D, 400);
+            play.invoke(manager, sound);
+            ((List) active.get(null)).add(sound);
+            if (clearAll) controller.getMethod("clear").invoke(null);
+            else controller.getMethod("stop", soundInstance).invoke(null, sound);
+            if (!(boolean) stopped.invoke(sound) || (boolean) soundInstance.getMethod("canPlaySound").invoke(sound)
+                    || (boolean) soundInstance.getMethod("isLooping").invoke(sound)
+                    || (float) getVolume.invoke(sound) != 0 || !((List) active.get(null)).isEmpty()) {
+                throw new AssertionError("canceled sound can restart");
+            }
+            play.invoke(manager, sound);
+            checkStoppedChannel(manager, sound);
+            result.append("PASS native cancellation rejects replay: ").append(clearAll ? "clear" : "stop").append('\n');
+        }
+        return result.toString();
+    }
+
+    private static void checkStoppedChannel(Object manager, Object sound) throws Exception {
+        Field engineField = manager.getClass().getDeclaredField("soundEngine"); engineField.setAccessible(true);
+        Object engine = engineField.get(manager);
+        Field channels = engine.getClass().getDeclaredField("instanceToChannel"); channels.setAccessible(true);
+        Object handle = ((Map<?, ?>) channels.get(engine)).get(sound);
+        if (handle == null || (boolean) handle.getClass().getMethod("isStopped").invoke(handle)) return;
+        CompletableFuture<Boolean> stopped = new CompletableFuture<>();
+        handle.getClass().getMethod("execute", java.util.function.Consumer.class).invoke(handle, (java.util.function.Consumer<Object>) channel -> {
+            try { stopped.complete((boolean) channel.getClass().getMethod("stopped").invoke(channel)); }
+            catch (Exception error) { stopped.completeExceptionally(error); }
+        });
+        try {
+            if (!stopped.get(1, TimeUnit.SECONDS)) throw new AssertionError("native channel kept playing after expiry/cancellation");
+        } catch (TimeoutException released) {
+            if (!(boolean) handle.getClass().getMethod("isStopped").invoke(handle)) throw released;
+        }
     }
 
     private static String check(Object client) throws Exception {

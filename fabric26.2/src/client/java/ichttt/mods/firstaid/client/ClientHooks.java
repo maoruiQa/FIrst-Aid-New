@@ -3,6 +3,7 @@ package ichttt.mods.firstaid.client;
 import com.mojang.blaze3d.platform.InputConstants.Type;
 import ichttt.mods.firstaid.FirstAid;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.client.gui.GuiHealthScreen;
 import ichttt.mods.firstaid.client.network.FirstAidClientNetworking;
@@ -29,6 +30,8 @@ public final class ClientHooks {
 
    public static void setup() {
       FirstAid.LOGGER.debug("Loading ClientHooks");
+      KeyMappingHelper.registerKeyMapping(SHOW_WOUNDS);
+      KeyMappingHelper.registerKeyMapping(GIVE_UP);
       HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("firstaid", "status_effects"), StatusEffectLayer.INSTANCE);
       HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("firstaid", "hud_handler"), HUDHandler.INSTANCE);
       ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(HUDHandler.INSTANCE);

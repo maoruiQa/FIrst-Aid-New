@@ -126,6 +126,7 @@ public class ClientEventHandler {
             }
             return;
         }
+        TinnitusSoundController.tick(mc);
         if (mc.level == null || mc.player == null || mc.player.connection == null) {
             syncRetryTicks = 0;
             showedCriticalPrompt = false;

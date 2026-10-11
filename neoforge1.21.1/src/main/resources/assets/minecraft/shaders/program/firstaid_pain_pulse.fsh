@@ -46,8 +46,8 @@ void main() {
     }
 
     // Keep less original so blur is actually visible (was almost invisible before).
-    float keep = 1.0 - clamp(effectStrength * 4.5, 0.15, 0.75);
-    vec3 original = texture(DiffuseSampler, clampUv(texCoord)).rgb;
+    float keep = 1.0 - clamp(effectStrength * 4.5, 0.0, 0.75);
+    vec3 original = texture(DiffuseSampler, texCoord).rgb;
     vec3 result = mix(accum / float(replicas + 1), original, keep);
     fragColor = vec4(result, 1.0);
 }

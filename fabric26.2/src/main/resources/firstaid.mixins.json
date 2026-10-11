@@ -21,6 +21,7 @@
     "MilkBucketItemMixin"
   ],
   "client": [
+    "client.PostPassMixin",
     "client.CameraMixin",
     "client.GuiMixin",
     "client.GameRendererMixin",

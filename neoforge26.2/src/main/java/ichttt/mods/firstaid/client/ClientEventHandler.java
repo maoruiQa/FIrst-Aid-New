@@ -98,6 +98,7 @@ public class ClientEventHandler {
     @SubscribeEvent
     public static void clientTick(ClientTickEvent.Pre event) {
         Minecraft mc = Minecraft.getInstance();
+        TinnitusSoundController.tick(mc);
         if (mc.level == null || mc.player == null || mc.player.connection == null) {
             syncRetryTicks = 0;
             resetGiveUpHoldState();

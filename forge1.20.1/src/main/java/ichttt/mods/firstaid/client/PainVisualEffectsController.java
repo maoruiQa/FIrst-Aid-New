@@ -64,6 +64,8 @@ public final class PainVisualEffectsController {
     private static final float MORPHINE_APPROACH_UP = 0.12F;
     private static final float MORPHINE_APPROACH_DOWN = 0.06F;
 
+    private float blurStrength;
+    private float lastBlurStrength;
     private float painStrength;
     private float morphineStrength;
     private float suppressionStrength;
@@ -79,6 +81,7 @@ public final class PainVisualEffectsController {
     private int lastMorphineEffectTicks;
 
     public void tick(Minecraft client) {
+        lastBlurStrength = blurStrength;
         Player player = client.player;
         if (player == null || !player.isAlive() || !FirstAid.isSynced) {
             painStrength = approach(painStrength, 0.0F, 0.035F);
@@ -86,7 +89,8 @@ public final class PainVisualEffectsController {
             suppressionStrength = approach(suppressionStrength, 0.0F, 0.025F);
             hitPulse = Math.max(0.0F, hitPulse - HIT_PULSE_DECAY * 2.0F);
             lastMissingHealth = -1.0F;
-            updateEffect(client);
+            updateBlurStrength();
+            updateEffect(client, 0.0F);
             return;
         }
 
@@ -145,7 +149,8 @@ public final class PainVisualEffectsController {
             );
         }
         suppressionStrength = approach(suppressionStrength, targetSuppression, targetSuppression > suppressionStrength ? 0.08F : 0.018F);
-        updateEffect(client);
+        updateBlurStrength();
+        updateEffect(client, 0.0F);
     }
 
     /**
@@ -195,6 +200,8 @@ public final class PainVisualEffectsController {
     }
 
     public void clear(Minecraft client) {
+        blurStrength = 0.0F;
+        lastBlurStrength = 0.0F;
         painStrength = 0.0F;
         morphineStrength = 0.0F;
         suppressionStrength = 0.0F;
@@ -206,6 +213,10 @@ public final class PainVisualEffectsController {
         forceShutdown(client);
         loadFailCooldown = 0;
         loadFailStreak = 0;
+    }
+
+    public float getBlurStrength(float partialTick) {
+        return Mth.lerp(Mth.clamp(partialTick, 0.0F, 1.0F), lastBlurStrength, blurStrength);
     }
 
     public float getPainStrength() { return painStrength; }
@@ -229,7 +240,7 @@ public final class PainVisualEffectsController {
     }
 
     public void processFrame(Minecraft client, float partialTick) {
-        updateEffect(client);
+        updateEffect(client, partialTick);
     }
 
     private void tickHitPulse(Player player, PlayerDamageModel model, boolean painSuppressed) {
@@ -258,7 +269,7 @@ public final class PainVisualEffectsController {
         }
     }
 
-    private void updateEffect(Minecraft client) {
+    private void updateEffect(Minecraft client, float partialTick) {
         if (client.gameRenderer == null) {
             return;
         }
@@ -268,8 +279,7 @@ public final class PainVisualEffectsController {
 
         // Sat tier is driven solely by morphineStrength (morphine effect curve).
         int satTier = resolveSatTier(morphineStrength);
-        boolean needBlur = FirstAid.enablePainBlur
-                && (painStrength > 0.03F || suppressionStrength > 0.04F);
+        boolean needBlur = blurStrength > 0.0F || lastBlurStrength > 0.0F;
         // Never keep the composite alive for painkiller alone.
         boolean want = satTier > 0 || needBlur;
 
@@ -320,10 +330,10 @@ public final class PainVisualEffectsController {
             compositeActive = true;
         }
 
-        applyUniforms(chain, satTier);
+        applyUniforms(chain, satTier, partialTick);
     }
 
-    private void applyUniforms(PostChain chain, int satTier) {
+    private void applyUniforms(PostChain chain, int satTier, float partialTick) {
         if (chain == null) {
             return;
         }
@@ -331,6 +341,10 @@ public final class PainVisualEffectsController {
         float amount = BAKED_SAT_AMOUNT[Mth.clamp(satTier, 0, BAKED_SAT_AMOUNT.length - 1)];
         PostChainUniforms.setFloat(chain, "Amount", amount);
 
+        PostChainUniforms.setFloat(chain, "Strength", getBlurStrength(partialTick));
+    }
+
+    private void updateBlurStrength() {
         float blur = 0.0F;
         if (FirstAid.enablePainBlur) {
             if (painStrength > 0.02F) {
@@ -343,7 +357,7 @@ public final class PainVisualEffectsController {
                 blur = Math.max(blur, SUPPRESSION_BLUR_PEAK * s);
             }
         }
-        PostChainUniforms.setFloat(chain, "Strength", blur);
+        blurStrength = approach(blurStrength, blur, blur > blurStrength ? 0.018F : 0.010F);
     }
 
     /**

@@ -49,7 +49,7 @@ void main() {
 
     // Prefer original so mild pain stays readable (matches 26.2 soft keep)
     float keep = 1.0 - clamp(effectStrength * 8.0, 0.0, 0.40);
-    vec3 original = texture(DiffuseSampler, clampUv(texCoord)).rgb;
+    vec3 original = texture(DiffuseSampler, texCoord).rgb;
     vec3 result = mix(accum / float(replicas + 1), original, keep);
     fragColor = vec4(result, 1.0);
 }

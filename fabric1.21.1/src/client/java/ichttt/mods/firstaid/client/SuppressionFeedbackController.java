@@ -104,7 +104,6 @@ public final class SuppressionFeedbackController {
     private @Nullable SoundInstance activeTinnitusSound;
 
     public void tick(Minecraft client) {
-        TinnitusSoundController.tick(client);
         Player player = client.player;
         Level level = client.level;
         if (player == null || level == null || !player.isAlive() || !FirstAid.isSynced) {

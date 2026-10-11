@@ -1,6 +1,7 @@
 """Launch dev clients and probe real sound/command APIs, without desktop input.
 
-Run: python tools/check_tinnitus_runtime.py [module ...]
+Run: python tools/check_tinnitus_runtime.py [--lifetime] [module ...]
+--lifetime checks native fade, expiry and cancellation without unrelated camera/config checks.
 Requires a JDK with java/javac/jar on PATH. Logs/results stay in module build directories.
 """
 from pathlib import Path
@@ -13,7 +14,8 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = ("forge1.20.1", "fabric1.21.1", "neoforge1.21.1", "fabric26.2",
            "neoforge26.2", "fabric26.3", "neoforge26.3")
-selected = sys.argv[1:] or MODULES
+lifetime_only = "--lifetime" in sys.argv[1:]
+selected = [arg for arg in sys.argv[1:] if arg != "--lifetime"] or MODULES
 if any(module not in MODULES for module in selected):
     raise SystemExit("Choose maintained modules: " + ", ".join(MODULES))
 probe = ROOT / "fabric26.2/build/tinnitus-probe"
@@ -42,7 +44,7 @@ for module in selected:
         raise SystemExit(f"{module}: a dev client is already running; close it before this automated launch.")
     build = ROOT / module / "build"
     build.mkdir(exist_ok=True)
-    result = build / "tinnitus-runtime-result.txt"
+    result = build / ("tinnitus-lifetime-result.txt" if lifetime_only else "tinnitus-runtime-result.txt")
     result.unlink(missing_ok=True)
     with (build / "tinnitus-runtime-client.log").open("w", encoding="utf-8") as log:
         process = subprocess.Popen(["cmd", "/c", "gradlew.bat", "runClient", "--console=plain"],
@@ -60,7 +62,8 @@ for module in selected:
             time.sleep(1)
         else:
             raise SystemExit(f"{module}: startup timed out; see {log.name}")
-        subprocess.run(["java", "-cp", str(probe), "TinnitusRuntimeProbe", str(targets[0]), str(jar), str(result)], check=True)
+        output_arg = ("lifetime:" if lifetime_only else "") + str(result)
+        subprocess.run(["java", "-cp", str(probe), "TinnitusRuntimeProbe", str(targets[0]), str(jar), output_arg], check=True)
         deadline = time.monotonic() + 40
         while not result.exists() and time.monotonic() < deadline:
             time.sleep(0.25)

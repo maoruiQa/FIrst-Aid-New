@@ -27,6 +27,7 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.resources.sounds.TickableSoundInstance;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
@@ -42,25 +43,20 @@ public final class TinnitusSoundController {
     }
 
     public static SoundInstance play(SoundEvent event, float volume, float pitch) {
-        return play(event, SoundSource.MASTER, volume, pitch, true, 0, 0, 0);
+        return play(event, volume, pitch, 0);
     }
 
     public static SoundInstance play(SoundEvent event, float volume, float pitch, int baseDurationTicks) {
-        SoundInstance sound = play(event, volume, pitch);
-        if (sound instanceof TinnitusSound tinnitus && baseDurationTicks > 0) {
-            tinnitus.remainingTicks = Math.max(1, (int) Math.ceil(baseDurationTicks
-                    * FirstAidConfig.CLIENT.tinnitusDurationPercent.get() / 100.0D));
-        }
-        return sound;
+        return play(event, SoundSource.MASTER, volume, pitch, true, 0, 0, 0, baseDurationTicks);
     }
 
 
     public static SoundInstance playAt(SoundEvent event, float volume, float pitch, double x, double y, double z) {
-        return play(event, SoundSource.PLAYERS, volume, pitch, false, x, y, z);
+        return play(event, SoundSource.PLAYERS, volume, pitch, false, x, y, z, 0);
     }
 
     private static SoundInstance play(SoundEvent event, SoundSource source, float volume, float pitch,
-                                      boolean relative, double x, double y, double z) {
+                                      boolean relative, double x, double y, double z, int baseDurationTicks) {
         Minecraft client = Minecraft.getInstance();
         if (!FirstAidConfig.CLIENT.tinnitusEnabled.get() || !FirstAidConfig.CLIENT.enableSounds.get()
                 || muteTicks > 0 || client.player == null || client.level == null || !client.player.isAlive()) {
@@ -71,6 +67,11 @@ public final class TinnitusSoundController {
         }
         TinnitusSound sound = new TinnitusSound(event, source, volume, pitch, relative, x, y, z,
                 FirstAidConfig.CLIENT.tinnitusDurationPercent.get());
+        if (baseDurationTicks > 0) {
+            sound.remainingTicks = Math.max(1, (int) Math.ceil(baseDurationTicks
+                    * FirstAidConfig.CLIENT.tinnitusDurationPercent.get() / 100.0D));
+            sound.fadeOutTicks = Math.min(40, sound.remainingTicks);
+        }
         ACTIVE.add(sound);
         client.getSoundManager().play(sound);
         return sound;
@@ -78,7 +79,7 @@ public final class TinnitusSoundController {
 
     public static void tick(Minecraft client) {
         if (muteTicks > 0) --muteTicks;
-        if (trackedLevel != client.level || client.player == null || !client.player.isAlive() || !FirstAid.isSynced
+        if (client.isPaused() || trackedLevel != client.level || client.player == null || !client.player.isAlive() || !FirstAid.isSynced
                 || !FirstAidConfig.CLIENT.tinnitusEnabled.get() || !FirstAidConfig.CLIENT.enableSounds.get()) {
             clear();
             trackedLevel = client.level;
@@ -88,21 +89,21 @@ public final class TinnitusSoundController {
             clear();
             return;
         }
-        ACTIVE.removeIf(sound -> {
-            if (--sound.remainingTicks > 0) return false;
-            client.getSoundManager().stop(sound);
-            return true;
-        });
+        ACTIVE.removeIf(TinnitusSound::isStopped);
     }
 
     public static void stop(SoundInstance sound) {
         if (sound == null) return;
+        if (sound instanceof TinnitusSound tinnitus) tinnitus.finish();
         Minecraft.getInstance().getSoundManager().stop(sound);
         ACTIVE.remove(sound);
     }
 
     public static void clear() {
-        for (TinnitusSound sound : ACTIVE) Minecraft.getInstance().getSoundManager().stop(sound);
+        for (TinnitusSound sound : ACTIVE) {
+            sound.finish();
+            Minecraft.getInstance().getSoundManager().stop(sound);
+        }
         ACTIVE.clear();
     }
 
@@ -113,17 +114,44 @@ public final class TinnitusSoundController {
 
     static int durationTicks(float pitch, int percent) {
         if (percent < 1 || percent > 400) throw new IllegalArgumentException("Tinnitus duration must be 1-400 percent");
-        // ponytail: bundled 10.589479s clip; read resource-pack metadata if custom clip lengths need support.
+        // shortcut: bundled 10.589479s clip; read resource-pack metadata if custom clip lengths need support.
         float playbackPitch = Math.max(0.5F, Math.min(2.0F, pitch));
         return (int) Math.ceil(10.589479D * 20.0D / playbackPitch * percent / 100.0D);
     }
 
-    private static final class TinnitusSound extends AbstractSoundInstance {
+    private static final class TinnitusSound extends AbstractSoundInstance implements TickableSoundInstance {
+        private final float initialVolume;
         private int remainingTicks;
+        private int fadeOutTicks;
+
+        @Override
+        public boolean isStopped() {
+            return remainingTicks <= 0;
+        }
+
+        @Override
+        public boolean canPlaySound() {
+            return !isStopped();
+        }
+
+        @Override
+        public void tick() {
+            if (isStopped()) return;
+            --remainingTicks;
+            volume = initialVolume * Math.min(1.0F, (float) remainingTicks / fadeOutTicks);
+            if (remainingTicks == 0) finish();
+        }
+
+        private void finish() {
+            remainingTicks = 0;
+            volume = 0.0F;
+            looping = false;
+        }
 
         private TinnitusSound(SoundEvent event, SoundSource source, float volume, float pitch,
                               boolean relative, double x, double y, double z, int percent) {
             super(event, source, RandomSource.create());
+            initialVolume = volume;
             this.volume = volume;
             this.pitch = pitch;
             this.x = x;
@@ -133,6 +161,7 @@ public final class TinnitusSoundController {
             attenuation = relative ? SoundInstance.Attenuation.NONE : SoundInstance.Attenuation.LINEAR;
             looping = percent > 100;
             remainingTicks = durationTicks(pitch, percent);
+            fadeOutTicks = Math.min(40, remainingTicks);
         }
     }
 }

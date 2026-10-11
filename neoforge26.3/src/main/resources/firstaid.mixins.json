@@ -15,6 +15,7 @@
     "PlayerDimensionsMixin"
   ],
   "client": [
+    "client.PostPassMixin",
     "client.LivingEntityRendererMixin",
     "client.PlayerModelMixin"
   ],

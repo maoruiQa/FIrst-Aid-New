@@ -6,37 +6,33 @@ Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft
 
 ---
 
-## 1.3.3 — *The Rush and the Reckoning*
+## 1.3.4
 
-![First Aid New 1.3.3 — The Rush and the Reckoning concept poster](./screenshots/1.3.3_poster.png)
-
-*Danger brings the rush. Survival brings the reckoning.*
-
-**1.3.3** turns adrenaline into a complete encounter cycle. Seeing a hostile creature, fighting, or narrowly avoiding a moving projectile can raise it; sustained pressure brings pain relief and combat boosts. Once the threat is gone, a long rush can give way to Fatigue. The Adrenaline Injector now delivers a full rush and can rescue a downed player. Recent releases also brought more responsive pain, self-defibrillator rescue on supported builds, and adjustable medicine and crafting.
+**1.3.4** refines adrenaline, injury feedback, and damage handling across all seven maintained builds. Personal tinnitus controls, smoother pain blur, shared absorption hearts, and new administrator commands make combat feedback and server setup easier to manage.
 
 ### What's new
 
-- **Adrenaline that follows danger:** Visible hostiles, nearby attackers, valid attacks, and moving projectile near misses can build pressure. Gains diminish as the meter fills, near misses grant half their previous gain, and actual injuries lower pressure. Movement and attack-speed bonuses follow current pressure continuously: levels I–V begin at 20%, 35%, 50%, 65% and 80%, adding 4%, 8%, 12%, 16% and 20%. Full natural pressure matches the injector’s movement and attack-speed gains without stacking.
-- **Relief with an aftermath:** Adrenaline provides partial pain relief. Injury debuff relief and pain FOV relief default to 1.7 times their previous strength; pain blur retains its previous relief. At 35% pressure, Slowness, Mining Fatigue and Weakness are capped at level I and their starting thresholds are reduced; ordinary injury rules remain unchanged below 20%. After 60 continuous seconds of adrenaline, leaving danger can trigger a short Fatigue episode; server owners can configure it.
-- **A stronger last resort:** Adrenaline Injectors fill the meter, have four uses by default, and can revive a downed player. They retain their other buffs but no longer grant or extend Painkiller. Defibrillators can also be used for self-revival while downed.
-- **Medicine and crafting controls:** 1.3.2 added commands for addiction gain, recipe yields, and newly crafted device uses on supported modules; Bandages and Plaster now craft four by default there.
-- **Clearer pain and audio:** Recent hits create a short pain spike over ongoing injury pain, while rescue and respawn clear lingering heartbeat and ringing sounds.
+- **Personal tinnitus controls:** Every player can toggle ringing and set its duration with `/firstaid tinnitus`, without OP permission. Ringing fades to silence before expiry and stops on pause, death, disconnect, or world changes. Adrenaline alone no longer triggers tinnitus.
+- **Smoother injury feedback:** Pain blur interpolates as injuries, healing, and relief change. Head and torso hits use short, cooldown-limited effects in place of recurring injury nausea. Adrenaline camera sway is softer and centered, with no adrenaline or near-miss FOV narrowing; heartbeat follows pressure and fades after it ends.
+- **Rebalanced adrenaline:** Pressure grants visible movement, attack-speed, and strength effects at levels I–V, with diminishing gains and no stacking with corresponding external buffs. Injury debuff and pain FOV relief use a configurable multiplier (1.7 by default). Injuries reduce pressure, while nearby threats replenish it and slow its decay. Injectors fill and hold pressure for 15 seconds, retain rescue and their other benefits, and no longer grant Painkiller.
+- **Damage and healing fixes:** Absorption uses one shared vanilla shield and gold-heart HUD. Overflow attenuation has a cumulative floor, ender pearl damage chooses a body part per damage point, and healing preserves fractional amounts without wasting regeneration on healthy parts.
+- **Server setup commands:** `/firstaid health <part> [2–12]` queries or changes body-part maximum health and syncs online players. `/firstaid reset` restores server defaults while preserving player injuries, addiction, and personal settings. Forge 1.20.1 now supports the same medicine and injury-debuff modes as the other maintained builds.
 
-### Supported builds (1.3.3)
+### Supported builds (1.3.4)
 
 | Artifact | Loader | Minecraft |
 |----------|--------|-----------|
-| `firstaid-1.3.3+forge1.20.1` | Forge | 1.20.1 |
-| `firstaid-1.3.3+fabric1.21.1` | Fabric | 1.21.1 |
-| `firstaid-1.3.3+neoforge1.21.1` | NeoForge | 1.21.1 |
-| `firstaid-1.3.3+fabric26.2` | Fabric | 26.2 |
-| `firstaid-1.3.3+neoforge26.2` | NeoForge | 26.2 |
-| `firstaid-1.3.3+fabric26.3` | Fabric | 26.3 |
-| `firstaid-1.3.3+neoforge26.3` | NeoForge | 26.3 |
+| `firstaid-1.3.4+forge1.20.1` | Forge | 1.20.1 |
+| `firstaid-1.3.4+fabric1.21.1` | Fabric | 1.21.1 |
+| `firstaid-1.3.4+neoforge1.21.1` | NeoForge | 1.21.1 |
+| `firstaid-1.3.4+fabric26.2` | Fabric | 26.2 |
+| `firstaid-1.3.4+neoforge26.2` | NeoForge | 26.2 |
+| `firstaid-1.3.4+fabric26.3` | Fabric | 26.3 |
+| `firstaid-1.3.4+neoforge26.3` | NeoForge | 26.3 |
 
 The 1.21.11 and 26.1 modules are legacy-only and no longer supported.
 
-Full notes: [1.3.3](./1.3.3changelog.md) · [1.3.2](./1.3.2changelog.md) · [1.3.1](./1.3.1changelog.md)
+Full notes: [1.3.4](./1.3.4changelog.md) · [1.3.3](./1.3.3changelog.md) · [1.3.2](./1.3.2changelog.md) · [1.3.1](./1.3.1changelog.md)
 
 ---
 
@@ -56,6 +52,8 @@ Full notes: [1.3.3](./1.3.3changelog.md) · [1.3.2](./1.3.2changelog.md) · [1.3
 ## Screenshots
 
 ![Deal with the Devil — 1.3.0 poster](./screenshots/1.3.0_poster.png)
+
+![The Rush and the Reckoning — 1.3.3 poster](./screenshots/1.3.3_poster.png)
 
 ![Pain effect](./screenshots/pain.png)
 
@@ -143,6 +141,9 @@ Head and torso injury feedback uses short effects instead of recurring nausea:
 The on-hit effects require new damage to that part and have a 4-second cooldown per part and effect.
 The strongest matching tier applies once per hit. Fully absorbed hits do not count.
 Injury darkness expires on its own; low health alone does not keep refreshing it.
+Tinnitus fades to silence over its final 2 seconds (or its entire duration when shorter),
+including explosion cues. Expiry disables looping and replay; pause, death, disconnect,
+world changes and disabling tinnitus clear the sound immediately.
 Datapacks may add `healthFractionThreshold` (0–1) to on-hit boundaries; omitted values
 keep the previous damage-only behavior. Existing nausea from poison or withdrawal remains.
 
@@ -151,7 +152,9 @@ Feedback regression checks (run from the repository root with Python and a JDK o
 ```powershell
 python tools/check_tinnitus.py
 python tools/check_tinnitus_runtime.py
+python tools/check_tinnitus_runtime.py --lifetime
 python tools/check_suppression_parity.py
+python tools/check_pain_blur.py
 ```
 
 Suppression camera feedback is identical across all seven maintained modules. Horizontal
@@ -213,6 +216,12 @@ restores the client settings,
 and exits the test client. Pass module names to check a subset, for example
 `python tools/check_tinnitus_runtime.py fabric26.2 neoforge26.3`.
 Runtime logs and results are written under each module's `build/` directory.
+
+Pain blur eases toward its target and interpolates between ticks, including during
+healing, pain relief, and effect-tier changes. On 26.2/26.3, a per-frame uniform updates
+the blur pass; morphine color effects retain that pass while existing blur fades out.
+The pain-blur check exercises transitions, interpolation, reset, and shader wiring
+across all seven maintained modules.
 
 #### Adrenaline
 

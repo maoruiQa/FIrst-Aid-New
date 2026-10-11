@@ -16,7 +16,7 @@ import net.minecraft.world.entity.player.Player;
 /**
  * 26.2 visuals:
  * - hit-frequency red pulse vignette
- * - radial pain blur (tiered)
+ * - radial pain blur (smooth transitions)
  * - morphine saturation tiers (remaining/total)
  * - suppression desat + blur multi-pass tiers
  * - continuous gray-white suppression rim overlay
@@ -67,6 +67,8 @@ public final class PainVisualEffectsController {
         DESAT_T5
     }
 
+    private float blurStrength;
+    private float lastBlurStrength;
     private float painStrength;
     private float morphineStrength;
     private float suppressionStrength;
@@ -79,6 +81,7 @@ public final class PainVisualEffectsController {
     private int lastMorphineEffectTicks;
 
     public void tick(Minecraft client) {
+        lastBlurStrength = blurStrength;
         Player player = client.player;
         if (player == null || !player.isAlive() || !FirstAid.isSynced) {
             painStrength = approach(painStrength, 0.0F, 0.035F);
@@ -86,6 +89,7 @@ public final class PainVisualEffectsController {
             suppressionStrength = approach(suppressionStrength, 0.0F, 0.025F);
             hitPulse = Math.max(0.0F, hitPulse - HIT_PULSE_DECAY * 2.0F);
             lastMissingHealth = -1.0F;
+            updateBlurStrength();
             updatePostEffect(client);
             return;
         }
@@ -146,6 +150,7 @@ public final class PainVisualEffectsController {
             );
         }
         suppressionStrength = approach(suppressionStrength, targetSuppression, targetSuppression > suppressionStrength ? 0.08F : 0.018F);
+        updateBlurStrength();
         updatePostEffect(client);
     }
 
@@ -187,6 +192,8 @@ public final class PainVisualEffectsController {
     }
 
     public void clear(Minecraft client) {
+        blurStrength = 0.0F;
+        lastBlurStrength = 0.0F;
         painStrength = 0.0F;
         morphineStrength = 0.0F;
         suppressionStrength = 0.0F;
@@ -197,6 +204,10 @@ public final class PainVisualEffectsController {
         lastMorphineEffectTicks = 0;
         shutdown(client);
         active = ActiveEffect.NONE;
+    }
+
+    public float getBlurStrength(float partialTick) {
+        return Mth.lerp(Mth.clamp(partialTick, 0.0F, 1.0F), lastBlurStrength, blurStrength);
     }
 
     public float getPainStrength() {
@@ -282,7 +293,31 @@ public final class PainVisualEffectsController {
         }
     }
 
+    private void updateBlurStrength() {
+        float target = FirstAid.enablePainBlur ? switch (resolveTargetEffect()) {
+            case PAIN_LOW -> 0.070F;
+            case PAIN_MID -> 0.100F;
+            case PAIN_HIGH -> 0.140F;
+            case DESAT_T1 -> 0.045F;
+            case DESAT_T2 -> 0.065F;
+            case DESAT_T3 -> 0.085F;
+            case DESAT_T4 -> 0.105F;
+            case DESAT_T5 -> 0.125F;
+            default -> 0.0F;
+        } : 0.0F;
+        blurStrength = approach(blurStrength, target, target > blurStrength ? 0.018F : 0.010F);
+    }
+
     private ActiveEffect resolveDesiredEffect() {
+        return switch (resolveTargetEffect()) {
+            // Keep one blur pass through tier changes and until the last interpolated frame fades.
+            case NONE, PAIN_LOW, PAIN_MID, PAIN_HIGH ->
+                    blurStrength > 0.0F || lastBlurStrength > 0.0F ? ActiveEffect.PAIN_HIGH : ActiveEffect.NONE;
+            default -> resolveTargetEffect();
+        };
+    }
+
+    private ActiveEffect resolveTargetEffect() {
         float net = getNetColorAmount();
 
         // Morphine remaining tiers (positive net)
