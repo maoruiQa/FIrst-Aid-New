@@ -47,6 +47,8 @@ public class DamageablePart extends AbstractDamageablePart {
     private static final float UNCAPPED_MAX_ABSORPTION = 16.0F;
     private int maxHealth;
     private float absorption;
+    /** Damage that did not fit into this critical part during the current hit; drives the knockdown chance. */
+    private float knockdownOverflow;
     @Nullable
     private IDebuff[] debuffs;
 
@@ -101,6 +103,9 @@ public class DamageablePart extends AbstractDamageablePart {
             throw new IllegalArgumentException("Cannot damage part with minHealth " + minHealth + " while he has more max health (" + maxHealth + ")");
         float notFitting = Math.abs(Math.min(minHealth, currentHealth - amount) - minHealth);
         currentHealth = Math.max(minHealth, currentHealth - amount);
+        if (canCauseDeath && currentHealth <= 0F && notFitting > 0F) {
+            knockdownOverflow += notFitting;
+        }
         if (applyDebuff && debuffs != null && FirstAid.injuryDebuffMode != FirstAid.InjuryDebuffMode.OFF) {
             Objects.requireNonNull(player, "Got null player with applyDebuff = true");
             float debuffDamage = amount - notFitting;
@@ -114,6 +119,14 @@ public class DamageablePart extends AbstractDamageablePart {
             }
         }
         return notFitting;
+    }
+
+    public float getKnockdownOverflow() {
+        return knockdownOverflow;
+    }
+
+    public void resetKnockdownOverflow() {
+        knockdownOverflow = 0F;
     }
 
     @Override

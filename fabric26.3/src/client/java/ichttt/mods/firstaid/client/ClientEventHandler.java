@@ -87,6 +87,7 @@ public final class ClientEventHandler {
 
    private static void clientTick(Minecraft mc) {
       TinnitusSoundController.tick(mc);
+      KnockdownNoticeClient.tick(mc);
       if (mc.level == null || mc.player == null || mc.player.connection == null) {
          resetGiveUpHoldState();
          clearPendingHealingSelection();
@@ -210,6 +211,7 @@ public final class ClientEventHandler {
 
    private static void onDisconnect() {
       FirstAid.isSynced = false;
+      KnockdownNoticeClient.reset();
       HUDHandler.INSTANCE.ticker = -1;
       syncRetryTicks = 0;
       showedCriticalPrompt = false;
@@ -238,6 +240,7 @@ public final class ClientEventHandler {
 
    private static void onLogin(Minecraft mc) {
       FirstAid.isSynced = false;
+      KnockdownNoticeClient.reset();
       syncRetryTicks = 20;
       wasCriticalRescuable = false;
       wasLocalPlayerAlive = true;

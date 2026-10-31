@@ -122,6 +122,8 @@ public final class FirstAidConfig {
         FirstAid.morphineActivationDelaySeconds = SERVER.morphineActivationDelaySeconds.get();
         FirstAid.painkillerActivationDelaySeconds = SERVER.painkillerActivationDelaySeconds.get();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+        FirstAid.knockdownMode = SERVER.knockdownMode.get();
+        FirstAid.knockdownOverflowCoefficient = SERVER.knockdownOverflowCoefficient.get();
         FirstAid.lowInjuryDebuffDamageScale = SERVER.lowInjuryDebuffDamageScale.get().floatValue();
         FirstAid.lowInjuryDebuffAmplifierScale = SERVER.lowInjuryDebuffAmplifierScale.get().floatValue();
         FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
@@ -179,6 +181,8 @@ public final class FirstAidConfig {
         SERVER.morphineActivationDelaySeconds.set(FirstAid.morphineActivationDelaySeconds);
         SERVER.painkillerActivationDelaySeconds.set(FirstAid.painkillerActivationDelaySeconds);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+        SERVER.knockdownMode.set(FirstAid.knockdownMode);
+        SERVER.knockdownOverflowCoefficient.set(FirstAid.knockdownOverflowCoefficient);
         SERVER.lowInjuryDebuffDamageScale.set((double) FirstAid.lowInjuryDebuffDamageScale);
         SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
         SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
@@ -347,6 +351,8 @@ public final class FirstAidConfig {
         public final ConfigValue<Map<ResourceLocation, FirstAid.InjuryDebuffMode>> injuryDebuffOverrides;
         public final ConfigValue<List<ResourceLocation>> suppressionEntityBlacklist;
         public final ConfigValue<Boolean> commandTipsEnabled;
+        public final ConfigValue<FirstAid.KnockdownMode> knockdownMode;
+        public final ConfigValue<Double> knockdownOverflowCoefficient;
 
         public Server() {
             maxHealthHead = define(intValueMinOnly("maxHealthHead", 4, 2));
@@ -451,6 +457,9 @@ public final class FirstAidConfig {
             injuryDebuffOverrides = define(injuryDebuffOverridesValue("injuryDebuffOverrides"));
             suppressionEntityBlacklist = define(resourceLocationListValue("suppressionEntityBlacklist", new ArrayList<>(FirstAid.getDefaultSuppressionEntityBlacklist())));
             commandTipsEnabled = define(boolValue("commandTipsEnabled", true));
+            // always | chance | never; chance downs with probability exp(-knockdownOverflowCoefficient * overflow / partMaxHealth)
+            knockdownMode = define(enumValue("knockdownMode", FirstAid.KnockdownMode.CHANCE, FirstAid.KnockdownMode.class));
+            knockdownOverflowCoefficient = define(doubleValue("knockdownOverflowCoefficient", FirstAid.DEFAULT_KNOCKDOWN_OVERFLOW_COEFFICIENT, 0.0D, FirstAid.MAX_KNOCKDOWN_OVERFLOW_COEFFICIENT));
         }
 
         public static final class IEEntry {

@@ -58,12 +58,14 @@ public class FirstAid {
     public static final double DEFAULT_MORPHINE_ACTIVATION_DELAY_SECONDS = 10.0D;
     public static final double DEFAULT_PAINKILLER_ACTIVATION_DELAY_SECONDS = 30.0D;
     public static final float DEFAULT_FRIENDLY_RANDOM_DISTRIBUTION_CHANCE = 0.8F;
+    public static final double DEFAULT_KNOCKDOWN_OVERFLOW_COEFFICIENT = 0.35D;
+    public static final double MAX_KNOCKDOWN_OVERFLOW_COEFFICIENT = 5.0D;
     private static final ResourceLocation POTION_ENTITY_ID = new ResourceLocation("minecraft", "potion");
     private static final ResourceLocation SPLASH_POTION_ENTITY_ID = new ResourceLocation("minecraft", "splash_potion");
     private static final ResourceLocation LINGERING_POTION_ENTITY_ID = new ResourceLocation("minecraft", "lingering_potion");
 
     private static final String NETWORKING_MAJOR = "7.";
-    private static final String NETWORKING_MINOR = "0";
+    private static final String NETWORKING_MINOR = "1";
 
     private static final String NETWORKING_VERSION = NETWORKING_MAJOR + NETWORKING_MINOR;
     public static final SimpleChannel NETWORKING = NetworkRegistry.newSimpleChannel(
@@ -106,6 +108,8 @@ public class FirstAid {
     public static MedicineEffectMode medicineEffectMode = MedicineEffectMode.REALISTIC;
     public static float medicineTimingMultiplier = 1.0F;
     public static InjuryDebuffMode injuryDebuffMode = InjuryDebuffMode.NORMAL;
+    public static KnockdownMode knockdownMode = KnockdownMode.CHANCE;
+    public static double knockdownOverflowCoefficient = DEFAULT_KNOCKDOWN_OVERFLOW_COEFFICIENT;
     public static float lowInjuryDebuffDamageScale = 0.4F;
     public static float lowInjuryDebuffAmplifierScale = 0.5F;
     public static float lowInjuryDebuffDurationScale = 0.5F;
@@ -131,6 +135,12 @@ public class FirstAid {
         NORMAL,
         LOW,
         OFF
+    }
+
+    public enum KnockdownMode {
+        ALWAYS,
+        CHANCE,
+        NEVER
     }
 
     public enum NaturalRegenMode {
@@ -241,6 +251,7 @@ public class FirstAid {
         NETWORKING.registerMessage(++i, MessageClientRequest.class, MessageClientRequest::encode, MessageClientRequest::new, (message, supplier) -> MessageClientRequest.Handler.onMessage(message, supplier));
         NETWORKING.registerMessage(++i, MessageSyncDamageModel.class, MessageSyncDamageModel::encode, MessageSyncDamageModel::new, (message, supplier) -> MessageSyncDamageModel.Handler.onMessage(message, supplier));
         NETWORKING.registerMessage(++i, MessageSyncCommandSettings.class, MessageSyncCommandSettings::encode, MessageSyncCommandSettings::new, (message, supplier) -> MessageSyncCommandSettings.Handler.onMessage(message, supplier));
+        NETWORKING.registerMessage(++i, MessageKnockdownNotice.class, MessageKnockdownNotice::encode, MessageKnockdownNotice::new, (message, supplier) -> MessageKnockdownNotice.Handler.onMessage(message, supplier));
 
         event.enqueueWork(() -> {
             PRCompatManager.init();

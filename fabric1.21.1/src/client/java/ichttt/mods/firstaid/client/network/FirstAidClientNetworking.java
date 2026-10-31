@@ -18,6 +18,7 @@
 
 package ichttt.mods.firstaid.client.network;
 
+import ichttt.mods.firstaid.common.network.MessageKnockdownNotice;
 import ichttt.mods.firstaid.common.network.MessageSyncDamageModel;
 import ichttt.mods.firstaid.common.network.MessageSyncServerConfig;
 import ichttt.mods.firstaid.common.network.MessageUpdatePart;
@@ -38,6 +39,7 @@ public final class FirstAidClientNetworking {
         ClientPlayNetworking.registerGlobalReceiver(MessageUpdatePart.TYPE, MessageUpdatePartHandler::handle);
         ClientPlayNetworking.registerGlobalReceiver(MessageSyncDamageModel.TYPE, MessageSyncDamageModelHandler::handle);
         ClientPlayNetworking.registerGlobalReceiver(MessageSyncServerConfig.TYPE, MessageSyncServerConfigHandler::handle);
+        ClientPlayNetworking.registerGlobalReceiver(MessageKnockdownNotice.TYPE, MessageKnockdownNoticeHandler::handle);
     }
 
     public static void sendToServer(CustomPacketPayload message) {

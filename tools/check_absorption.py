@@ -75,7 +75,7 @@ STUBS = r"""
     static class PlayerDamageModel extends AbstractPlayerDamageModel {
         void registerAdrenalineDamage(Player p,PlayerDamageModel before){}
         void registerDamageFeedback(Player p,DamageSource s,PlayerDamageModel before){}
-        void handlePostDamage(Player p,DamageSource s){} void syncVanillaHealth(Player p){}
+        void handlePostDamage(Player p,DamageSource s){} void syncVanillaHealth(Player p){} void resetKnockdownOverflow(){}
     }
     static class AttributeInstance {double getValue(){return 20;}}
     static class Attributes {static Object MAX_HEALTH=new Object();}
@@ -127,7 +127,7 @@ STUBS = r"""
 base = ROOT / "forge1.20.1/src/main/java/ichttt/mods/firstaid"
 damage = (base / "common/damagesystem/distribution/DamageDistribution.java").read_text(encoding="utf-8")
 part = (base / "common/damagesystem/DamageablePart.java").read_text(encoding="utf-8")
-classes = ["static class Part extends AbstractDamageablePart {"
+classes = ["static class Part extends AbstractDamageablePart { boolean canCauseDeath; float knockdownOverflow;"
            + method(part, "public float damage(float amount, @Nullable Player player, boolean applyDebuff, float minHealth)")
            + method(part, "private static float softenDebuffHealthFraction(")
            + method(part, "public void setAbsorption(") + method(part, "public float getAbsorption(") + "}"]
@@ -225,7 +225,7 @@ assert 'putFloat("absorption"' not in part and 'nbt.getFloat("absorption"' not i
 update = (base / "common/network/MessageUpdatePart.java").read_text(encoding="utf-8")
 assert "this.absorption = 0.0F" in update and "setAbsorption(message.absorption)" not in update
 network = (base / "FirstAid.java").read_text(encoding="utf-8")
-assert 'NETWORKING_MAJOR = "7."' in network and 'NETWORKING_MINOR = "0"' in network
+assert 'NETWORKING_MAJOR = "7."' in network and 'NETWORKING_MINOR = "1"' in network
 
 java = "import java.util.*; public class AbsorptionRegression {" + STUBS + "\n".join(classes)
 java += "public static void main(String[] args){" + "\n".join(tests) + "}}"
@@ -240,4 +240,4 @@ with tempfile.TemporaryDirectory(prefix="firstaid-absorption-") as tmp:
         for number in re.findall(r"AbsorptionRegression.java:(\d+)", result.stderr):
             print(f"Java {number}: {lines[int(number)-1].strip()}")
         raise SystemExit(result.returncode)
-print("PASS native absorption delegation, legacy save/wire retirement and Forge protocol 7.0")
+print("PASS native absorption delegation, legacy save/wire retirement and Forge protocol 7.1")

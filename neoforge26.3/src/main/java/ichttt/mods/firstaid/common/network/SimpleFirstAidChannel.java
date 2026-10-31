@@ -14,6 +14,7 @@ public final class SimpleFirstAidChannel {
         registrar.playToServer(MessageClientRequest.TYPE, MessageClientRequest.STREAM_CODEC, MessageClientRequest.Handler::onMessage);
         registrar.playToClient(MessageSyncDamageModel.TYPE, MessageSyncDamageModel.STREAM_CODEC, MessageSyncDamageModel::handle);
         registrar.playToClient(MessageSyncCommandSettings.TYPE, MessageSyncCommandSettings.STREAM_CODEC, MessageSyncCommandSettings::handle);
+        registrar.playToClient(MessageKnockdownNotice.TYPE, MessageKnockdownNotice.STREAM_CODEC, MessageKnockdownNotice::handle);
     }
 
     public <T> void registerMessage(int id, Class<T> type, Object encoder, Object decoder, Object handler) {
@@ -31,6 +32,10 @@ public final class SimpleFirstAidChannel {
     }
 
     public void sendCommandSettingsSync(ServerPlayer player, MessageSyncCommandSettings message) {
+        PacketDistributor.sendToPlayer(player, message);
+    }
+
+    public void sendKnockdownNotice(ServerPlayer player, MessageKnockdownNotice message) {
         PacketDistributor.sendToPlayer(player, message);
     }
 }

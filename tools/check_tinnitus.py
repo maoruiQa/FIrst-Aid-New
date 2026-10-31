@@ -191,7 +191,7 @@ STUBS = STUBS.replace("PAIN_VISUAL_METHODS", pain_methods.replace("this.suppress
 
 classes, tests = [], []
 part = (ROOT / "forge1.20.1/src/main/java/ichttt/mods/firstaid/common/damagesystem/DamageablePart.java").read_text(encoding="utf-8")
-classes.append("static class AbsorptionPart { int maxHealth=10; float currentHealth=10; IDebuff[] debuffs; "
+classes.append("static class AbsorptionPart { int maxHealth=10; float currentHealth=10; boolean canCauseDeath; float knockdownOverflow; IDebuff[] debuffs; "
                + method(part, "public float damage(float amount, @Nullable Player player, boolean applyDebuff, float minHealth)").replace("@Nullable ", "")
                + method(part, "private static float softenDebuffHealthFraction(") + "}")
 tests.append("""

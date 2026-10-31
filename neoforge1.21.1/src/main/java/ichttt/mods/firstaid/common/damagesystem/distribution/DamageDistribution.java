@@ -53,6 +53,9 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
             FirstAid.LOGGER.info(LoggingMarkers.DAMAGE_DISTRIBUTION, "--- Damaging {} using {} for dmg source {}, redistribute {}, addStat {} ---", damage, damageDistribution.toString(), source.type().msgId(), redistributeIfLeft, addStat);
         }
         CompoundTag beforeCache = damageModel.serializeNBT();
+        if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+            playerDamageModel.resetKnockdownOverflow();
+        }
         if (!damageDistribution.skipGlobalPotionModifiers())
             damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
         //VANILLA COPY - combat tracker and exhaustion

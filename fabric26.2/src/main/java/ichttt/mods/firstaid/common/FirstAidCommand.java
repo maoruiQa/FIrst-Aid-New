@@ -29,6 +29,7 @@ public final class FirstAidCommand {
 
    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         MedicalSettingCommands.register(dispatcher);
+      KnockdownCommands.register(dispatcher);
       dispatcher.register(
          Commands.literal("firstaid")
             .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))

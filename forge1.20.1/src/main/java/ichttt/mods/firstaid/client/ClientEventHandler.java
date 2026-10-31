@@ -127,6 +127,7 @@ public class ClientEventHandler {
             return;
         }
         TinnitusSoundController.tick(mc);
+        KnockdownNoticeClient.tick(mc);
         if (mc.level == null || mc.player == null || mc.player.connection == null) {
             syncRetryTicks = 0;
             showedCriticalPrompt = false;
@@ -428,6 +429,7 @@ public class ClientEventHandler {
 
     @SubscribeEvent
     public static void onDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+        KnockdownNoticeClient.reset();
         FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
         FirstAid.medicineTimingMultiplier = 1.0F;
         FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
@@ -464,6 +466,7 @@ public class ClientEventHandler {
     @SubscribeEvent
     public static void onLogin(ClientPlayerNetworkEvent.LoggingIn event) {
         FirstAid.isSynced = false;
+        KnockdownNoticeClient.reset();
         syncRetryTicks = SYNC_RETRY_TICKS;
         showedCriticalPrompt = false;
         wasCriticalRescuable = false;

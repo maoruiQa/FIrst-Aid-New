@@ -43,6 +43,7 @@ import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import ichttt.mods.firstaid.common.CapProvider;
 import ichttt.mods.firstaid.common.ClientAccess;
 import ichttt.mods.firstaid.common.EventHandler;
+import ichttt.mods.firstaid.common.KnockdownRules;
 import ichttt.mods.firstaid.common.RegistryObjects;
 import ichttt.mods.firstaid.common.compat.playerrevive.PRCompatManager;
 import ichttt.mods.firstaid.common.damagesystem.DamageablePart;
@@ -1191,6 +1192,11 @@ implements LookupReloadListener {
             this.resetRecoveredPlayerState(player);
             this.scheduleResync();
         } else if (!this.criticalConditionActive && this.hasCriticalPartCollapsed()) {
+            boolean knockDown = KnockdownRules.shouldKnockDown(this, player);
+            this.resetKnockdownOverflow();
+            if (!knockDown) {
+                return; // not downed: isDead() now holds and the caller kills the player (totem and PlayerRevive still apply)
+            }
             if (CommonUtils.tryUseTotem(this, player, source)) {
                 return;
             }
@@ -1200,6 +1206,14 @@ implements LookupReloadListener {
             this.painLevel = Math.max(this.painLevel, 5);
             CommonUtils.runWithoutSetHealthInterception(() -> player.setHealth(Math.max(player.getHealth(), 1.0f)));
             this.scheduleResync();
+        }
+    }
+
+    public void resetKnockdownOverflow() {
+        for (AbstractDamageablePart part : this) {
+            if (part instanceof DamageablePart damageablePart) {
+                damageablePart.resetKnockdownOverflow();
+            }
         }
     }
 

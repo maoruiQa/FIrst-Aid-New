@@ -62,6 +62,7 @@ static class FirstAidNetworking {
 }
 static class FirstAid { static Log LOGGER=new Log(); }
 static class Log { void info(Object... args){} void error(Object... args){} }
+static class KnockdownNotices { static int broadcasts; static void broadcastIfChanged(Server s){broadcasts++;} }
 static class FirstAidCommand {
     static int ruleUpdates;
     static void refreshNaturalRegenState(CommandSourceStack source){ruleUpdates++;}

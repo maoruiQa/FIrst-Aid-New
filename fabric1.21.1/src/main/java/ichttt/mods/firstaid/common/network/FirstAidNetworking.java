@@ -29,6 +29,7 @@ public final class FirstAidNetworking {
             PayloadTypeRegistry.playS2C().register(MessageUpdatePart.TYPE, MessageUpdatePart.STREAM_CODEC);
             PayloadTypeRegistry.playS2C().register(MessageSyncDamageModel.TYPE, MessageSyncDamageModel.STREAM_CODEC);
             PayloadTypeRegistry.playS2C().register(MessageSyncServerConfig.TYPE, MessageSyncServerConfig.STREAM_CODEC);
+            PayloadTypeRegistry.playS2C().register(MessageKnockdownNotice.TYPE, MessageKnockdownNotice.STREAM_CODEC);
         }
         if (!serverHandlersRegistered) {
             serverHandlersRegistered = true;
@@ -54,6 +55,10 @@ public final class FirstAidNetworking {
                 ServerPlayNetworking.send(trackingPlayer, payload);
             }
         }
+    }
+
+    public static void sendKnockdownNotice(ServerPlayer player) {
+        ServerPlayNetworking.send(player, MessageKnockdownNotice.current());
     }
 
     public static void sendServerConfig(ServerPlayer player) {

@@ -23,6 +23,8 @@ import net.minecraft.world.level.Level;
 
 public class DamageablePart extends AbstractDamageablePart {
    private int maxHealth;
+   /** Damage that did not fit into this critical part during the current hit; drives the knockdown chance. */
+   private float knockdownOverflow;
    @Nullable
    private IDebuff[] debuffs;
 
@@ -82,6 +84,9 @@ public class DamageablePart extends AbstractDamageablePart {
       } else {
          float notFitting = Math.abs(Math.min(minHealth, this.currentHealth - amount) - minHealth);
          this.currentHealth = Math.max(minHealth, this.currentHealth - amount);
+         if (this.canCauseDeath && this.currentHealth <= 0.0F && notFitting > 0.0F) {
+            this.knockdownOverflow += notFitting;
+         }
          if (applyDebuff && this.debuffs != null && FirstAid.injuryDebuffMode != FirstAid.InjuryDebuffMode.OFF) {
             Objects.requireNonNull(player, "Got null player with applyDebuff = true");
             float debuffDamage = amount - notFitting;
@@ -98,6 +103,14 @@ public class DamageablePart extends AbstractDamageablePart {
 
          return notFitting;
       }
+   }
+
+   public float getKnockdownOverflow() {
+      return this.knockdownOverflow;
+   }
+
+   public void resetKnockdownOverflow() {
+      this.knockdownOverflow = 0.0F;
    }
 
    @Override

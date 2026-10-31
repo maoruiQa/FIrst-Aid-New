@@ -22,6 +22,7 @@ import ichttt.mods.firstaid.FirstAid;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.common.CapProvider;
 import ichttt.mods.firstaid.common.EventHandler;
+import ichttt.mods.firstaid.common.KnockdownNotices;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.network.FriendlyByteBuf;
@@ -47,7 +48,7 @@ public class MessageClientRequest {
     }
 
     public enum Type {
-        TUTORIAL_COMPLETE, REQUEST_REFRESH, GIVE_UP, ATTEMPT_RESCUE, ATTEMPT_EXECUTION, ATTEMPT_SELF_DEFIB;
+        TUTORIAL_COMPLETE, REQUEST_REFRESH, GIVE_UP, ATTEMPT_RESCUE, ATTEMPT_EXECUTION, ATTEMPT_SELF_DEFIB, KNOCKDOWN_NOTICE_ACK;
 
         private static final Type[] TYPES = values();
     }
@@ -84,6 +85,8 @@ public class MessageClientRequest {
                 EventHandler.attemptImmediateExecution(player);
             } else if (message.type == MessageClientRequest.Type.ATTEMPT_SELF_DEFIB) {
                 EventHandler.attemptSelfDefibrillator(player);
+            } else if (message.type == Type.KNOCKDOWN_NOTICE_ACK) {
+                ctx.enqueueWork(() -> KnockdownNotices.acknowledge(player));
             }
         }
     }

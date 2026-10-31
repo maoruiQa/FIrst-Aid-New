@@ -4,6 +4,7 @@ import ichttt.mods.firstaid.FirstAidConfig;
 import ichttt.mods.firstaid.api.damagesystem.AbstractPlayerDamageModel;
 import ichttt.mods.firstaid.common.CapProvider;
 import ichttt.mods.firstaid.common.EventHandler;
+import ichttt.mods.firstaid.common.KnockdownNotices;
 import ichttt.mods.firstaid.common.damagesystem.PlayerDamageModel;
 import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.Context;
@@ -60,6 +61,8 @@ public class MessageClientRequest implements CustomPacketPayload {
             EventHandler.attemptImmediateExecution(player);
          } else if (message.type == MessageClientRequest.RequestType.ATTEMPT_SELF_DEFIB) {
             EventHandler.attemptSelfDefibrillator(player);
+         } else if (message.type == MessageClientRequest.RequestType.KNOCKDOWN_NOTICE_ACK) {
+            KnockdownNotices.acknowledge(player);
          }
       });
    }
@@ -70,7 +73,8 @@ public class MessageClientRequest implements CustomPacketPayload {
       GIVE_UP,
       ATTEMPT_RESCUE,
       ATTEMPT_EXECUTION,
-      ATTEMPT_SELF_DEFIB;
+      ATTEMPT_SELF_DEFIB,
+      KNOCKDOWN_NOTICE_ACK;
 
       private static final MessageClientRequest.RequestType[] TYPES = values();
    }

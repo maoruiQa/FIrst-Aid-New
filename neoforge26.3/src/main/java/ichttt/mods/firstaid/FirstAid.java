@@ -55,6 +55,8 @@ public class FirstAid {
     public static final double DEFAULT_MORPHINE_ACTIVATION_DELAY_SECONDS = 10.0D;
     public static final double DEFAULT_PAINKILLER_ACTIVATION_DELAY_SECONDS = 30.0D;
     public static final float DEFAULT_FRIENDLY_RANDOM_DISTRIBUTION_CHANCE = 0.8F;
+    public static final double DEFAULT_KNOCKDOWN_OVERFLOW_COEFFICIENT = 0.35D;
+    public static final double MAX_KNOCKDOWN_OVERFLOW_COEFFICIENT = 5.0D;
     private static final Identifier POTION_ENTITY_ID = Identifier.fromNamespaceAndPath("minecraft", "potion");
     private static final Identifier SPLASH_POTION_ENTITY_ID = Identifier.fromNamespaceAndPath("minecraft", "splash_potion");
     private static final Identifier LINGERING_POTION_ENTITY_ID = Identifier.fromNamespaceAndPath("minecraft", "lingering_potion");
@@ -95,6 +97,8 @@ public class FirstAid {
     public static MedicineEffectMode medicineEffectMode = MedicineEffectMode.REALISTIC;
     public static float medicineTimingMultiplier = 1.0F;
     public static InjuryDebuffMode injuryDebuffMode = InjuryDebuffMode.NORMAL;
+    public static KnockdownMode knockdownMode = KnockdownMode.CHANCE;
+    public static double knockdownOverflowCoefficient = DEFAULT_KNOCKDOWN_OVERFLOW_COEFFICIENT;
     public static float lowInjuryDebuffDamageScale = 0.4F;
     public static float lowInjuryDebuffAmplifierScale = 0.5F;
     public static float lowInjuryDebuffDurationScale = 0.5F;
@@ -121,6 +125,12 @@ public class FirstAid {
         NORMAL,
         LOW,
         OFF
+    }
+
+    public enum KnockdownMode {
+        ALWAYS,
+        CHANCE,
+        NEVER
     }
 
     public enum NaturalRegenMode {
@@ -193,6 +203,7 @@ public class FirstAid {
         NeoForge.EVENT_BUS.register(EventHandler.class);
         SuppressionRegressionGameTests.register(modEventBus);
         ichttt.mods.firstaid.common.damagesystem.DamageHealingGameTests.register(modEventBus);
+        ichttt.mods.firstaid.common.damagesystem.KnockdownModeGameTests.register(modEventBus);
         modEventBus.addListener(this::init);
         modEventBus.addListener(this::registerCreativeTab);
         modEventBus.addListener(NETWORKING::register);

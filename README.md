@@ -6,33 +6,32 @@ Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft
 
 ---
 
-## 1.3.4
+## 1.3.5
 
-**1.3.4** refines adrenaline, injury feedback, and damage handling across all seven maintained builds. Personal tinnitus controls, smoother pain blur, shared absorption hearts, and new administrator commands make combat feedback and server setup easier to manage.
+**1.3.5** lets server administrators choose what happens when a player's head or body reaches 0 HP, across all seven maintained builds. Players are shown the current rules in a full-screen notice the first time they join, and again whenever the rules change.
 
 ### What's new
 
-- **Personal tinnitus controls:** Every player can toggle ringing and set its duration with `/firstaid tinnitus`, without OP permission. Ringing fades to silence before expiry and stops on pause, death, disconnect, or world changes. Adrenaline alone no longer triggers tinnitus.
-- **Smoother injury feedback:** Pain blur interpolates as injuries, healing, and relief change. Head and torso hits use short, cooldown-limited effects in place of recurring injury nausea. Adrenaline camera sway is softer and centered, with no adrenaline or near-miss FOV narrowing; heartbeat follows pressure and fades after it ends.
-- **Rebalanced adrenaline:** Pressure grants visible movement, attack-speed, and strength effects at levels I–V, with diminishing gains and no stacking with corresponding external buffs. Injury debuff and pain FOV relief use a configurable multiplier (1.7 by default). Injuries reduce pressure, while nearby threats replenish it and slow its decay. Injectors fill and hold pressure for 15 seconds, retain rescue and their other benefits, and no longer grant Painkiller.
-- **Damage and healing fixes:** Absorption uses one shared vanilla shield and gold-heart HUD. Overflow attenuation has a cumulative floor, ender pearl damage chooses a body part per damage point, and healing preserves fractional amounts without wasting regeneration on healthy parts.
-- **Server setup commands:** `/firstaid health <part> [2–12]` queries or changes body-part maximum health and syncs online players. `/firstaid reset` restores server defaults while preserving player injuries, addiction, and personal settings. Forge 1.20.1 now supports the same medicine and injury-debuff modes as the other maintained builds.
+- **Knockdown mode:** `always` downs the player every time (the previous behaviour), `chance` (default) lets the overflow damage decide, and `never` skips the downed stage and kills immediately. Losing the head and body together stays fatal, totems still work, and players who are already down are not affected by a change.
+- **Overflow-based chance:** In `chance` mode the downed chance is `exp(-k × overflow / part max HP)`. The default `k = 0.35` favours going down: an exact kill always downs, one part-max of overflow downs 70% of the time, two 50%, five 17%. Admins can set `k` from 0 (always down) to 5.
+- **Commands and config:** `/firstaid knockdown [always|chance|never]` and `/firstaid knockdown coefficient <0-5>` (operator only) save immediately; the same settings are the `knockdownMode` and `knockdownOverflowCoefficient` server config keys, applied on the next start when edited by hand.
+- **Knockdown notice:** A full-screen notice explains the rules on first join and after every change: right away for online players, on the next join for everyone else. It must be confirmed with its button; acknowledgements are stored per world.
 
-### Supported builds (1.3.4)
+### Supported builds (1.3.5)
 
 | Artifact | Loader | Minecraft |
 |----------|--------|-----------|
-| `firstaid-1.3.4+forge1.20.1` | Forge | 1.20.1 |
-| `firstaid-1.3.4+fabric1.21.1` | Fabric | 1.21.1 |
-| `firstaid-1.3.4+neoforge1.21.1` | NeoForge | 1.21.1 |
-| `firstaid-1.3.4+fabric26.2` | Fabric | 26.2 |
-| `firstaid-1.3.4+neoforge26.2` | NeoForge | 26.2 |
-| `firstaid-1.3.4+fabric26.3` | Fabric | 26.3 |
-| `firstaid-1.3.4+neoforge26.3` | NeoForge | 26.3 |
+| `firstaid-1.3.5+forge1.20.1` | Forge | 1.20.1 |
+| `firstaid-1.3.5+fabric1.21.1` | Fabric | 1.21.1 |
+| `firstaid-1.3.5+neoforge1.21.1` | NeoForge | 1.21.1 |
+| `firstaid-1.3.5+fabric26.2` | Fabric | 26.2 |
+| `firstaid-1.3.5+neoforge26.2` | NeoForge | 26.2 |
+| `firstaid-1.3.5+fabric26.3` | Fabric | 26.3 |
+| `firstaid-1.3.5+neoforge26.3` | NeoForge | 26.3 |
 
-The 1.21.11 and 26.1 modules are legacy-only and no longer supported.
+The 1.21.11 and 26.1 modules are legacy-only and no longer supported. Forge's network protocol is now `7.1`; use matching First Aid versions on the client and server.
 
-Full notes: [1.3.4](./1.3.4changelog.md) · [1.3.3](./1.3.3changelog.md) · [1.3.2](./1.3.2changelog.md) · [1.3.1](./1.3.1changelog.md)
+Full notes: [1.3.5](./1.3.5changelog.md) · [1.3.4](./1.3.4changelog.md) · [1.3.3](./1.3.3changelog.md) · [1.3.2](./1.3.2changelog.md) · [1.3.1](./1.3.1changelog.md)
 
 ---
 
@@ -261,6 +260,18 @@ overwrite newer integrated-server commands.
 /firstaid medicineeffect assisted
 /firstaid medicineeffect casual
 ```
+
+#### Knockdown mode (admin)
+
+```mcfunction
+/firstaid knockdown
+/firstaid knockdown chance
+/firstaid knockdown always
+/firstaid knockdown never
+/firstaid knockdown coefficient 0.35
+```
+
+Chooses what happens when the head or body reaches 0 HP. `chance` (default) downs with probability `exp(-coefficient × overflow / part max HP)`, so exact kills always down and heavy overkill is more likely to be lethal; `always` always downs; `never` kills instead. The coefficient (0–5, default 0.35) only matters in `chance` mode. Every change shows a full-screen notice to online players and to everyone else on their next join.
 
 #### Rescue wake-up delay
 

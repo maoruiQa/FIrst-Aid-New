@@ -100,6 +100,7 @@ public class ClientEventHandler {
     public static void clientTick(ClientTickEvent.Pre event) {
         Minecraft mc = Minecraft.getInstance();
         TinnitusSoundController.tick(mc);
+        KnockdownNoticeClient.tick(mc);
         if (mc.level == null || mc.player == null || mc.player.connection == null) {
             syncRetryTicks = 0;
             resetGiveUpHoldState();
@@ -274,6 +275,7 @@ public class ClientEventHandler {
     @SubscribeEvent
     public static void onDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
         FirstAid.isSynced = false;
+        KnockdownNoticeClient.reset();
         HUDHandler.INSTANCE.ticker = -1;
         syncRetryTicks = 0;
         showedCriticalPrompt = false;
@@ -304,6 +306,7 @@ public class ClientEventHandler {
     @SubscribeEvent
     public static void onLogin(ClientPlayerNetworkEvent.LoggingIn event) {
         FirstAid.isSynced = false;
+        KnockdownNoticeClient.reset();
         syncRetryTicks = SYNC_RETRY_TICKS;
         wasCriticalRescuable = false;
       wasLocalPlayerAlive = true;

@@ -67,6 +67,7 @@ public final class MedicalSettingCommands {
       }
       FirstAidCommand.refreshNaturalRegenState(source);
       FirstAidCommand.syncServerConfig(source);
+      KnockdownNotices.broadcastIfChanged(source.getServer());
       for (var player : source.getServer().getPlayerList().getPlayers()) {
          if (CommonUtils.getDamageModel(player) instanceof PlayerDamageModel model) {
             model.refreshMaxHealth(player);

@@ -120,6 +120,8 @@ public class FirstAidConfig {
         SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
         SERVER.medicineTimingMultiplier.set((double) FirstAid.medicineTimingMultiplier);
         SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
+        SERVER.knockdownMode.set(FirstAid.knockdownMode);
+        SERVER.knockdownOverflowCoefficient.set(FirstAid.knockdownOverflowCoefficient);
         SERVER.lowInjuryDebuffDamageScale.set((double) FirstAid.lowInjuryDebuffDamageScale);
         SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
         SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
@@ -152,6 +154,8 @@ public class FirstAidConfig {
         FirstAid.medicineEffectMode = SERVER.medicineEffectMode.get();
         FirstAid.medicineTimingMultiplier = SERVER.medicineTimingMultiplier.get().floatValue();
         FirstAid.injuryDebuffMode = SERVER.injuryDebuffMode.get();
+        FirstAid.knockdownMode = SERVER.knockdownMode.get();
+        FirstAid.knockdownOverflowCoefficient = SERVER.knockdownOverflowCoefficient.get();
         FirstAid.lowInjuryDebuffDamageScale = SERVER.lowInjuryDebuffDamageScale.get().floatValue();
         FirstAid.lowInjuryDebuffAmplifierScale = SERVER.lowInjuryDebuffAmplifierScale.get().floatValue();
         FirstAid.lowInjuryDebuffDurationScale = SERVER.lowInjuryDebuffDurationScale.get().floatValue();
@@ -427,6 +431,14 @@ public class FirstAidConfig {
             commandTipsEnabled = builder
                     .comment("If true, operators receive the FirstAid admin command tip when joining a world")
                     .define("commandTipsEnabled", true);
+            knockdownMode = builder
+                    .comment("Persistent toggle for /firstaid knockdown. ALWAYS: a collapsed head or body always downs the player.",
+                            "CHANCE: the downed chance is exp(-knockdownOverflowCoefficient * overflow / partMaxHealth), where overflow is the damage beyond the critical part's remaining health.",
+                            "NEVER: the player dies instead of going down.")
+                    .defineEnum("knockdownMode", FirstAid.KnockdownMode.CHANCE);
+            knockdownOverflowCoefficient = builder
+                    .comment("Overflow sensitivity used by knockdownMode CHANCE; 0 always downs, higher values make heavy overkill hits lethal more often")
+                    .defineInRange("knockdownOverflowCoefficient", FirstAid.DEFAULT_KNOCKDOWN_OVERFLOW_COEFFICIENT, 0D, FirstAid.MAX_KNOCKDOWN_OVERFLOW_COEFFICIENT);
 
             builder.pop();
 
@@ -558,6 +570,8 @@ public class FirstAidConfig {
         public final ForgeConfigSpec.IntValue defibrillatorCraftUses;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> suppressionEntityBlacklist;
         public final ForgeConfigSpec.BooleanValue commandTipsEnabled;
+        public final ForgeConfigSpec.EnumValue<FirstAid.KnockdownMode> knockdownMode;
+        public final ForgeConfigSpec.DoubleValue knockdownOverflowCoefficient;
 
         public final ForgeConfigSpec.IntValue enchantmentMultiplier;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> enchMulOverrideResourceLocations;

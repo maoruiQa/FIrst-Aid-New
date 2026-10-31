@@ -52,6 +52,9 @@ public abstract class DamageDistribution implements IDamageDistributionAlgorithm
       }
 
       CompoundTag beforeCache = damageModel.serializeNBT();
+      if (damageModel instanceof PlayerDamageModel playerDamageModel) {
+         playerDamageModel.resetKnockdownOverflow();
+      }
       if (!damageDistribution.skipGlobalPotionModifiers()) {
          damage = ArmorUtils.applyGlobalPotionModifiers(player, source, damage);
       }

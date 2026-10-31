@@ -71,7 +71,8 @@ static class Player {int tickCount;PlayerDamageModel model=new PlayerDamageModel
 static class ServerPlayer extends Player {}
 enum EnumPlayerPart { HEAD, BODY }
 static class EnumDebuffSlot {EnumPlayerPart[] playerParts=EnumPlayerPart.values();}
-static class AbstractDamageablePart {int maxHealth=10;float currentHealth=10;int getMaxHealth(){return maxHealth;}}
+static class AbstractDamageablePart {int maxHealth=10;float currentHealth=10;boolean canCauseDeath;int getMaxHealth(){return maxHealth;}}
+static class KnockdownNotices {static void broadcastIfChanged(Object server){}}
 static class AbstractPlayerDamageModel {Part[] parts={new Part(),new Part()};AbstractDamageablePart getFromEnum(EnumPlayerPart p){return parts[p.ordinal()];}}
 static class PlayerDamageModel extends AbstractPlayerDamageModel {MobEffectInstance last;float relief;int applications,refreshes;
     void refreshMaxHealth(Player p){refreshes++;}void refreshRescueWakeUpState(Player p){refreshes++;}void refreshPainState(Player p){refreshes++;}
@@ -291,7 +292,7 @@ def main():
     static class ResetCommands {{static boolean reloadPending;
         static void register(CommandDispatcher<CommandSourceStack> dispatcher){{dispatcher.register(Commands.literal("firstaid"){reset_permission}{reset_branch});}}
         {block(medical_commands, 'private static int resetSettings(')}}}
-    static class Part extends AbstractDamageablePart {{IDebuff[] debuffs;AbstractPartHealer activeHealer;{part_methods}}}
+    static class Part extends AbstractDamageablePart {{IDebuff[] debuffs;AbstractPartHealer activeHealer;float knockdownOverflow;{part_methods}}}
     """
     for relative, declaration in (("api/damagesystem/AbstractPartHealer.java", "public abstract class AbstractPartHealer"),
                                   ("common/damagesystem/PartHealer.java", "public class PartHealer"),

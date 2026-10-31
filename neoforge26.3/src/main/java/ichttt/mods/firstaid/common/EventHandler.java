@@ -452,6 +452,7 @@ public class EventHandler {
             awardStarterRecipes(playerMP);
             CommonUtils.syncDamageModel(playerMP);
             FirstAid.NETWORKING.sendCommandSettingsSync(playerMP, MessageSyncCommandSettings.current());
+            KnockdownNotices.onLogin(playerMP);
             sendOpCommandTip(playerMP);
         }
     }
@@ -572,6 +573,7 @@ public class EventHandler {
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         FirstAidConfig.applyCommandSettings();
+        KnockdownNotices.load(event.getServer());
     }
 
     @SubscribeEvent
@@ -599,6 +601,9 @@ public class EventHandler {
         FirstAid.medicineEffectMode = FirstAid.MedicineEffectMode.REALISTIC;
         FirstAid.medicineTimingMultiplier = 1.0F;
         FirstAid.injuryDebuffMode = FirstAid.InjuryDebuffMode.NORMAL;
+        FirstAid.knockdownMode = FirstAid.KnockdownMode.CHANCE;
+        FirstAid.knockdownOverflowCoefficient = FirstAid.DEFAULT_KNOCKDOWN_OVERFLOW_COEFFICIENT;
+        KnockdownNotices.unload();
         FirstAid.lowInjuryDebuffDamageScale = 0.4F;
         FirstAid.lowInjuryDebuffAmplifierScale = 0.5F;
         FirstAid.lowInjuryDebuffDurationScale = 0.5F;
@@ -1130,7 +1135,8 @@ public class EventHandler {
                 buildCommandTipChip("firstaid.tip.commands.reset.label", "firstaid.tip.commands.reset.detail", "/firstaid reset", ChatFormatting.RED),
                 buildCommandTipChip("firstaid.tip.commands.health.label", "firstaid.tip.commands.health.detail", "/firstaid health body 6", ChatFormatting.GREEN),
                 buildCommandTipChip("firstaid.tip.commands.naturalregen.label", "firstaid.tip.commands.naturalregen.detail", "/firstaid naturalregen limited critical", ChatFormatting.GREEN),
-                buildCommandTipChip("firstaid.tip.commands.revivewakeup.label", "firstaid.tip.commands.revivewakeup.detail", "/firstaid revivewakeup on 15", ChatFormatting.GREEN)
+                buildCommandTipChip("firstaid.tip.commands.revivewakeup.label", "firstaid.tip.commands.revivewakeup.detail", "/firstaid revivewakeup on 15", ChatFormatting.GREEN),
+                buildCommandTipChip("firstaid.tip.commands.knockdown.label", "firstaid.tip.commands.knockdown.detail", "/firstaid knockdown chance", ChatFormatting.GREEN)
         ));
         sendSystemMessage(player, buildCommandTipLine(
                 "firstaid.tip.commands.group.advanced",
