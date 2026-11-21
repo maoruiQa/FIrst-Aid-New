@@ -16,6 +16,7 @@ Original project: [First Aid on CurseForge](https://www.curseforge.com/minecraft
 - **Hit tuning:** `attackgain <0-2>` scales adrenaline from hitting enemies (`0` turns it off), `attackcooldown <ticks>` spaces out counted hits for fast weapons, and `attackhold <ticks>` sets how long adrenaline holds after a hit.
 - **One swing, one hit:** Hits in the same tick (sweeps, multishot, piercing) now count once. Sweeping four mobs reaches tier V after about 13 seconds instead of 3; single-target combat is unchanged.
 - **Forge 1.20.1 fix:** Projectile near misses add adrenaline again, as on the other loaders.
+- **Forge and NeoForge fix:** `/firstaid` settings issued in quick succession are no longer lost to the background reload of `firstaid-server.toml`. Fabric was not affected.
 - Suggested preset for horde-heavy packs: `maxlevel 2`, `attackgain 0.5`, `attackcooldown 10` (see Adrenaline in the Command Setup Guide).
 
 ### Supported builds (1.3.6)
