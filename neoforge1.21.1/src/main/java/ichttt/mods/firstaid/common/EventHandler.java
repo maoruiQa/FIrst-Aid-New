@@ -96,6 +96,7 @@ import net.neoforged.neoforge.event.level.SleepFinishedTimeEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.ICancellableEvent;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -575,8 +576,14 @@ public class EventHandler {
     }
 
     @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        FirstAidConfig.tickServerConfig();
+    }
+
+    @SubscribeEvent
     public static void onServerStop(ServerStoppedEvent event) {
         FirstAid.LOGGER.debug("Cleaning up");
+        FirstAidConfig.forgetCommandValues();
         FirstAid.dynamicPainEnabled = false;
         FirstAid.mildPainLevel = 1;
         FirstAid.enablePainVignette = true;

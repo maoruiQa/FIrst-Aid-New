@@ -22,15 +22,24 @@ import ichttt.mods.firstaid.api.enums.EnumPlayerPart;
 import com.electronwill.nightconfig.core.UnmodifiableConfig;
 
 import net.minecraft.resources.Identifier;
+import net.neoforged.fml.config.IConfigSpec;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FirstAidConfig {
     private static final int LEGACY_BANDAGE_APPLY_TIME = 2500;
@@ -42,6 +51,21 @@ public class FirstAidConfig {
     public static final FirstAidConfig.Server SERVER;
     public static final FirstAidConfig.General GENERAL;
     public static final FirstAidConfig.Client CLIENT;
+
+    /*
+     * firstaid-server.toml has two writers: First Aid's commands on the server thread and the loader's config watcher,
+     * which reloads the file on its own thread after every write (Forge right away, NeoForge 0.5 s after the last one).
+     * A reload that read the file before a newer setting was saved puts the older copy back, so the setting is lost in
+     * memory and, with the next save, on disk. Values set through setServerValue are remembered and re-applied after a
+     * reload for as long as the file still holds First Aid's own last save; edits made outside the game win as before.
+     */
+    private static final long COMMAND_VALUE_LIFETIME_NANOS = 5_000_000_000L;
+    private static final Map<ModConfigSpec.ConfigValue<?>, Object> commandValues = new LinkedHashMap<>();
+    private static final AtomicInteger serverConfigReloads = new AtomicInteger();
+    private static volatile Path serverConfigPath;
+    private static int handledServerConfigReloads;
+    private static byte[] lastSavedServerConfig;
+    private static long lastServerConfigSave;
 
     static {
         final Pair<FirstAidConfig.Server, ModConfigSpec> specPair = new ModConfigSpec.Builder().configure(FirstAidConfig.Server::new);
@@ -116,8 +140,9 @@ public class FirstAidConfig {
 
     public static void resetServerSettings() {
         resetValues(serverSpec.getValues());
+        // Save before copying to the runtime state: saving re-applies defaults a concurrent reload put back.
+        saveServer();
         applyCommandSettings();
-        serverSpec.save();
     }
 
     private static void resetValues(UnmodifiableConfig values) {
@@ -131,50 +156,167 @@ public class FirstAidConfig {
     }
 
     private static <T> void resetValue(ModConfigSpec.ConfigValue<T> value) {
-        value.set(value.getDefault());
+        setServerValue(value, value.getDefault());
         value.clearCache();
     }
 
     public static void persistCommandSettings() {
-        SERVER.dynamicPainEnabled.set(FirstAid.dynamicPainEnabled);
-        SERVER.mildPainLevel.set(FirstAid.mildPainLevel);
-        SERVER.enablePainVignette.set(FirstAid.enablePainVignette);
-        SERVER.enablePainBlur.set(FirstAid.enablePainBlur);
-        SERVER.enablePainFovCompression.set(FirstAid.enablePainFovCompression);
-        SERVER.enablePainAudioEffects.set(FirstAid.enablePainAudioEffects);
-        SERVER.lowSuppressionEnabled.set(FirstAid.lowSuppressionEnabled);
-        SERVER.projectileSuppressionEnabled.set(FirstAid.projectileSuppressionEnabled);
-        SERVER.lowSuppressionMultiplier.set((double) FirstAid.lowSuppressionMultiplier);
-        SERVER.suppressionGainMultiplier.set((double) FirstAid.suppressionGainMultiplier);
-        SERVER.adrenalineReliefMultiplier.set((double) FirstAid.adrenalineReliefMultiplier);
-        SERVER.rescueWakeUpEnabled.set(FirstAid.rescueWakeUpEnabled);
-        SERVER.rescueWakeUpDelaySeconds.set(FirstAid.rescueWakeUpDelaySeconds);
-        SERVER.morphineActivationDelaySeconds.set(FirstAid.morphineActivationDelaySeconds);
-        SERVER.painkillerActivationDelaySeconds.set(FirstAid.painkillerActivationDelaySeconds);
-        SERVER.naturalRegenMode.set(FirstAid.naturalRegenMode);
-        SERVER.naturalRegenStrategy.set(FirstAid.naturalRegenStrategy);
-        SERVER.naturalRegenLimitRatio.set((double) FirstAid.naturalRegenLimitRatio);
-        SERVER.naturalRegenCriticalPriorityRatio.set((double) FirstAid.naturalRegenCriticalPriorityRatio);
-        SERVER.allowNaturalRegeneration.set(FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
-        SERVER.useFriendlyRandomDistribution.set(FirstAid.useFriendlyRandomDistribution);
-        SERVER.friendlyRandomDistributionChance.set((double) FirstAid.clampFriendlyRandomDistributionChance(FirstAid.friendlyRandomDistributionChance));
-        SERVER.medicineEffectMode.set(FirstAid.medicineEffectMode);
-        SERVER.medicineTimingMultiplier.set((double) FirstAid.medicineTimingMultiplier);
-        SERVER.injuryDebuffMode.set(FirstAid.injuryDebuffMode);
-        SERVER.knockdownMode.set(FirstAid.knockdownMode);
-        SERVER.knockdownOverflowCoefficient.set(FirstAid.knockdownOverflowCoefficient);
-        SERVER.lowInjuryDebuffDamageScale.set((double) FirstAid.lowInjuryDebuffDamageScale);
-        SERVER.lowInjuryDebuffAmplifierScale.set((double) FirstAid.lowInjuryDebuffAmplifierScale);
-        SERVER.lowInjuryDebuffDurationScale.set((double) FirstAid.lowInjuryDebuffDurationScale);
-        SERVER.injuryDebuffOverrides.set(serializeInjuryDebuffOverrides(FirstAid.injuryDebuffOverrides));
-        SERVER.suppressionEntityBlacklist.set(serializeResourceLocationList(FirstAid.suppressionEntityBlacklist));
-        serverSpec.save();
+        setServerValue(SERVER.dynamicPainEnabled, FirstAid.dynamicPainEnabled);
+        setServerValue(SERVER.mildPainLevel, FirstAid.mildPainLevel);
+        setServerValue(SERVER.enablePainVignette, FirstAid.enablePainVignette);
+        setServerValue(SERVER.enablePainBlur, FirstAid.enablePainBlur);
+        setServerValue(SERVER.enablePainFovCompression, FirstAid.enablePainFovCompression);
+        setServerValue(SERVER.enablePainAudioEffects, FirstAid.enablePainAudioEffects);
+        setServerValue(SERVER.lowSuppressionEnabled, FirstAid.lowSuppressionEnabled);
+        setServerValue(SERVER.projectileSuppressionEnabled, FirstAid.projectileSuppressionEnabled);
+        setServerValue(SERVER.lowSuppressionMultiplier, (double) FirstAid.lowSuppressionMultiplier);
+        setServerValue(SERVER.suppressionGainMultiplier, (double) FirstAid.suppressionGainMultiplier);
+        setServerValue(SERVER.adrenalineReliefMultiplier, (double) FirstAid.adrenalineReliefMultiplier);
+        setServerValue(SERVER.rescueWakeUpEnabled, FirstAid.rescueWakeUpEnabled);
+        setServerValue(SERVER.rescueWakeUpDelaySeconds, FirstAid.rescueWakeUpDelaySeconds);
+        setServerValue(SERVER.morphineActivationDelaySeconds, FirstAid.morphineActivationDelaySeconds);
+        setServerValue(SERVER.painkillerActivationDelaySeconds, FirstAid.painkillerActivationDelaySeconds);
+        setServerValue(SERVER.naturalRegenMode, FirstAid.naturalRegenMode);
+        setServerValue(SERVER.naturalRegenStrategy, FirstAid.naturalRegenStrategy);
+        setServerValue(SERVER.naturalRegenLimitRatio, (double) FirstAid.naturalRegenLimitRatio);
+        setServerValue(SERVER.naturalRegenCriticalPriorityRatio, (double) FirstAid.naturalRegenCriticalPriorityRatio);
+        setServerValue(SERVER.allowNaturalRegeneration, FirstAid.naturalRegenMode != FirstAid.NaturalRegenMode.OFF);
+        setServerValue(SERVER.useFriendlyRandomDistribution, FirstAid.useFriendlyRandomDistribution);
+        setServerValue(SERVER.friendlyRandomDistributionChance, (double) FirstAid.clampFriendlyRandomDistributionChance(FirstAid.friendlyRandomDistributionChance));
+        setServerValue(SERVER.medicineEffectMode, FirstAid.medicineEffectMode);
+        setServerValue(SERVER.medicineTimingMultiplier, (double) FirstAid.medicineTimingMultiplier);
+        setServerValue(SERVER.injuryDebuffMode, FirstAid.injuryDebuffMode);
+        setServerValue(SERVER.knockdownMode, FirstAid.knockdownMode);
+        setServerValue(SERVER.knockdownOverflowCoefficient, FirstAid.knockdownOverflowCoefficient);
+        setServerValue(SERVER.lowInjuryDebuffDamageScale, (double) FirstAid.lowInjuryDebuffDamageScale);
+        setServerValue(SERVER.lowInjuryDebuffAmplifierScale, (double) FirstAid.lowInjuryDebuffAmplifierScale);
+        setServerValue(SERVER.lowInjuryDebuffDurationScale, (double) FirstAid.lowInjuryDebuffDurationScale);
+        setServerValue(SERVER.injuryDebuffOverrides, serializeInjuryDebuffOverrides(FirstAid.injuryDebuffOverrides));
+        setServerValue(SERVER.suppressionEntityBlacklist, serializeResourceLocationList(FirstAid.suppressionEntityBlacklist));
+        saveServer();
+    }
+
+    /** Sets a server setting for a command; persist it with {@link #persistCommandSettings()}. Server thread only. */
+    public static <T> void setServerValue(ModConfigSpec.ConfigValue<T> value, T newValue) {
+        commandValues.put(value, newValue);
+        if (!Objects.equals(currentValue(value), newValue)) {
+            value.set(newValue);
+        }
+    }
+
+    public static void onConfigLoading(ModConfigEvent.Loading event) {
+        trackServerConfig(event.getConfig());
+    }
+
+    /** Fired by First Aid's own saves and, on the config watcher's thread, after every reload of the file. */
+    public static void onConfigReloading(ModConfigEvent.Reloading event) {
+        if (trackServerConfig(event.getConfig())) {
+            serverConfigReloads.incrementAndGet();
+        }
+    }
+
+    /** Runs at the end of every server tick, on the server thread. */
+    public static void tickServerConfig() {
+        int reloads = serverConfigReloads.get();
+        boolean reloaded = reloads != handledServerConfigReloads;
+        handledServerConfigReloads = reloads;
+        if (commandValues.isEmpty()) {
+            return;
+        }
+        if (reloaded) {
+            restoreCommandValues();
+        } else if (System.nanoTime() - lastServerConfigSave > COMMAND_VALUE_LIFETIME_NANOS) {
+            // Every reload of First Aid's last save has long finished.
+            forgetCommandValues();
+        }
+    }
+
+    public static void forgetCommandValues() {
+        commandValues.clear();
+        lastSavedServerConfig = null;
+    }
+
+    private static boolean trackServerConfig(ModConfig config) {
+        Object spec = config.getSpec();
+        if (spec != serverSpec) {
+            return false;
+        }
+        IConfigSpec.ILoadedConfig loaded = config.getLoadedConfig();
+        // A config synced from a remote server only lives in memory.
+        serverConfigPath = loaded == null || loaded.config().configFormat().isInMemory() ? null : config.getFullPath();
+        return true;
+    }
+
+    private static void restoreCommandValues() {
+        byte[] saved = readServerConfig();
+        if (saved == null || !Arrays.equals(saved, lastSavedServerConfig)) {
+            // The file was changed outside First Aid; keep what the loader reloaded from it.
+            forgetCommandValues();
+            return;
+        }
+        if (!commandValuesApplied()) {
+            FirstAid.LOGGER.debug("A reload of an older {} reverted First Aid settings; restoring them", serverConfigPath.getFileName());
+            saveServer();
+        }
+    }
+
+    private static void saveServer() {
+        // A reload may put an older copy back while this saves; save again until memory holds every value.
+        for (int attempt = 0; attempt < 3; attempt++) {
+            applyCommandValues();
+            serverSpec.save();
+            if (commandValuesApplied()) {
+                break;
+            }
+        }
+        lastSavedServerConfig = readServerConfig();
+        lastServerConfigSave = System.nanoTime();
+    }
+
+    private static void applyCommandValues() {
+        for (Map.Entry<ModConfigSpec.ConfigValue<?>, Object> entry : commandValues.entrySet()) {
+            if (!Objects.equals(currentValue(entry.getKey()), entry.getValue())) {
+                setUnchecked(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    private static boolean commandValuesApplied() {
+        for (Map.Entry<ModConfigSpec.ConfigValue<?>, Object> entry : commandValues.entrySet()) {
+            if (!Objects.equals(currentValue(entry.getKey()), entry.getValue())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The value in the loaded config; the cache may still hold a value from before the last reload. */
+    private static Object currentValue(ModConfigSpec.ConfigValue<?> value) {
+        return value.getRaw();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> void setUnchecked(ModConfigSpec.ConfigValue<T> value, Object newValue) {
+        value.set((T) newValue);
+    }
+
+    private static byte[] readServerConfig() {
+        Path path = serverConfigPath;
+        if (path == null) {
+            return null;
+        }
+        try {
+            return Files.readAllBytes(path);
+        } catch (IOException error) {
+            FirstAid.LOGGER.warn("Could not read {} to verify First Aid's saved settings: {}", path, error.toString());
+            return null;
+        }
     }
 
     private static void migrateLegacyBandageApplyTime() {
         if (SERVER.bandage.applyTime.get() == LEGACY_BANDAGE_APPLY_TIME) {
-            SERVER.bandage.applyTime.set(BANDAGE_APPLY_TIME);
-            serverSpec.save();
+            setServerValue(SERVER.bandage.applyTime, BANDAGE_APPLY_TIME);
+            saveServer();
         }
     }
 

@@ -51,17 +51,17 @@ public final class MedicalSettingCommands {
                .executes(context -> setHealth(context.getSource(), part, IntegerArgumentType.getInteger(context, "value")))));
       }
       var gain = Commands.literal("gain");
-      addDouble(gain, "morphine", () -> FirstAidConfig.SERVER.morphineAddictionGain.get(), FirstAidConfig.SERVER.morphineAddictionGain::set);
-      addDouble(gain, "morphine_injector", () -> FirstAidConfig.SERVER.morphineInjectorAddictionGain.get(), FirstAidConfig.SERVER.morphineInjectorAddictionGain::set);
+      addDouble(gain, "morphine", () -> FirstAidConfig.SERVER.morphineAddictionGain.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.morphineAddictionGain, value));
+      addDouble(gain, "morphine_injector", () -> FirstAidConfig.SERVER.morphineInjectorAddictionGain.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.morphineInjectorAddictionGain, value));
       var yields = Commands.literal("yield");
-      addInt(yields, "bandage", "yield", () -> FirstAidConfig.SERVER.bandageCraftYield.get(), FirstAidConfig.SERVER.bandageCraftYield::set, 16);
-      addInt(yields, "plaster", "yield", () -> FirstAidConfig.SERVER.plasterCraftYield.get(), FirstAidConfig.SERVER.plasterCraftYield::set, 16);
-      addInt(yields, "painkillers", "yield", () -> FirstAidConfig.SERVER.painkillersCraftYield.get(), FirstAidConfig.SERVER.painkillersCraftYield::set, 16);
-      addInt(yields, "morphine", "yield", () -> FirstAidConfig.SERVER.morphineCraftYield.get(), FirstAidConfig.SERVER.morphineCraftYield::set, 16);
+      addInt(yields, "bandage", "yield", () -> FirstAidConfig.SERVER.bandageCraftYield.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.bandageCraftYield, value), 16);
+      addInt(yields, "plaster", "yield", () -> FirstAidConfig.SERVER.plasterCraftYield.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.plasterCraftYield, value), 16);
+      addInt(yields, "painkillers", "yield", () -> FirstAidConfig.SERVER.painkillersCraftYield.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.painkillersCraftYield, value), 16);
+      addInt(yields, "morphine", "yield", () -> FirstAidConfig.SERVER.morphineCraftYield.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.morphineCraftYield, value), 16);
       var durability = Commands.literal("durability");
-      addInt(durability, "morphine_injector", "durability", () -> FirstAidConfig.SERVER.morphineInjectorCraftUses.get(), FirstAidConfig.SERVER.morphineInjectorCraftUses::set, 1000);
-      addInt(durability, "adrenaline_injector", "durability", () -> FirstAidConfig.SERVER.adrenalineInjectorCraftUses.get(), FirstAidConfig.SERVER.adrenalineInjectorCraftUses::set, 1000);
-      addInt(durability, "defibrillator", "durability", () -> FirstAidConfig.SERVER.defibrillatorCraftUses.get(), FirstAidConfig.SERVER.defibrillatorCraftUses::set, 1000);
+      addInt(durability, "morphine_injector", "durability", () -> FirstAidConfig.SERVER.morphineInjectorCraftUses.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.morphineInjectorCraftUses, value), 1000);
+      addInt(durability, "adrenaline_injector", "durability", () -> FirstAidConfig.SERVER.adrenalineInjectorCraftUses.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.adrenalineInjectorCraftUses, value), 1000);
+      addInt(durability, "defibrillator", "durability", () -> FirstAidConfig.SERVER.defibrillatorCraftUses.get(), value -> FirstAidConfig.setServerValue(FirstAidConfig.SERVER.defibrillatorCraftUses, value), 1000);
       dispatcher.register(Commands.literal("firstaid")
          .requires(source -> source.hasPermission(2))
          .then(health)
@@ -121,7 +121,7 @@ public final class MedicalSettingCommands {
    }
 
    private static int setHealth(CommandSourceStack source, EnumPlayerPart part, int value) {
-      FirstAidConfig.getPartMaxHealth(part).set(value);
+      FirstAidConfig.setServerValue(FirstAidConfig.getPartMaxHealth(part), value);
       FirstAidConfig.persistCommandSettings();
       for (var player : source.getServer().getPlayerList().getPlayers()) {
          if (CommonUtils.getDamageModel(player) instanceof PlayerDamageModel model) {

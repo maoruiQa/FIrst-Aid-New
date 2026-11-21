@@ -5,7 +5,8 @@ Run: python tools/check_adrenaline_runtime.py [module ...]
 Per module, runClient opens a copy of the KnockdownQA world (made by tools/check_knockdown_runtime.py) as
 AdrenalineQA and tools/AdrenalineRuntimeProbe.java drives the integrated server: /firstaid adrenaline maxlevel,
 attackgain, attackcooldown and attackhold, /damage hits on real husks through the loader's damage events, the
-injector above the cap, config persistence, /firstaid reset and two 25 second horde fights with screenshots.
+injector above the cap, config persistence (settings issued in one tick and settings saved while the loader's config
+watcher reloads an older copy), /firstaid reset and two 25 second horde fights with screenshots.
 Requires a JDK with java/javac/jar on PATH. Logs and results go to each module's build/, screenshots to its run
 screenshots/. The First Aid server config of the run directory is restored afterwards.
 """

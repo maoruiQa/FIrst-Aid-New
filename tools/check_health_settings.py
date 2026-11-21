@@ -181,7 +181,7 @@ for module in MODULES:
     stubs = stubs.replace("REFRESH_MAX_HEALTH", method(model, "public void refreshMaxHealth("))
     stubs = stubs.replace("RUN_SCALE_LOGIC", method(model, "public void runScaleLogic("))
     reset_stub = "static boolean failOnReset; static void resetServerSettings(){if(failOnReset)throw new IllegalStateException(\"save failure\");try{for(var f:Settings.class.getDeclaredFields())((Value<?>)f.get(SERVER)).reset();}catch(ReflectiveOperationException e){throw new AssertionError(e);}saved++;}"
-    config_stub = "static class FirstAidConfig { static int saved; static void persistCommandSettings(){saved++;} "+reset_stub+"static Settings SERVER=new Settings(),GENERAL=new Settings(); static class Settings {"+extras+"Value<Boolean> scaleMaxHealth=new Value<>(true), capMaxHealth=new Value<>(true), debug=new Value<>(false); }"+mapper+"}"
+    config_stub = "static class FirstAidConfig { static int saved; static void persistCommandSettings(){saved++;} static <T> void setServerValue(Value<T> value,T v){value.set(v);} "+reset_stub+"static Settings SERVER=new Settings(),GENERAL=new Settings(); static class Settings {"+extras+"Value<Boolean> scaleMaxHealth=new Value<>(true), capMaxHealth=new Value<>(true), debug=new Value<>(false); }"+mapper+"}"
     for lang in ("en_us", "zh_cn"):
         text = json.loads((ROOT / module / "src/main/resources/assets/firstaid/lang" / (lang+".json")).read_text(encoding="utf-8"))
         assert all(key in text for key in ("firstaid.command.health.query", "firstaid.command.health.set", "firstaid.tip.commands.health.label", "firstaid.tip.commands.health.detail",

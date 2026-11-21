@@ -254,7 +254,7 @@ def main():
     apply_lines = "\n".join(line for line in block(config, "public static void applyCommandSettings()") .splitlines()
                             if any(f"FirstAid.{f} =" in line for f in FIELDS))
     persist_lines = "\n".join(line for line in block(config, "public static void persistCommandSettings()") .splitlines()
-                              if any(f"SERVER.{f}.set(" in line for f in FIELDS))
+                              if any(f"setServerValue(SERVER.{f}," in line for f in FIELDS))
     assert len(apply_lines.splitlines()) == len(persist_lines.splitlines()) == len(FIELDS)
     branches = "".join(block(commands, f'.then(Commands.literal("{name}")', "(", ")")
                        for name in ("medicineeffect", "injurydebuff"))
@@ -285,6 +285,8 @@ def main():
             serverSpec.values=new ConfigTree(Map.of("Medical",new ConfigTree(builder.values),"ignored","not a setting"));}}}}
         static void applyCommandSettings(){{{apply_lines}}}
         static void persistCommandSettings(){{{persist_lines}saved++;}}
+        static <T> void setServerValue(ForgeConfigSpec.ConfigValue<T> value,T v){{value.set(v);}}
+        static void saveServer(){{serverSpec.save();}}
         {reset_methods}
     }}
     static class SettingsCommands {{static void register(CommandDispatcher<CommandSourceStack> dispatcher){{

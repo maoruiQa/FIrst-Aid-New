@@ -62,7 +62,8 @@ def check_sources(module):
     for setter, key in (("setAdrenalineMaxLevel(", "adrenalineMaxLevel"), ("setAdrenalineAttackGain(", "adrenalineAttackGainMultiplier"),
                         ("setAdrenalineAttackCooldown(", "adrenalineAttackCooldownTicks"), ("setAdrenalineAttackHold(", "adrenalineAttackHoldTicks")):
         body = method(commands, "private static int " + setter)
-        assert "FirstAidConfig.SERVER." + key + ".set(" in body and "FirstAidConfig.persistCommandSettings();" in body, (module, setter)
+        writes = ("FirstAidConfig.SERVER." + key + ".set(", "FirstAidConfig.setServerValue(FirstAidConfig.SERVER." + key + ", ")
+        assert any(write in body for write in writes) and "FirstAidConfig.persistCommandSettings();" in body, (module, setter)
 
     events = (base / "common/EventHandler.java").read_text(encoding="utf-8")
     assert events.count("model.registerAdrenalineAttack(") == 1, module

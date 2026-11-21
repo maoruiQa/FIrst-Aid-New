@@ -546,8 +546,16 @@ public class EventHandler {
     }
 
     @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
+            FirstAidConfig.tickServerConfig();
+        }
+    }
+
+    @SubscribeEvent
     public static void onServerStop(ServerStoppedEvent event) {
         FirstAid.LOGGER.debug("Cleaning up");
+        FirstAidConfig.forgetCommandValues();
         FirstAid.dynamicPainEnabled = false;
         FirstAid.mildPainLevel = 1;
         FirstAid.enablePainVignette = true;

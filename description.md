@@ -263,10 +263,6 @@ Combat adrenaline limits (operator only, saved immediately to the server config)
 passive level from seeing hostiles and does not affect hit gain. Hits that land in the same tick (sweeps,
 multishot, piercing) always count as one attack.
 
-Each `/firstaid` setting command saves the server config immediately. When you script several of them (for
-example in a function), leave about a second between commands or edit the config file instead: on Forge and
-NeoForge, a config reload triggered by one save can overwrite a setting changed in the same second.
-
 The `relief` command requires operator permission, updates the server configuration and
 synchronizes clients immediately. `/firstaid suppression relief` is the legacy alias.
 Forge/NeoForge clients and servers must both use the updated mod because the settings

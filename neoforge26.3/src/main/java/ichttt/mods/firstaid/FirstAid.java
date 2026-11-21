@@ -206,6 +206,8 @@ public class FirstAid {
         ichttt.mods.firstaid.common.damagesystem.KnockdownModeGameTests.register(modEventBus);
         modEventBus.addListener(this::init);
         modEventBus.addListener(this::registerCreativeTab);
+        modEventBus.addListener(FirstAidConfig::onConfigLoading);
+        modEventBus.addListener(FirstAidConfig::onConfigReloading);
         modEventBus.addListener(NETWORKING::register);
         RegistryObjects.registerToBus(modEventBus);
         FirstAidRegistries.setup(modEventBus);

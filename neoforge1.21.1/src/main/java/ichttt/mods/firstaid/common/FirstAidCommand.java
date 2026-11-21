@@ -179,7 +179,7 @@ public final class FirstAidCommand {
     }
 
     private static int setCommandTips(CommandSourceStack source, boolean enabled) {
-        FirstAidConfig.SERVER.commandTipsEnabled.set(enabled);
+        FirstAidConfig.setServerValue(FirstAidConfig.SERVER.commandTipsEnabled, enabled);
         FirstAidConfig.persistCommandSettings();
         source.sendSuccess(() -> Component.translatable(enabled
                 ? "firstaid.command.commandtips.on"
@@ -199,49 +199,49 @@ public final class FirstAidCommand {
     }
 
     private static int setAdrenalineFatigueEnabled(CommandSourceStack source, boolean enabled) {
-        FirstAidConfig.SERVER.adrenalineFatigueEnabled.set(enabled);
+        FirstAidConfig.setServerValue(FirstAidConfig.SERVER.adrenalineFatigueEnabled, enabled);
         FirstAidConfig.persistCommandSettings();
         source.sendSuccess(() -> Component.translatable(enabled ? "firstaid.command.adrenaline.fatigue.on" : "firstaid.command.adrenaline.fatigue.off"), true);
         return 1;
     }
 
     private static int setAdrenalineFatigueThreshold(CommandSourceStack source, int seconds) {
-        FirstAidConfig.SERVER.adrenalineFatigueThresholdSeconds.set(seconds);
+        FirstAidConfig.setServerValue(FirstAidConfig.SERVER.adrenalineFatigueThresholdSeconds, seconds);
         FirstAidConfig.persistCommandSettings();
         source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.fatigue.threshold", seconds), true);
         return 1;
     }
 
     private static int setAdrenalineFatigueRatio(CommandSourceStack source, double percent) {
-        FirstAidConfig.SERVER.adrenalineFatigueDurationRatio.set(percent / 100.0D);
+        FirstAidConfig.setServerValue(FirstAidConfig.SERVER.adrenalineFatigueDurationRatio, percent / 100.0D);
         FirstAidConfig.persistCommandSettings();
         source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.fatigue.ratio", percent), true);
         return 1;
     }
 
     private static int setAdrenalineMaxLevel(CommandSourceStack source, int level) {
-        FirstAidConfig.SERVER.adrenalineMaxLevel.set(level);
+        FirstAidConfig.setServerValue(FirstAidConfig.SERVER.adrenalineMaxLevel, level);
         FirstAidConfig.persistCommandSettings();
         source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.maxlevel", level), true);
         return 1;
     }
 
     private static int setAdrenalineAttackGain(CommandSourceStack source, double multiplier) {
-        FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.set(multiplier);
+        FirstAidConfig.setServerValue(FirstAidConfig.SERVER.adrenalineAttackGainMultiplier, multiplier);
         FirstAidConfig.persistCommandSettings();
         source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.attackgain", multiplier), true);
         return 1;
     }
 
     private static int setAdrenalineAttackCooldown(CommandSourceStack source, int ticks) {
-        FirstAidConfig.SERVER.adrenalineAttackCooldownTicks.set(ticks);
+        FirstAidConfig.setServerValue(FirstAidConfig.SERVER.adrenalineAttackCooldownTicks, ticks);
         FirstAidConfig.persistCommandSettings();
         source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.attackcooldown", ticks), true);
         return 1;
     }
 
     private static int setAdrenalineAttackHold(CommandSourceStack source, int ticks) {
-        FirstAidConfig.SERVER.adrenalineAttackHoldTicks.set(ticks);
+        FirstAidConfig.setServerValue(FirstAidConfig.SERVER.adrenalineAttackHoldTicks, ticks);
         FirstAidConfig.persistCommandSettings();
         source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.attackhold", ticks), true);
         return 1;

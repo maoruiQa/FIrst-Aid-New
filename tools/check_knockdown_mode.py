@@ -287,7 +287,7 @@ def source_assertions(module):
     config = read(base / "FirstAidConfig.java")
     assert re.search(r'"knockdownMode", FirstAid\.KnockdownMode\.CHANCE', config), module + " config default"
     assert '"knockdownOverflowCoefficient", FirstAid.DEFAULT_KNOCKDOWN_OVERFLOW_COEFFICIENT' in config, module + " coefficient default"
-    assert "FirstAid.knockdownMode = SERVER.knockdownMode.get()" in config and "SERVER.knockdownMode.set(FirstAid.knockdownMode)" in config, module + " config mirror"
+    assert "FirstAid.knockdownMode = SERVER.knockdownMode.get()" in config and re.search(r"SERVER\.knockdownMode\.set\(FirstAid\.knockdownMode\)|setServerValue\(SERVER\.knockdownMode, FirstAid\.knockdownMode\)", config), module + " config mirror"
     events = read(base / "common/EventHandler.java")
     for needle in ("KnockdownNotices.load(", "KnockdownNotices.onLogin(", "KnockdownNotices.unload()", "FirstAid.knockdownMode = FirstAid.KnockdownMode.CHANCE", "/firstaid knockdown chance"):
         assert needle in events, module + " EventHandler missing " + needle

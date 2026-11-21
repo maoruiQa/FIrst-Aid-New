@@ -202,6 +202,8 @@ public class FirstAid {
         NeoForge.EVENT_BUS.register(EventHandler.class);
         modEventBus.addListener(this::init);
         modEventBus.addListener(this::registerCreativeTab);
+        modEventBus.addListener(FirstAidConfig::onConfigLoading);
+        modEventBus.addListener(FirstAidConfig::onConfigReloading);
         modEventBus.addListener(NETWORKING::register);
         RegistryObjects.registerToBus(modEventBus);
         FirstAidRegistries.setup(modEventBus);

@@ -88,6 +88,7 @@ public class AdrenalineRuntimeProbe {
         sleep(1500);
         check(countTagged("faFar") == FAR_POOL, "twelve far husks spawned out of sight");
         expectDefaults("defaults before any command");
+        configPersistence(config);
 
         // Same-tick hits (a sweep or multishot volley) count as one attack.
         reset();
@@ -166,28 +167,20 @@ public class AdrenalineRuntimeProbe {
         int noHold = onServer(() -> { damage("faFar1"); return hold(); });
         check(noHold == 0, "attackhold 0 lets adrenaline decay right after a hit");
         command("firstaid adrenaline attackhold 40");
-        sleep(700);
         reset();
         int defaultHold = onServer(() -> { damage("faFar2"); return hold(); });
         check(defaultHold == 40, "attackhold 40 holds for 40 ticks");
 
-        // Persistence of every new key.
+        // Persistence of every new key, typed back to back.
         command("firstaid adrenaline maxlevel 3");
         command("firstaid adrenaline attackgain 0.75");
         command("firstaid adrenaline attackcooldown 5");
         command("firstaid adrenaline attackhold 30");
-        sleep(500);
-        String saved = Files.readString(config, StandardCharsets.UTF_8);
-        for (String entry : new String[] {"adrenalineMaxLevel\\W+3", "adrenalineAttackGainMultiplier\\W+0\\.75",
-                "adrenalineAttackCooldownTicks\\W+5", "adrenalineAttackHoldTicks\\W+30"}) {
-            check(java.util.regex.Pattern.compile(entry).matcher(saved).find(), "config file persists " + entry.replace("\\W+", " = ").replace("\\.", "."));
-        }
+        expectPersisted(config, "four adrenaline settings typed back to back", "adrenalineMaxLevel", 3,
+                "adrenalineAttackGainMultiplier", 0.75, "adrenalineAttackCooldownTicks", 5, "adrenalineAttackHoldTicks", 30);
 
         // Realistic horde: four visible husks hit together every 12 ticks (sword cooldown), 25 seconds.
-        // NeoForge's config watcher reloads the file about a second after each save; let it settle first.
-        sleep(3000);
         command("firstaid reset");
-        sleep(2500);
         expectDefaults("/firstaid reset restores the defaults");
         dismissKnockdownNotice(5_000);
         command("execute at @p run fill ~2 ~-1 ~-3 ~6 ~-1 ~3 minecraft:stone");
@@ -240,6 +233,153 @@ public class AdrenalineRuntimeProbe {
                 && configInt("adrenalineAttackCooldownTicks") == 0 && configInt("adrenalineAttackHoldTicks") == 40, label + " (5, 1.0, 0, 40)");
     }
 
+    // ---------------------------------------------------------------- config persistence
+
+    /**
+     * Every /firstaid setting saves the server config. Forge and NeoForge also watch that file and reload it on their
+     * own thread (Forge right after each write, NeoForge 0.5 s after the last one). A reload that read the file before
+     * a later setting was saved used to put the older copy back, so the later setting was lost in memory and on disk.
+     * First Aid now queues Forge's reloads onto the server thread, so there the race rounds check that settings saved
+     * while reloads are pending survive them.
+     */
+    private static void configPersistence(Path config) throws Exception {
+        onServer(() -> {
+            run("firstaid adrenaline maxlevel 3");
+            run("firstaid adrenaline attackgain 0.75");
+            run("firstaid adrenaline attackcooldown 5");
+            run("firstaid adrenaline attackhold 30");
+            run("firstaid adrenaline relief 1.25");
+            run("firstaid health head 6");
+            return null;
+        }, true);
+        results.add("RUN six /firstaid settings in one server tick");
+        expectPersisted(config, "six settings issued in one server tick", "adrenalineMaxLevel", 3, "adrenalineAttackGainMultiplier", 0.75,
+                "adrenalineAttackCooldownTicks", 5, "adrenalineAttackHoldTicks", 30, "adrenalineReliefMultiplier", 1.25, "maxHealthHead", 6);
+
+        if (!hasConfigWatcher()) {
+            results.add("NOTE this loader keeps First Aid's config without a file watcher; no reload can race a setting");
+        } else {
+            for (int round = 1; round <= 3; round++) {
+                int hold = 30 + round, cooldown = 5 + round;
+                double gain = round * 0.25;
+                raceReload(config, "firstaid adrenaline attackhold " + hold, "firstaid adrenaline attackgain " + gain,
+                        "firstaid adrenaline attackcooldown " + cooldown);
+                expectPersisted(config, "settings saved while the config watcher reloads an older copy (round " + round + ")",
+                        "adrenalineAttackHoldTicks", hold, "adrenalineAttackGainMultiplier", gain, "adrenalineAttackCooldownTicks", cooldown);
+            }
+            raceReload(config, "firstaid adrenaline maxlevel 2", "firstaid reset", "firstaid adrenaline attackhold 40");
+            expectDefaultsPersisted(config, "/firstaid reset while the config watcher reloads an older copy");
+        }
+        command("firstaid reset");
+        expectDefaultsPersisted(config, "/firstaid reset after the persistence checks");
+    }
+
+    /**
+     * On the server thread: runs first (which saves), waits until the loader's config watcher is parsing that save,
+     * runs second while the reload still holds the copy without it, waits for the reload to finish and runs third.
+     * NeoForge must parse on its watcher thread; on Forge, where First Aid runs the reload on the server thread, the
+     * watcher only gets 2 s to show it no longer parses there, and second and third then run before the queued reloads.
+     */
+    private static void raceReload(Path config, String first, String second, String third) throws Exception {
+        boolean offThread = isLoaded("net.neoforged.fml.config.ConfigWatcher");
+        String timeline = onServer(() -> {
+            long start = System.nanoTime();
+            run(first);
+            String parsing = awaitWatcher(true, start, offThread ? 5_000 : 2_000, config);
+            if (parsing == null) {
+                if (offThread) throw new AssertionError("the config watcher did not parse the saved file within 5 s");
+                run(second);
+                run(third);
+                return "queued its reloads for the server thread (no parse off it within 2 s)";
+            }
+            run(second);
+            String finished = awaitWatcher(false, start, 5_000, null);
+            if (finished == null) throw new AssertionError("the config watcher did not finish its reload within 5 s");
+            run(third);
+            return parsing + ", " + finished;
+        });
+        results.add("RUN /" + first + "; /" + second + " once the config watcher " + timeline + "; then /" + third);
+    }
+
+    private static boolean hasConfigWatcher() {
+        return isLoaded("net.neoforged.fml.config.ConfigWatcher") || isLoaded("net.minecraftforge.fml.config.ConfigFileTypeHandler$ConfigWatcher");
+    }
+
+    private static boolean isLoaded(String name) {
+        try {
+            loaded(name);
+            return true;
+        } catch (IllegalStateException absent) {
+            return false;
+        }
+    }
+
+    /**
+     * Spins until a config watcher thread is parsing a TOML file (parsing) or runs no reload at all (!parsing), or
+     * returns null after timeoutMillis. Forge reloads right after a write, often before the command returns, so while
+     * waiting for a parse the file is atomically rewritten with its own bytes every 0.75 s to start another reload.
+     */
+    private static String awaitWatcher(boolean parsing, long start, long timeoutMillis, Path touch) throws Exception {
+        long end = System.nanoTime() + timeoutMillis * 1_000_000L;
+        long nextTouch = System.nanoTime() + 750_000_000L;
+        List<Thread> watchers = new ArrayList<>();
+        long rescan = 0;
+        while (System.nanoTime() < end) {
+            if (touch != null && System.nanoTime() > nextTouch) {
+                Path copy = touch.resolveSibling(touch.getFileName() + ".probe");
+                Files.write(copy, Files.readAllBytes(touch));
+                Files.move(copy, touch, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                nextTouch = System.nanoTime() + 750_000_000L;
+            }
+            if (System.nanoTime() > rescan) {
+                watchers.clear();
+                for (Thread thread : Thread.getAllStackTraces().keySet()) {
+                    if (thread.getName().startsWith("FileWatcher") || thread.getClass().getName().contains("FileWatcher")) watchers.add(thread);
+                }
+                rescan = System.nanoTime() + 100_000_000L;
+            }
+            boolean reloading = false;
+            for (Thread thread : watchers) {
+                boolean inWatcher = false, inParser = false;
+                for (StackTraceElement frame : thread.getStackTrace()) {
+                    inWatcher |= frame.getClassName().endsWith("ConfigWatcher") && frame.getMethodName().equals("run");
+                    inParser |= frame.getClassName().startsWith("com.electronwill.nightconfig.toml.");
+                }
+                reloading |= inWatcher && (inParser || !parsing);
+            }
+            if (reloading == parsing) {
+                return (parsing ? "parsed the file" : "finished") + " at +" + (System.nanoTime() - start) / 1_000_000 + " ms";
+            }
+            Thread.onSpinWait();
+        }
+        return null;
+    }
+
+    private static void expectDefaultsPersisted(Path config, String label) throws Exception {
+        expectPersisted(config, label, "adrenalineMaxLevel", 5, "adrenalineAttackGainMultiplier", 1.0, "adrenalineAttackCooldownTicks", 0,
+                "adrenalineAttackHoldTicks", 40, "adrenalineReliefMultiplier", 1.7, "maxHealthHead", 4);
+    }
+
+    /** After 3 s, longer than any loader reload of the saves above, each key holds its value in memory and on disk. */
+    private static void expectPersisted(Path config, String label, Object... expected) throws Exception {
+        sleep(3000);
+        String saved = Files.readString(config, StandardCharsets.UTF_8);
+        List<String> wrong = new ArrayList<>();
+        for (int i = 0; i < expected.length; i += 2) {
+            String key = (String) expected[i];
+            double want = ((Number) expected[i + 1]).doubleValue();
+            double live = configDouble(key);
+            java.util.regex.Matcher entry = java.util.regex.Pattern.compile("(?<![A-Za-z])\"?" + key + "\"?\\s*[=:]\\s*(-?[0-9.]+)").matcher(saved);
+            Double onDisk = entry.find() ? Double.valueOf(entry.group(1)) : null;
+            // Float settings are stored as doubles (1.7F -> 1.7000000476837158).
+            if (Math.abs(live - want) > 1e-6 || onDisk == null || Math.abs(onDisk - want) > 1e-6) {
+                wrong.add(key + " = " + fmt(live) + " in memory and " + onDisk + " on disk, expected " + fmt(want));
+            }
+        }
+        if (!wrong.isEmpty()) results.add("DATA " + label + ": " + String.join("; ", wrong));
+        check(wrong.isEmpty(), label + ": every setting persists in memory and in " + config.getFileName());
+    }
+
     // ---------------------------------------------------------------- game access
 
     private static void perTickHits(int count) throws Exception {
@@ -279,9 +419,6 @@ public class AdrenalineRuntimeProbe {
     private static void command(String command) throws Exception {
         onServer(() -> { run(command); return null; }, true);
         results.add("RUN /" + command);
-        // Each /firstaid setting saves the config file; Forge and NeoForge reload it about a second later and a
-        // reload of an older save can overwrite a newer setting. Space settings like an admin typing them.
-        if (command.startsWith("firstaid ")) sleep(1500);
     }
 
     private static long gameTime() throws Exception {

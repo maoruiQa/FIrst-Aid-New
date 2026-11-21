@@ -207,6 +207,7 @@ public class FirstAid {
         bus.addListener(this::init);
         bus.addListener(this::registerCapability);
         bus.addListener(this::registerCreativeTab);
+        bus.addListener(FirstAidConfig::onConfigLoading);
         RegistryObjects.registerToBus(bus);
         FirstAidRegistries.setup(bus);
 
