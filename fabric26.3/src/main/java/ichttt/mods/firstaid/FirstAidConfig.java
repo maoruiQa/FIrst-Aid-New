@@ -588,6 +588,10 @@ public final class FirstAidConfig {
       public final FirstAidConfig.ConfigValue<Integer> adrenalineFatigueThresholdSeconds;
       public final FirstAidConfig.ConfigValue<Double> adrenalineFatigueDurationRatio;
       public final FirstAidConfig.ConfigValue<Double> encounterBaseIntensity;
+      public final FirstAidConfig.ConfigValue<Integer> adrenalineMaxLevel;
+      public final FirstAidConfig.ConfigValue<Double> adrenalineAttackGainMultiplier;
+      public final FirstAidConfig.ConfigValue<Integer> adrenalineAttackCooldownTicks;
+      public final FirstAidConfig.ConfigValue<Integer> adrenalineAttackHoldTicks;
       public final FirstAidConfig.ConfigValue<Boolean> rescueWakeUpEnabled;
       public final FirstAidConfig.ConfigValue<Double> rescueWakeUpDelaySeconds;
       public final FirstAidConfig.ConfigValue<Integer> morphineUseDuration;
@@ -691,6 +695,10 @@ public final class FirstAidConfig {
          this.adrenalineFatigueThresholdSeconds = this.define(FirstAidConfig.intValue("adrenalineFatigueThresholdSeconds", 60, 1, 3600));
          this.adrenalineFatigueDurationRatio = this.define(FirstAidConfig.doubleValue("adrenalineFatigueDurationRatio", 0.10, 0.0, 1.0));
          this.encounterBaseIntensity = this.define(FirstAidConfig.doubleValue("encounterBaseIntensity", 0.20, 0.0, 1.0));
+         this.adrenalineMaxLevel = this.define(FirstAidConfig.intValue("adrenalineMaxLevel", 5, 0, 5));
+         this.adrenalineAttackGainMultiplier = this.define(FirstAidConfig.doubleValue("adrenalineAttackGainMultiplier", 1.0, 0.0, 2.0));
+         this.adrenalineAttackCooldownTicks = this.define(FirstAidConfig.intValue("adrenalineAttackCooldownTicks", 0, 0, 200));
+         this.adrenalineAttackHoldTicks = this.define(FirstAidConfig.intValue("adrenalineAttackHoldTicks", 40, 0, 200));
          this.rescueWakeUpEnabled = this.define(FirstAidConfig.boolValue("rescueWakeUpEnabled", true));
          this.rescueWakeUpDelaySeconds = this.define(
             FirstAidConfig.doubleValue("rescueWakeUpDelaySeconds", FirstAid.DEFAULT_RESCUE_WAKE_UP_DELAY_SECONDS, 0.0, 3600.0)

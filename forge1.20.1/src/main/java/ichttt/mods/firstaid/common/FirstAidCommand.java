@@ -358,6 +358,34 @@ public final class FirstAidCommand {
         return 1;
     }
 
+    private static int setAdrenalineMaxLevel(CommandSourceStack source, int level) {
+        FirstAidConfig.SERVER.adrenalineMaxLevel.set(level);
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.maxlevel", level), true);
+        return 1;
+    }
+
+    private static int setAdrenalineAttackGain(CommandSourceStack source, double multiplier) {
+        FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.set(multiplier);
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.attackgain", multiplier), true);
+        return 1;
+    }
+
+    private static int setAdrenalineAttackCooldown(CommandSourceStack source, int ticks) {
+        FirstAidConfig.SERVER.adrenalineAttackCooldownTicks.set(ticks);
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.attackcooldown", ticks), true);
+        return 1;
+    }
+
+    private static int setAdrenalineAttackHold(CommandSourceStack source, int ticks) {
+        FirstAidConfig.SERVER.adrenalineAttackHoldTicks.set(ticks);
+        FirstAidConfig.persistCommandSettings();
+        source.sendSuccess(() -> Component.translatable("firstaid.command.adrenaline.attackhold", ticks), true);
+        return 1;
+    }
+
     private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> buildAdrenalineBranch(String literalName) {
         return Commands.literal(literalName)
                   .then(buildAdrenalineFatigueBranch())
@@ -367,6 +395,18 @@ public final class FirstAidCommand {
                   .then(Commands.literal("gain")
                      .then(Commands.argument("coefficient", DoubleArgumentType.doubleArg(0.01D, 1.0D))
                         .executes(context -> setSuppressionGain(context.getSource(), DoubleArgumentType.getDouble(context, "coefficient")))))
+                  .then(Commands.literal("maxlevel")
+                     .then(Commands.argument("level", IntegerArgumentType.integer(0, 5))
+                        .executes(context -> setAdrenalineMaxLevel(context.getSource(), IntegerArgumentType.getInteger(context, "level")))))
+                  .then(Commands.literal("attackgain")
+                     .then(Commands.argument("multiplier", DoubleArgumentType.doubleArg(0.0D, 2.0D))
+                        .executes(context -> setAdrenalineAttackGain(context.getSource(), DoubleArgumentType.getDouble(context, "multiplier")))))
+                  .then(Commands.literal("attackcooldown")
+                     .then(Commands.argument("ticks", IntegerArgumentType.integer(0, 200))
+                        .executes(context -> setAdrenalineAttackCooldown(context.getSource(), IntegerArgumentType.getInteger(context, "ticks")))))
+                  .then(Commands.literal("attackhold")
+                     .then(Commands.argument("ticks", IntegerArgumentType.integer(0, 200))
+                        .executes(context -> setAdrenalineAttackHold(context.getSource(), IntegerArgumentType.getInteger(context, "ticks")))))
                         .then(Commands.literal("dynamic")
                                 .executes(context -> setLowSuppression(context.getSource(), false)))
                         .then(Commands.literal("mild")

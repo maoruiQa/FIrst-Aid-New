@@ -317,6 +317,10 @@ public final class FirstAidConfig {
         public final ConfigValue<Integer> adrenalineFatigueThresholdSeconds;
         public final ConfigValue<Double> adrenalineFatigueDurationRatio;
         public final ConfigValue<Double> encounterBaseIntensity;
+        public final ConfigValue<Integer> adrenalineMaxLevel;
+        public final ConfigValue<Double> adrenalineAttackGainMultiplier;
+        public final ConfigValue<Integer> adrenalineAttackCooldownTicks;
+        public final ConfigValue<Integer> adrenalineAttackHoldTicks;
         public final ConfigValue<Boolean> enablePainVignette;
         public final ConfigValue<Boolean> enablePainBlur;
         public final ConfigValue<Boolean> enablePainFovCompression;
@@ -423,6 +427,10 @@ public final class FirstAidConfig {
             adrenalineFatigueThresholdSeconds = define(FirstAidConfig.intValue("adrenalineFatigueThresholdSeconds", 60, 1, 3600));
             adrenalineFatigueDurationRatio = define(FirstAidConfig.doubleValue("adrenalineFatigueDurationRatio", 0.10, 0.0, 1.0));
             encounterBaseIntensity = define(doubleValue("encounterBaseIntensity", 0.20D, 0.0D, 1.0D));
+            adrenalineMaxLevel = define(intValue("adrenalineMaxLevel", 5, 0, 5));
+            adrenalineAttackGainMultiplier = define(doubleValue("adrenalineAttackGainMultiplier", 1.0D, 0.0D, 2.0D));
+            adrenalineAttackCooldownTicks = define(intValue("adrenalineAttackCooldownTicks", 0, 0, 200));
+            adrenalineAttackHoldTicks = define(intValue("adrenalineAttackHoldTicks", 40, 0, 200));
             enablePainVignette = define(boolValue("enablePainVignette", true));
             enablePainBlur = define(boolValue("enablePainBlur", true));
             enablePainFovCompression = define(boolValue("enablePainFovCompression", true));

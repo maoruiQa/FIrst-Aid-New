@@ -253,7 +253,7 @@ public class EventHandler {
         ServerPlayer attacker = (ServerPlayer) source.getEntity();
         recordRecentPlayerAttack(victim, attacker);
         if (CommonUtils.getDamageModel(attacker) instanceof PlayerDamageModel model && !model.isUnconscious()) {
-            model.registerAdrenalineAttack(attacker, source.getDirectEntity() == attacker ? 0.50F : 0.35F, 40);
+            model.registerAdrenalineAttack(attacker, source.getDirectEntity() == attacker ? 0.50F : 0.35F, FirstAidConfig.SERVER.adrenalineAttackHoldTicks.get());
         }
     }
 

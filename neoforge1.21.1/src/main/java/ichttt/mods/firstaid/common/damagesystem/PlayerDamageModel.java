@@ -218,6 +218,7 @@ implements LookupReloadListener {
     private static final ResourceLocation ATTR_ADRENALINE_BURST = ResourceLocation.fromNamespaceAndPath("firstaid", "adrenaline_burst");
     private int adrenalineInjectionTicks = 0;
     private int encounterRecoveryTicks = 0;
+    private long lastAdrenalineAttackTick = Long.MIN_VALUE;
     private int adrenalineExposureTicks = 0;
     private boolean adrenalineFatiguePending = false;
     private boolean adrenalineFatigueTriggered = false;
@@ -1040,7 +1041,7 @@ implements LookupReloadListener {
     public void ensureEncounterAdrenaline(Player player, float floor) {
         if (this.encounterRecoveryTicks > 0) return;
         float previous = this.suppressionIntensity;
-        this.suppressionIntensity = Math.max(previous, Mth.clamp(floor, 0.0f, 1.0f));
+        this.suppressionIntensity = Math.max(previous, Math.min(Mth.clamp(floor, 0.0f, 1.0f), getCombatAdrenalineCap()));
         if (this.suppressionIntensity <= 0.0f) return;
         this.suppressionHoldTicks = Math.max(this.suppressionHoldTicks, 40);
         this.suppressionDecayTicker = 0;
@@ -1059,7 +1060,7 @@ implements LookupReloadListener {
         if (threatCount <= 0) return;
         int extraThreats = Mth.clamp(threatCount, 1, 6) - 1;
         float base = Mth.clamp(FirstAidConfig.SERVER.encounterBaseIntensity.get().floatValue(), 0.0F, 1.0F);
-        float ceiling = Math.min(Math.max(base, 0.50F), base + extraThreats * 0.06F);
+        float ceiling = Math.min(Math.min(Math.max(base, 0.50F), base + extraThreats * 0.06F), getCombatAdrenalineCap());
         if (this.suppressionIntensity > ceiling) return;
         float gain = (0.01F + extraThreats * 0.004F) * (1.0F - this.suppressionIntensity);
         this.ensureEncounterAdrenaline(player, Math.min(ceiling, this.suppressionIntensity + gain));
@@ -1075,7 +1076,31 @@ implements LookupReloadListener {
 
     /** Growth from a confirmed offensive hit; near misses use a separate source multiplier. */
     public void registerAdrenalineAttack(Player player, float strength, int holdTicks) {
-        this.registerAdrenalineGain(player, strength, holdTicks, 1.0F);
+        float attackMultiplier = (float) Mth.clamp(FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.get(), 0.0D, 2.0D);
+        if (attackMultiplier <= 0.0F) return;
+        // Sweeps, multishot and piercing hit several targets in one tick; they count as one attack.
+        long gameTime = player.level().getGameTime();
+        int cooldownTicks = Math.max(1, FirstAidConfig.SERVER.adrenalineAttackCooldownTicks.get());
+        if (this.lastAdrenalineAttackTick != Long.MIN_VALUE && gameTime >= this.lastAdrenalineAttackTick
+            && gameTime - this.lastAdrenalineAttackTick < cooldownTicks) return;
+        this.lastAdrenalineAttackTick = gameTime;
+        this.registerAdrenalineGain(player, strength, holdTicks, attackMultiplier);
+    }
+
+    /** Highest intensity that combat sources may build: just below the first tier above adrenalineMaxLevel. */
+    public static float getCombatAdrenalineCap() {
+        return getCombatAdrenalineCap(FirstAidConfig.SERVER.adrenalineMaxLevel.get());
+    }
+
+    public static float getCombatAdrenalineCap(int maxLevel) {
+        return switch (Mth.clamp(maxLevel, 0, MAX_ADRENALINE_LEVEL)) {
+            case 0 -> 0.19F;
+            case 1 -> 0.34F;
+            case 2 -> 0.49F;
+            case 3 -> 0.64F;
+            case 4 -> 0.79F;
+            default -> 1.0F;
+        };
     }
 
     private void registerAdrenalineGain(Player player, float strength, int holdTicks, float sourceMultiplier) {
@@ -1084,8 +1109,13 @@ implements LookupReloadListener {
         float baseIntensity = 0.28F + clampedStrength * 0.24F;
         float baseGain = Mth.clamp(baseIntensity * FirstAid.suppressionGainMultiplier,
             0.36F * FirstAid.suppressionGainMultiplier, 0.62F * FirstAid.suppressionGainMultiplier);
-        this.suppressionIntensity = Mth.clamp(previousIntensity
+        float cap = getCombatAdrenalineCap();
+        // Pressure above the cap comes from a stronger source such as an injector: combat neither adds to it
+        // nor extends its hold, so it decays back to the cap.
+        if (previousIntensity > cap) return;
+        float grownIntensity = Mth.clamp(previousIntensity
             + baseGain * sourceMultiplier * (1.0F - previousIntensity), 0.0F, 1.0F);
+        this.suppressionIntensity = Math.min(grownIntensity, cap);
         this.suppressionHoldTicks = Math.max(this.suppressionHoldTicks, holdTicks);
         this.suppressionDecayTicker = 0;
         this.refreshSuppressionSnapshot();
@@ -1152,6 +1182,7 @@ implements LookupReloadListener {
         this.suppressionPainReliefTicks = 0;
         this.adrenalineInjectionTicks = 0;
         this.encounterRecoveryTicks = 0;
+        this.lastAdrenalineAttackTick = Long.MIN_VALUE;
         this.adrenalineExposureTicks = 0;
         this.adrenalineFatiguePending = false;
       this.adrenalineFatigueTriggered = false;

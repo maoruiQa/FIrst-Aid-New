@@ -71,6 +71,7 @@ public final class SuppressionRegressionGameTests {
     }
 
     private static void run(GameTestHelper helper) {
+        testCombatAdrenalineLimits(helper);
         testAdrenalineReliefMultiplier(helper);
         float configuredRelief = FirstAid.adrenalineReliefMultiplier;
         try {
@@ -202,6 +203,13 @@ public final class SuppressionRegressionGameTests {
             helper.assertValueEqual(EventHandler.countEncounterThreats(otherPlayer, 12.0D), 0, "a nearby player who has not attacked is not a threat");
             helper.assertTrue(EventHandler.isEligibleOffensiveDamage(otherPlayer, melee, 2.0F), "other player target qualifies");
             helper.assertTrue(!EventHandler.isEligibleOffensiveDamage(player, melee, 2.0F), "self damage excluded");
+            float beforeSameTick = attackModel.getSuppressionIntensity();
+            var sweepTarget = helper.spawn(EntityTypes.ZOMBIE, new BlockPos(3, 1, 3));
+            helper.assertTrue(sweepTarget.hurtServer(helper.getLevel(), melee, 2.0F), "the second same-tick target takes the hit");
+            sweepTarget.discard();
+            helper.assertTrue(attackModel.getSuppressionIntensity() == beforeSameTick, "a second target hit in the same tick does not add adrenaline again");
+            // The PvP hit below is a separate attack; a cleared state starts a new attack window.
+            attackModel.clearStatusEffects();
             float beforePvP = attackModel.getSuppressionIntensity();
             PlayerDamageModel targetModel = (PlayerDamageModel) CommonUtils.getDamageModel(otherPlayer);
             targetModel.ensureEncounterAdrenaline(otherPlayer, 0.60F);
@@ -442,6 +450,71 @@ public final class SuppressionRegressionGameTests {
         player.removeAllEffects();
         model.clearStatusEffects();
         for (AbstractDamageablePart part : model) part.currentHealth = part.getMaxHealth();
+    }
+
+    private static void testCombatAdrenalineLimits(GameTestHelper helper) {
+        var adrenalineCommand = helper.getLevel().getServer().getCommands().getDispatcher().getRoot().getChild("firstaid").getChild("adrenaline");
+        for (String literal : new String[]{"maxlevel", "attackgain", "attackcooldown", "attackhold"}) {
+            helper.assertTrue(adrenalineCommand.getChild(literal) != null, "adrenaline command must expose " + literal);
+        }
+        FakePlayer player = FakePlayerFactory.getMinecraft(helper.getLevel());
+        float savedGain = FirstAid.suppressionGainMultiplier;
+        int savedMaxLevel = FirstAidConfig.SERVER.adrenalineMaxLevel.get();
+        double savedAttackGain = FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.get();
+        int savedCooldown = FirstAidConfig.SERVER.adrenalineAttackCooldownTicks.get();
+        try {
+            FirstAid.suppressionGainMultiplier = 0.15F;
+            FirstAidConfig.SERVER.adrenalineMaxLevel.set(5);
+            FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.set(1.0D);
+            FirstAidConfig.SERVER.adrenalineAttackCooldownTicks.set(0);
+            PlayerDamageModel sweep = new PlayerDamageModel();
+            for (int i = 0; i < 5; ++i) sweep.registerAdrenalineAttack(player, 0.50F, 40);
+            helper.assertTrue(Math.abs(sweep.getSuppressionIntensity() - 0.06F) < 0.0001F, "hits landing in one tick count as a single attack");
+            helper.assertValueEqual(sweep.getSuppressionHoldTicks(), 40, "a counted hit applies the hold time");
+
+            FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.set(0.5D);
+            PlayerDamageModel halved = new PlayerDamageModel();
+            halved.registerAdrenalineAttack(player, 0.50F, 40);
+            helper.assertTrue(Math.abs(halved.getSuppressionIntensity() - 0.03F) < 0.0001F, "attack gain multiplier scales hit growth");
+
+            FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.set(0.0D);
+            PlayerDamageModel disabled = new PlayerDamageModel();
+            disabled.registerAdrenalineAttack(player, 0.50F, 40);
+            helper.assertTrue(disabled.getSuppressionIntensity() == 0.0F, "zero attack gain disables hit growth");
+            helper.assertValueEqual(disabled.getSuppressionHoldTicks(), 0, "disabled hit growth must not freeze decay");
+            disabled.registerAdrenalineNearMiss(player, 0.35F, 0);
+            helper.assertTrue(disabled.getSuppressionIntensity() > 0.0F, "zero attack gain leaves near misses alone");
+            FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.set(1.0D);
+
+            int[] expectedLevels = {0, 1, 2, 3, 4, 5};
+            for (int maxLevel = 0; maxLevel <= 5; ++maxLevel) {
+                FirstAidConfig.SERVER.adrenalineMaxLevel.set(maxLevel);
+                PlayerDamageModel capped = new PlayerDamageModel();
+                for (int i = 0; i < 400; ++i) capped.registerAdrenalineNearMiss(player, 1.45F, 0);
+                helper.assertValueEqual(capped.getAdrenalineLevel(), expectedLevels[maxLevel], "near misses stop at the configured tier " + maxLevel);
+                PlayerDamageModel encounter = new PlayerDamageModel();
+                encounter.ensureEncounterAdrenaline(player, 1.0F);
+                helper.assertValueEqual(encounter.getAdrenalineLevel(), expectedLevels[maxLevel], "encounters stop at the configured tier " + maxLevel);
+                for (int i = 0; i < 600; ++i) encounter.recoverEncounterAdrenaline(player, 20);
+                helper.assertTrue(encounter.getAdrenalineLevel() <= maxLevel, "encounter recovery respects the configured tier " + maxLevel);
+            }
+
+            FirstAidConfig.SERVER.adrenalineMaxLevel.set(2);
+            PlayerDamageModel injected = new PlayerDamageModel();
+            CompoundTag state = injected.serializeNBT();
+            state.putFloat("suppressionIntensity", 1.0F);
+            injected.deserializeNBT(state);
+            injected.registerAdrenalineNearMiss(player, 0.35F, 80);
+            helper.assertTrue(injected.getSuppressionIntensity() == 1.0F, "the cap never lowers adrenaline from stronger sources");
+            helper.assertValueEqual(injected.getAdrenalineLevel(), 5, "stronger sources keep their tier");
+            helper.assertValueEqual(injected.getSuppressionHoldTicks(), 0, "combat above the cap does not extend the hold of a stronger source");
+        } finally {
+            FirstAid.suppressionGainMultiplier = savedGain;
+            FirstAidConfig.SERVER.adrenalineMaxLevel.set(savedMaxLevel);
+            FirstAidConfig.SERVER.adrenalineAttackGainMultiplier.set(savedAttackGain);
+            FirstAidConfig.SERVER.adrenalineAttackCooldownTicks.set(savedCooldown);
+            player.removeAllEffects();
+        }
     }
 
     private static void testAdrenalineReliefMultiplier(GameTestHelper helper) {

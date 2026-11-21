@@ -417,7 +417,7 @@ public class FirstAidConfig {
 
             suppressionGainMultiplier = builder
 
-                    .comment("Per-hit adrenaline gain multiplier; also set by /firstaid adrenaline gain")
+                    .comment("Global adrenaline gain multiplier for hits and projectile near misses; also set by /firstaid adrenaline gain")
 
                     .defineInRange("suppressionGainMultiplier", 0.15D, 0.01D, 1D);
             adrenalineReliefMultiplier = builder.comment("Adrenaline protection for injury debuffs and pain FOV; 1 restores previous strength, does not change pain blur").defineInRange("adrenalineReliefMultiplier", 1.7D, 0D, 2D);
@@ -427,7 +427,11 @@ public class FirstAidConfig {
             adrenalineFatigueEnabled = builder.comment("Apply fatigue after prolonged adrenaline when no threats remain").define("adrenalineFatigueEnabled", true);
             adrenalineFatigueThresholdSeconds = builder.comment("Continuous adrenaline seconds before fatigue can occur").defineInRange("adrenalineFatigueThresholdSeconds", 60, 1, 3600);
             adrenalineFatigueDurationRatio = builder.comment("Fatigue duration as a fraction of adrenaline duration").defineInRange("adrenalineFatigueDurationRatio", 0.10D, 0.0D, 1.0D);
-            encounterBaseIntensity = builder.comment("Minimum adrenaline intensity on encounter").defineInRange("encounterBaseIntensity", 0.20D, 0.0D, 1.0D);
+            encounterBaseIntensity = builder.comment("Minimum adrenaline intensity from seeing or being targeted by hostiles; does not affect adrenaline gained from hits").defineInRange("encounterBaseIntensity", 0.20D, 0.0D, 1.0D);
+            adrenalineMaxLevel = builder.comment("Highest adrenaline tier (0-5) that combat can build from hits, projectile near misses and nearby enemies; 0 keeps combat below tier I. Adrenaline and morphine injectors still reach full strength. Also set by /firstaid adrenaline maxlevel").defineInRange("adrenalineMaxLevel", 5, 0, 5);
+            adrenalineAttackGainMultiplier = builder.comment("Multiplier for adrenaline gained by hitting enemies, applied on top of suppressionGainMultiplier; 0 disables hit-driven adrenaline. Also set by /firstaid adrenaline attackgain").defineInRange("adrenalineAttackGainMultiplier", 1.0D, 0.0D, 2.0D);
+            adrenalineAttackCooldownTicks = builder.comment("Minimum ticks between hit-driven adrenaline gains per player (20 ticks = 1 second); hits in the same tick such as sweeps, multishot and piercing always count once. Also set by /firstaid adrenaline attackcooldown").defineInRange("adrenalineAttackCooldownTicks", 0, 0, 200);
+            adrenalineAttackHoldTicks = builder.comment("Ticks adrenaline is held after a hit before it starts to decay. Also set by /firstaid adrenaline attackhold").defineInRange("adrenalineAttackHoldTicks", 40, 0, 200);
             rescueWakeUpEnabled = builder
                     .comment("Persistent toggle for /firstaid revivewakeup (on vs off)")
                     .define("rescueWakeUpEnabled", true);
@@ -613,6 +617,10 @@ public class FirstAidConfig {
         public final ModConfigSpec.IntValue adrenalineFatigueThresholdSeconds;
         public final ModConfigSpec.DoubleValue adrenalineFatigueDurationRatio;
         public final ModConfigSpec.DoubleValue encounterBaseIntensity;
+        public final ModConfigSpec.IntValue adrenalineMaxLevel;
+        public final ModConfigSpec.DoubleValue adrenalineAttackGainMultiplier;
+        public final ModConfigSpec.IntValue adrenalineAttackCooldownTicks;
+        public final ModConfigSpec.IntValue adrenalineAttackHoldTicks;
         public final ModConfigSpec.BooleanValue rescueWakeUpEnabled;
         public final ModConfigSpec.DoubleValue rescueWakeUpDelaySeconds;
         public final ModConfigSpec.DoubleValue naturalRegenLimitRatio;
