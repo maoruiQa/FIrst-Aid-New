@@ -27,6 +27,7 @@ import ichttt.mods.firstaid.common.util.CommonUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.client.resources.sounds.TickableSoundInstance;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.client.sounds.WeighedSoundEvents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -259,14 +260,23 @@ public final class SuppressionFeedbackController {
             }
             float volumeScale = Mth.clamp(1.0F - musicDetuneStrength * 0.35F, 0.35F, 1.0F);
             float pitchScale = Mth.clamp(1.0F - musicDetuneStrength * 0.38F, 0.55F, 1.0F);
-            event.setSound(new MuffledSoundInstance(original, volumeScale, pitchScale));
+            event.setSound(muffle(original, volumeScale, pitchScale));
             return;
         }
         if (audioMuffleStrength <= 0.01F) {
             return;
         }
         float volumeScale = Mth.clamp(1.0F - audioMuffleStrength * 0.40F, 0.45F, 1.0F);
-        event.setSound(new MuffledSoundInstance(original, volumeScale, 1.0F));
+        event.setSound(muffle(original, volumeScale, 1.0F));
+    }
+
+    private static SoundInstance muffle(SoundInstance original, float volumeScale, float pitchScale) {
+        if (original instanceof TickableSoundInstance tickable) {
+            // Tickable sounds (looping/moving sounds) must keep ticking and report isStopped(),
+            // otherwise the sound engine never stops them and they loop forever.
+            return new MuffledTickableSoundInstance(tickable, volumeScale, pitchScale);
+        }
+        return new MuffledSoundInstance(original, volumeScale, pitchScale);
     }
 
     private void playTinnitusSound(float severity, int baseDurationTicks) {
@@ -362,12 +372,12 @@ public final class SuppressionFeedbackController {
         return Math.max(target, current - delta);
     }
 
-    private static final class MuffledSoundInstance implements SoundInstance {
+    private static class MuffledSoundInstance implements SoundInstance {
         private final SoundInstance delegate;
         private final float volumeScale;
         private final float pitchScale;
 
-        private MuffledSoundInstance(SoundInstance delegate, float volumeScale, float pitchScale) {
+        protected MuffledSoundInstance(SoundInstance delegate, float volumeScale, float pitchScale) {
             this.delegate = delegate;
             this.volumeScale = volumeScale;
             this.pitchScale = pitchScale;
@@ -448,5 +458,23 @@ public final class SuppressionFeedbackController {
             return delegate.canPlaySound();
         }
     }
-}
 
+    private static final class MuffledTickableSoundInstance extends MuffledSoundInstance implements TickableSoundInstance {
+        private final TickableSoundInstance tickableDelegate;
+
+        private MuffledTickableSoundInstance(TickableSoundInstance delegate, float volumeScale, float pitchScale) {
+            super(delegate, volumeScale, pitchScale);
+            this.tickableDelegate = delegate;
+        }
+
+        @Override
+        public boolean isStopped() {
+            return tickableDelegate.isStopped();
+        }
+
+        @Override
+        public void tick() {
+            tickableDelegate.tick();
+        }
+    }
+}
